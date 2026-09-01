@@ -161,6 +161,7 @@ func _build_player() -> void:
 	player.add_child(body)
 	_add_stick(player, Color("202a38"))
 	_add_control_ring(player)
+	_add_aim_arrow(player)
 	_add_dash_streak(player, Color(1.0, 0.32, 0.2, 0.76))
 	_add_fuego_aura(player, Color("ff7a24"))
 
@@ -222,6 +223,7 @@ func _build_support_player(node_name: String, actor_id: StringName, team: String
 	_add_stick(actor, Color("202a38"))
 	if team == &"red":
 		_add_control_ring(actor)
+		_add_aim_arrow(actor)
 
 
 func _add_control_ring(parent: Node3D) -> void:
@@ -238,6 +240,36 @@ func _add_control_ring(parent: Node3D) -> void:
 	indicator.material_override = _material(Color(1.0, 0.88, 0.28, 0.88), 0.18, Color("ffd84a"))
 	indicator.visible = false
 	parent.add_child(indicator)
+
+
+func _add_aim_arrow(parent: Node3D) -> void:
+	var arrow := Node3D.new()
+	arrow.name = "AimArrow"
+	arrow.position.y = -0.68
+	arrow.visible = false
+	parent.add_child(arrow)
+	var shaft := MeshInstance3D.new()
+	shaft.name = "Shaft"
+	var shaft_mesh := BoxMesh.new()
+	shaft_mesh.size = Vector3(0.1, 0.035, 1.15)
+	shaft.mesh = shaft_mesh
+	shaft.position.z = 1.425
+	shaft.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	shaft.material_override = _material(Color(0.86, 0.82, 0.2, 0.38), 0.2, Color("d9b72d"))
+	arrow.add_child(shaft)
+	var head := MeshInstance3D.new()
+	head.name = "Head"
+	var head_mesh := CylinderMesh.new()
+	head_mesh.top_radius = 0.0
+	head_mesh.bottom_radius = 0.2
+	head_mesh.height = 0.52
+	head_mesh.radial_segments = 12
+	head.mesh = head_mesh
+	head.position.z = 2.25
+	head.rotation_degrees.x = 90.0
+	head.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	head.material_override = _material(Color(0.86, 0.82, 0.2, 0.38), 0.2, Color("d9b72d"))
+	arrow.add_child(head)
 
 
 func get_field_players() -> Array[CharacterBody3D]:

@@ -10,6 +10,7 @@ const ParryScript = preload("res://scripts/simulation/parry.gd")
 const ShotChargeFeedbackScript = preload("res://scripts/presentation/shot_charge_feedback.gd")
 const ShotImpactFeedbackScript = preload("res://scripts/presentation/shot_impact_feedback.gd")
 const SquadLogicScript = preload("res://scripts/simulation/squad_logic.gd")
+const ShotAimIndicatorScript = preload("res://scripts/presentation/shot_aim_indicator.gd")
 const MAX_CHARGE_SECONDS := 0.8
 const SHOOT_RANGE := 2.35
 const TRAIL_SPEED_THRESHOLD := 10.0
@@ -50,6 +51,7 @@ var _control_owner := -1
 var _ai_possession_seconds := 0.0
 var _pass_index := 0
 var _ai_pass_cooldown := 0.0
+var _aim_arrow_actor: CharacterBody3D
 
 signal goal_scored(scorer: StringName)
 
@@ -139,8 +141,10 @@ func _update_shot_charge(delta: float) -> void:
 		var charge_ratio := _charge_seconds / MAX_CHARGE_SECONDS
 		var backswing_ratio := minf(1.0, charge_ratio)
 		_slap_actor.call("set_stick_slap_angle", lerpf(-2.0, StickSlapScript.BACKSWING_ANGLE, backswing_ratio * backswing_ratio))
+		_show_aim_arrow(_slap_actor, charge_ratio)
 		_apply_charge_feedback(charge_ratio)
 	elif Input.is_action_just_released("shoot"):
+		_hide_aim_arrow()
 		if _charge_seconds > 0.0:
 			var facing: Vector3 = _slap_actor.call("get_facing_direction")
 			_release_charged_slap(Vector2(facing.x, facing.z), _charge_seconds / MAX_CHARGE_SECONDS)
@@ -149,6 +153,7 @@ func _update_shot_charge(delta: float) -> void:
 			_clear_charge_feedback()
 			_slap_actor.call("set_stick_slap_angle", 0.0)
 	elif not Input.is_action_pressed("shoot"):
+		_hide_aim_arrow()
 		input_actor.call("set_shot_aim_locked", false)
 		if _steal_feedback_remaining <= 0.0 and _scoop_remaining <= 0.0:
 			_clear_charge_feedback()
@@ -158,6 +163,41 @@ func _update_shot_charge(delta: float) -> void:
 func _red_input_actor() -> CharacterBody3D:
 	var owner := _actor_for_controller(_control_owner)
 	return owner if owner != null and owner.call("get_team") == &"red" else _player
+
+
+func _show_aim_arrow(actor: CharacterBody3D, normalized_charge: float) -> void:
+	if _aim_arrow_actor != null and _aim_arrow_actor != actor:
+		var previous_arrow := _aim_arrow_actor.get_node_or_null("AimArrow") as Node3D
+		if previous_arrow != null:
+			previous_arrow.visible = false
+	_aim_arrow_actor = actor
+	var arrow := actor.get_node_or_null("AimArrow") as Node3D
+	if arrow == null:
+		return
+	var presentation: Dictionary = ShotAimIndicatorScript.for_charge(normalized_charge)
+	var shaft := arrow.get_node("Shaft") as MeshInstance3D
+	var shaft_mesh := shaft.mesh as BoxMesh
+	shaft_mesh.size = Vector3(presentation.width, 0.035, presentation.length)
+	shaft.position.z = 0.85 + presentation.length * 0.5
+	var head := arrow.get_node("Head") as MeshInstance3D
+	var head_mesh := head.mesh as CylinderMesh
+	head_mesh.bottom_radius = float(presentation.width) * 1.7
+	head_mesh.height = 0.46 + float(presentation.width) * 0.7
+	head.position.z = 0.85 + float(presentation.length) + head_mesh.height * 0.5
+	for mesh_instance in [shaft, head]:
+		var material := mesh_instance.material_override as StandardMaterial3D
+		material.albedo_color = presentation.color
+		material.emission = Color(presentation.color.r, presentation.color.g, presentation.color.b, 1.0)
+	arrow.visible = true
+
+
+func _hide_aim_arrow() -> void:
+	if _aim_arrow_actor == null:
+		return
+	var arrow := _aim_arrow_actor.get_node_or_null("AimArrow") as Node3D
+	if arrow != null:
+		arrow.visible = false
+	_aim_arrow_actor = null
 
 
 func _planar_distance_to_player() -> float:
@@ -235,6 +275,7 @@ func _advance_slap(delta: float) -> void:
 
 
 func _cancel_slap() -> void:
+	_hide_aim_arrow()
 	_slap_elapsed = -1.0
 	_pending_slap_charge = 0.0
 	_pending_one_touch = false

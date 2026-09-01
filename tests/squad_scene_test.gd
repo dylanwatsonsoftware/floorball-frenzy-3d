@@ -68,14 +68,32 @@ func run_test() -> void:
 		return
 	var carrier_stick := red_two.get_node("StickRig") as Node3D
 	var captain_stick := scene.get_node("Arena/Player/StickRig") as Node3D
+	var carrier_arrow := red_two.get_node_or_null("AimArrow") as Node3D
+	var captain_arrow := scene.get_node_or_null("Arena/Player/AimArrow") as Node3D
+	if carrier_arrow == null or captain_arrow == null:
+		fail("Every potentially controlled red player must have charged-shot arrow geometry")
+		return
 	var carrier_rest_angle := carrier_stick.rotation.y
 	var captain_rest_angle := captain_stick.rotation.y
 	Input.action_press("shoot")
-	for frame in 5:
+	await physics_frame
+	var early_shaft := carrier_arrow.get_node("Shaft") as MeshInstance3D
+	var early_length: float = (early_shaft.mesh as BoxMesh).size.z
+	for frame in 24:
 		await physics_frame
-	Input.action_release("shoot")
+	var charged_length: float = (early_shaft.mesh as BoxMesh).size.z
+	var arrow_material := early_shaft.material_override as StandardMaterial3D
 	if is_equal_approx(carrier_stick.rotation.y, carrier_rest_angle) or not is_equal_approx(captain_stick.rotation.y, captain_rest_angle):
-		fail("Shot input must animate the current red ball carrier's stick, not the original captain")
+		Input.action_release("shoot")
+		fail("Shot input must animate the current red ball carrier's stick, not the original captain; carrier=%s rest=%s captain=%s rest=%s" % [carrier_stick.rotation.y, carrier_rest_angle, captain_stick.rotation.y, captain_rest_angle])
+		return
+	Input.action_release("shoot")
+	await physics_frame
+	if charged_length <= early_length + 0.5 or arrow_material.albedo_color.r <= arrow_material.albedo_color.g:
+		fail("The active carrier's arrow must visibly lengthen and warm toward red while charging")
+		return
+	if carrier_arrow.visible or captain_arrow.visible:
+		fail("Aiming arrows must hide immediately when the shot is released")
 		return
 	Input.action_release("shoot")
 	ball.call("reset_for_faceoff")
