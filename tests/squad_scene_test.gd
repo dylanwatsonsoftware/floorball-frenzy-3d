@@ -55,6 +55,18 @@ func run_test() -> void:
 		fail("Human control must switch to red_2 alone when red_2 gains possession")
 		return
 	red_two.set_physics_process(true)
+	if not red_two.has_method("try_dash") or not red_two.has_method("is_dashing"):
+		fail("Every red player that can receive control must expose the core dash movement")
+		return
+	var dash_start: Vector3 = red_two.position
+	if not red_two.call("try_dash", Vector2.DOWN):
+		fail("A newly controlled support player must be able to start a ready dash")
+		return
+	for frame in 8:
+		await physics_frame
+	if red_two.position.distance_to(dash_start) < 1.2:
+		fail("Support-player dash must create a real sustained movement burst; displacement=%s" % red_two.position.distance_to(dash_start))
+		return
 	await physics_frame
 	var carrier_ring := red_two.get_node_or_null("ControlRing") as MeshInstance3D
 	var captain_ring := scene.get_node_or_null("Arena/Player/ControlRing") as MeshInstance3D

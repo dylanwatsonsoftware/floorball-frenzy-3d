@@ -33,8 +33,8 @@ func _init() -> void:
 		return
 
 	var action: StringName = controls.action_at_position(Vector2(926.0, 386.0), Vector2(1000.0, 600.0))
-	if action != &"":
-		fail("The mobile HUD must reserve its secondary button area while core floorball feel is being tuned")
+	if action != &"dash":
+		fail("The mobile HUD secondary button must trigger the core dash action")
 		return
 	if not is_equal_approx(controls.normalize_cooldown_ratio(1.4), 1.0):
 		fail("Dash cooldown feedback must clamp above one")

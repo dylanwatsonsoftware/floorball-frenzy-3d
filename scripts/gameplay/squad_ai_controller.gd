@@ -6,12 +6,17 @@ const SquadLogicScript = preload("res://scripts/simulation/squad_logic.gd")
 const RINK_HALF_LENGTH := 18.1
 const RINK_HALF_WIDTH := 8.6
 const STICK_BASE_Y_ANGLE := -28.0
+const DASH_STREAK_SECONDS := 0.18
 
 var _facing_direction := Vector3.RIGHT
 var _ball: Node3D
 var _mobile_controls: Control
 var _shot_aim_locked := false
 var _control_ring: MeshInstance3D
+var _dash_cooldown := 0.0
+var _dash_streak_remaining := 0.0
+var _dash_direction := Vector3.RIGHT
+var _dash_streak: Node3D
 
 
 func _ready() -> void:
@@ -19,6 +24,7 @@ func _ready() -> void:
 	_mobile_controls = get_node_or_null("../../HUD/MobileControls") as Control
 	_facing_direction = Vector3.RIGHT if get_team() == &"red" else Vector3.LEFT
 	_control_ring = get_node_or_null("ControlRing") as MeshInstance3D
+	_dash_streak = get_node_or_null("DashStreak") as Node3D
 
 
 func _physics_process(delta: float) -> void:
@@ -28,9 +34,20 @@ func _physics_process(delta: float) -> void:
 		_control_ring.visible = is_human_controlled()
 	if not _ball.is_physics_processing():
 		velocity = Vector3.ZERO
+		_dash_streak_remaining = 0.0
+		if _dash_streak != null:
+			_dash_streak.visible = false
 		return
 	var movement := _human_movement() if is_human_controlled() else _ai_movement()
-	velocity = PlayerMotorScript.step_velocity(velocity, movement, delta)
+	_dash_cooldown = maxf(0.0, _dash_cooldown - delta)
+	_dash_streak_remaining = maxf(0.0, _dash_streak_remaining - delta)
+	_update_dash_feedback()
+	if is_human_controlled() and Input.is_action_just_pressed("dash"):
+		try_dash(movement)
+	if is_dashing():
+		velocity = _dash_direction * PlayerMotorScript.DASH_SPEED
+	else:
+		velocity = PlayerMotorScript.step_velocity(velocity, movement, delta)
 	move_and_slide()
 	var boundary := RinkCollisionScript.constrain_body(global_position, velocity, RINK_HALF_LENGTH, RINK_HALF_WIDTH, 1.8)
 	global_position = boundary.position
@@ -38,6 +55,8 @@ func _physics_process(delta: float) -> void:
 	if not movement.is_zero_approx():
 		_facing_direction = Vector3(movement.x, 0.0, movement.y)
 		rotation.y = lerp_angle(rotation.y, atan2(_facing_direction.x, _facing_direction.z), minf(1.0, delta * 10.0))
+	if is_human_controlled() and _mobile_controls != null and _mobile_controls.has_method("set_dash_cooldown_ratio"):
+		_mobile_controls.call("set_dash_cooldown_ratio", get_dash_cooldown_ratio())
 
 
 func _human_movement() -> Vector2:
@@ -94,4 +113,31 @@ func is_human_controlled() -> bool:
 
 
 func is_dashing() -> bool:
-	return false
+	return _dash_streak_remaining > 0.0
+
+
+func try_dash(input_vector: Vector2 = Vector2.ZERO) -> bool:
+	var dash: Dictionary = PlayerMotorScript.start_dash(input_vector, _dash_cooldown, _facing_direction)
+	if not dash.started:
+		return false
+	_dash_direction = dash.velocity.normalized()
+	velocity = dash.velocity
+	_dash_cooldown = dash.cooldown
+	_dash_streak_remaining = DASH_STREAK_SECONDS
+	_update_dash_feedback()
+	return true
+
+
+func get_dash_cooldown_ratio() -> float:
+	return clampf(_dash_cooldown / PlayerMotorScript.DASH_COOLDOWN, 0.0, 1.0)
+
+
+func _update_dash_feedback() -> void:
+	if _dash_streak == null:
+		_dash_streak = get_node_or_null("DashStreak") as Node3D
+	if _dash_streak == null:
+		return
+	_dash_streak.visible = is_dashing()
+	if _dash_streak.visible:
+		var progress := 1.0 - _dash_streak_remaining / DASH_STREAK_SECONDS
+		_dash_streak.scale = Vector3.ONE * lerpf(0.9, 1.42, progress)

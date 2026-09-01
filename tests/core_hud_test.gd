@@ -17,6 +17,9 @@ func run_test() -> void:
 	if "CONTROL FOLLOWS RED POSSESSION" not in camera_label.text:
 		fail("The 3v3 HUD must explain that human control follows the red ball carrier")
 		return
+	if "DASH" not in camera_label.text:
+		fail("The core HUD must make the restored desktop dash control discoverable")
+		return
 	print("Core-only match HUD is valid.")
 	scene.queue_free()
 	quit(0)

@@ -271,6 +271,7 @@ func _build_support_player(node_name: String, actor_id: StringName, team: String
 	body.material_override = _material(color, 0.42)
 	actor.add_child(body)
 	_add_stick(actor, Color("202a38"))
+	_add_dash_streak(actor, Color(1.0, 0.32, 0.2, 0.76) if team == &"red" else Color(0.18, 0.55, 1.0, 0.78))
 	if team == &"red":
 		_add_control_ring(actor)
 		_add_aim_arrow(actor)
@@ -548,7 +549,7 @@ func _apply_camera_preset(index: int) -> void:
 	_camera_tracking_initialized = true
 	_camera_charge_pullback = 0.0
 	if _camera_label != null:
-		_camera_label.text = "CAMERA %d · %s\nCONTROL FOLLOWS RED POSSESSION · MOVE + HOLD SHOOT" % [index + 1, preset.name.to_upper()]
+		_camera_label.text = "CAMERA %d · %s\nCONTROL FOLLOWS RED POSSESSION · MOVE · SHIFT DASH · HOLD SHOOT" % [index + 1, preset.name.to_upper()]
 
 
 func _add_box(node_name: String, size: Vector3, position: Vector3, color: Color, shadow: bool = true) -> MeshInstance3D:
