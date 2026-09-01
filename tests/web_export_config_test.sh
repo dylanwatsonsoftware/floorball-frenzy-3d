@@ -17,6 +17,8 @@ test -x scripts/harden-service-worker
 grep -Fq 'self.skipWaiting()' scripts/harden-service-worker
 grep -Fq 'self.clients.claim()' scripts/harden-service-worker
 grep -Fq 'client.navigate(client.url)' scripts/harden-service-worker
+grep -Fq 'Floorball Frenzy network-first update policy.' scripts/harden-service-worker
+grep -Fq 'await fetchAndCache(event, cache, isCacheable)' scripts/harden-service-worker
 grep -Fq 'window/stretch/aspect="expand"' project.godot
 
 echo "Web export preset is deployment-ready."

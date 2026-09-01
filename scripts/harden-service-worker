@@ -15,6 +15,14 @@ import sys
 worker = Path(sys.argv[1])
 source = worker.read_text()
 marker = "// Floorball Frenzy immediate-update policy."
+network_marker = "// Floorball Frenzy network-first update policy."
+
+if network_marker not in source:
+    needle = """\t\t\tevent.respondWith((async () => {\n\t\t\t\t// Try to use cache first\n\t\t\t\tconst cache = await caches.open(CACHE_NAME);"""
+    replacement = """\t\t\tevent.respondWith((async () => {\n\t\t\t\tconst cache = await caches.open(CACHE_NAME);\n\t\t\t\t// Floorball Frenzy network-first update policy.\n\t\t\t\t// A refresh must reach the current deployment; cached files are offline fallbacks only.\n\t\t\t\ttry {\n\t\t\t\t\treturn await fetchAndCache(event, cache, isCacheable);\n\t\t\t\t} catch (networkError) {\n\t\t\t\t\tconsole.warn('Using cached game after network failure:', networkError);\n\t\t\t\t}\n\t\t\t\t// Network failed, so fall back to the complete cached build."""
+    if needle not in source:
+        raise SystemExit("Could not locate Godot service-worker fetch handler")
+    source = source.replace(needle, replacement, 1)
 
 if marker not in source:
     source += """
@@ -33,7 +41,7 @@ self.addEventListener('activate', (event) => {
     );
 });
 """
-    worker.write_text(source)
+worker.write_text(source)
 PY
 
 echo "Hardened Godot service-worker updates."
