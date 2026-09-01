@@ -32,6 +32,7 @@ func run_test() -> void:
 		"Arena/Opponent/StickRig/BladeToe",
 		"Arena/Ball",
 		"Arena/Ball/ShotTrail",
+		"Arena/ShotImpact",
 		"Arena/LeftGoal",
 		"Arena/RightGoal",
 		"Arena/LeftGoal/TopSideNet",
@@ -152,6 +153,10 @@ func run_test() -> void:
 		return
 	if not shot_trail.visible:
 		fail("A fast charged shot must reveal the ball trail")
+		return
+	var shot_impact := scene.get_node("Arena/ShotImpact") as MeshInstance3D
+	if not shot_impact.visible or shot_impact.scale.x <= 0.35:
+		fail("Physical stick contact must create an expanding shot impact burst")
 		return
 	var match_flow := scene.get_node("MatchFlow")
 	match_flow.call("_on_goal_scored", &"red")

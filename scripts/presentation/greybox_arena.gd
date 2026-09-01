@@ -9,6 +9,9 @@ const BOARD_CORNER_RADIUS := 2.15
 var _camera_presets: Array[Dictionary] = CameraPresetsScript.all()
 var _camera: Camera3D
 var _camera_label: Label
+var _shot_impact: MeshInstance3D
+var _shot_impact_tween: Tween
+var _camera_kick_tween: Tween
 
 
 func _ready() -> void:
@@ -48,6 +51,7 @@ func _build_world() -> void:
 	_build_goal("RightGoal", 16.0, Color("2b64e8"))
 	_build_player()
 	_build_ball()
+	_build_shot_impact()
 	_build_opponent()
 	_build_lighting()
 	_build_camera()
@@ -250,6 +254,55 @@ func _build_ball() -> void:
 	trail.top_level = true
 	ball.add_child(trail)
 	add_child(ball)
+
+
+func _build_shot_impact() -> void:
+	_shot_impact = MeshInstance3D.new()
+	_shot_impact.name = "ShotImpact"
+	var ring := TorusMesh.new()
+	ring.inner_radius = 0.28
+	ring.outer_radius = 0.39
+	ring.rings = 28
+	ring.ring_segments = 8
+	_shot_impact.mesh = ring
+	_shot_impact.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_shot_impact.material_override = _material(Color(1.0, 0.45, 0.12, 0.9), 0.18, Color("ff6b22"))
+	_shot_impact.visible = false
+	add_child(_shot_impact)
+
+
+func play_shot_impact(contact_position: Vector3, feedback: Dictionary) -> void:
+	if _shot_impact_tween != null and _shot_impact_tween.is_valid():
+		_shot_impact_tween.kill()
+	_shot_impact.global_position = Vector3(contact_position.x, 0.035, contact_position.z)
+	_shot_impact.scale = Vector3.ONE * 0.35
+	var material := _shot_impact.material_override as StandardMaterial3D
+	var impact_color: Color = feedback.color
+	impact_color.a = 0.92
+	material.albedo_color = impact_color
+	material.emission = Color(feedback.color)
+	_shot_impact.visible = true
+	_shot_impact_tween = create_tween().set_parallel(true)
+	_shot_impact_tween.tween_property(_shot_impact, "scale", Vector3.ONE * float(feedback.scale), float(feedback.duration)).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_shot_impact_tween.tween_property(material, "albedo_color:a", 0.0, float(feedback.duration)).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	_shot_impact_tween.chain().tween_callback(_hide_shot_impact)
+	_play_camera_kick(float(feedback.kick), float(feedback.duration))
+
+
+func _play_camera_kick(strength: float, duration: float) -> void:
+	if _camera == null:
+		return
+	if _camera_kick_tween != null and _camera_kick_tween.is_valid():
+		_camera_kick_tween.kill()
+	_camera.h_offset = strength
+	_camera.v_offset = -strength * 0.55
+	_camera_kick_tween = create_tween().set_parallel(true)
+	_camera_kick_tween.tween_property(_camera, "h_offset", 0.0, duration).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+	_camera_kick_tween.tween_property(_camera, "v_offset", 0.0, duration).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+
+
+func _hide_shot_impact() -> void:
+	_shot_impact.visible = false
 
 
 func _build_lighting() -> void:

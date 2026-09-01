@@ -5,6 +5,7 @@ const MatchSimulationScript = preload("res://scripts/simulation/match_simulation
 const BallInteractionScript = preload("res://scripts/simulation/ball_interaction.gd")
 const StickSlapScript = preload("res://scripts/simulation/stick_slap.gd")
 const ShotChargeFeedbackScript = preload("res://scripts/presentation/shot_charge_feedback.gd")
+const ShotImpactFeedbackScript = preload("res://scripts/presentation/shot_impact_feedback.gd")
 const MAX_CHARGE_SECONDS := 0.8
 const SHOOT_RANGE := 2.35
 const TRAIL_SPEED_THRESHOLD := 10.0
@@ -140,6 +141,7 @@ func _advance_slap(delta: float) -> void:
 	_player.call("set_stick_slap_angle", StickSlapScript.angle_at(_slap_elapsed))
 	if StickSlapScript.crossed_contact(previous_elapsed, _slap_elapsed) and _ball_in_player_blade():
 		launch(_pending_slap_direction, _pending_slap_charge, _player.velocity)
+		_play_contact_feedback(_pending_slap_charge)
 	if _slap_elapsed >= StickSlapScript.TOTAL_SECONDS:
 		_cancel_slap()
 
@@ -168,6 +170,12 @@ func _ball_in_player_blade() -> bool:
 		"facing": _player.call("get_facing_direction"),
 	}
 	return BallInteractionScript.is_in_blade_pocket(global_position, participant)
+
+
+func _play_contact_feedback(charge: float) -> void:
+	var arena := get_parent()
+	if arena.has_method("play_shot_impact"):
+		arena.call("play_shot_impact", global_position, ShotImpactFeedbackScript.for_charge(charge))
 
 
 func _update_spin(delta: float) -> void:
