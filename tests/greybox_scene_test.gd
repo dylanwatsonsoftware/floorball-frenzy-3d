@@ -73,6 +73,9 @@ func run_test() -> void:
 	if not camera.current:
 		fail("Broadcast camera must be active by default")
 		return
+	if camera.keep_aspect != Camera3D.KEEP_WIDTH:
+		fail("Broadcast camera must preserve horizontal framing so portrait and landscape screens both fit the action width")
+		return
 	var opponent := scene.get_node("Arena/Opponent")
 	if not opponent.has_method("is_ai_controlled"):
 		fail("Blue opponent must be controlled by the local-match AI")

@@ -594,6 +594,9 @@ func _build_lighting() -> void:
 func _build_camera() -> void:
 	_camera = Camera3D.new()
 	_camera.name = "BroadcastCamera"
+	# Preserve horizontal framing as the browser changes shape. Portrait screens
+	# gain vertical context instead of cropping the rink and its active players.
+	_camera.keep_aspect = Camera3D.KEEP_WIDTH
 	_camera.current = true
 	add_child(_camera)
 
