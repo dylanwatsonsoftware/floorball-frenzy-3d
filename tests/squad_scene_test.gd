@@ -30,10 +30,13 @@ func run_test() -> void:
 	if teams.red != 3 or teams.blue != 3 or ids.size() != 6:
 		fail("The roster must have three uniquely identified players per team; teams=%s ids=%s" % [teams, ids])
 		return
+	var initial_humans := []
 	for actor in players:
 		if actor.has_method("is_human_controlled") and actor.call("is_human_controlled"):
-			fail("No red player should consume human input before gaining possession")
-			return
+			initial_humans.append(actor.call("get_actor_id"))
+	if initial_humans.size() != 1 or initial_humans[0] != &"red_1":
+		fail("Loose-ball play must assign the nearest red player instead of controlling nobody; humans=%s" % initial_humans)
+		return
 
 	var ball := scene.get_node("Arena/Ball")
 	var red_two := scene.get_node("Arena/RedTeammate2") as CharacterBody3D

@@ -35,7 +35,7 @@ func _physics_process(delta: float) -> void:
 	var boundary := RinkCollisionScript.constrain_body(global_position, velocity, RINK_HALF_LENGTH, RINK_HALF_WIDTH, 1.8)
 	global_position = boundary.position
 	velocity = boundary.velocity
-	if not movement.is_zero_approx() and not _shot_aim_locked:
+	if not movement.is_zero_approx():
 		_facing_direction = Vector3(movement.x, 0.0, movement.y)
 		rotation.y = lerp_angle(rotation.y, atan2(_facing_direction.x, _facing_direction.z), minf(1.0, delta * 10.0))
 
@@ -90,7 +90,7 @@ func get_squad_slot() -> int:
 
 
 func is_human_controlled() -> bool:
-	return get_team() == &"red" and _ball != null and _ball.has_method("is_controlled_by_actor") and bool(_ball.call("is_controlled_by_actor", get_actor_id()))
+	return get_team() == &"red" and _ball != null and _ball.has_method("get_human_control_actor_id") and _ball.call("get_human_control_actor_id") == get_actor_id()
 
 
 func is_dashing() -> bool:

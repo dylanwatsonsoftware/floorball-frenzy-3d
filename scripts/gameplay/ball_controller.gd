@@ -52,6 +52,7 @@ var _ai_possession_seconds := 0.0
 var _pass_index := 0
 var _ai_pass_cooldown := 0.0
 var _aim_arrow_actor: CharacterBody3D
+var _charge_cancelled_until_release := false
 
 signal goal_scored(scorer: StringName)
 
@@ -123,6 +124,7 @@ func reset_for_faceoff() -> void:
 	_control_owner = -1
 	_ai_possession_seconds = 0.0
 	_ai_pass_cooldown = 0.0
+	_charge_cancelled_until_release = false
 	_clear_charge_feedback()
 	_set_trail_visible(false)
 	_set_shot_trail_style(false, false, false)
@@ -134,9 +136,14 @@ func _update_shot_charge(delta: float) -> void:
 		return
 	var input_actor := _red_input_actor()
 	if Input.is_action_pressed("shoot"):
-		_slap_actor = input_actor
+		if _charge_cancelled_until_release:
+			return
 		if _charge_seconds <= 0.0:
+			_slap_actor = input_actor
 			_slap_actor.call("set_shot_aim_locked", true)
+		elif input_actor != _slap_actor:
+			_cancel_active_charge(true)
+			return
 		_charge_seconds = minf(MAX_CHARGE_SECONDS * 2.0, _charge_seconds + delta)
 		var charge_ratio := _charge_seconds / MAX_CHARGE_SECONDS
 		var backswing_ratio := minf(1.0, charge_ratio)
@@ -144,6 +151,7 @@ func _update_shot_charge(delta: float) -> void:
 		_show_aim_arrow(_slap_actor, charge_ratio)
 		_apply_charge_feedback(charge_ratio)
 	elif Input.is_action_just_released("shoot"):
+		_charge_cancelled_until_release = false
 		_hide_aim_arrow()
 		if _charge_seconds > 0.0:
 			var facing: Vector3 = _slap_actor.call("get_facing_direction")
@@ -153,6 +161,7 @@ func _update_shot_charge(delta: float) -> void:
 			_clear_charge_feedback()
 			_slap_actor.call("set_stick_slap_angle", 0.0)
 	elif not Input.is_action_pressed("shoot"):
+		_charge_cancelled_until_release = false
 		_hide_aim_arrow()
 		input_actor.call("set_shot_aim_locked", false)
 		if _steal_feedback_remaining <= 0.0 and _scoop_remaining <= 0.0:
@@ -161,15 +170,15 @@ func _update_shot_charge(delta: float) -> void:
 
 
 func _red_input_actor() -> CharacterBody3D:
-	var owner := _actor_for_controller(_control_owner)
-	return owner if owner != null and owner.call("get_team") == &"red" else _player
+	var human_actor_id := get_human_control_actor_id()
+	for actor in _field_players:
+		if actor.call("get_actor_id") == human_actor_id:
+			return actor
+	return _player
 
 
 func _show_aim_arrow(actor: CharacterBody3D, normalized_charge: float) -> void:
-	if _aim_arrow_actor != null and _aim_arrow_actor != actor:
-		var previous_arrow := _aim_arrow_actor.get_node_or_null("AimArrow") as Node3D
-		if previous_arrow != null:
-			previous_arrow.visible = false
+	_hide_other_aim_arrows(actor)
 	_aim_arrow_actor = actor
 	var arrow := actor.get_node_or_null("AimArrow") as Node3D
 	if arrow == null:
@@ -192,12 +201,29 @@ func _show_aim_arrow(actor: CharacterBody3D, normalized_charge: float) -> void:
 
 
 func _hide_aim_arrow() -> void:
-	if _aim_arrow_actor == null:
-		return
-	var arrow := _aim_arrow_actor.get_node_or_null("AimArrow") as Node3D
-	if arrow != null:
-		arrow.visible = false
+	_hide_other_aim_arrows(null)
 	_aim_arrow_actor = null
+
+
+func _hide_other_aim_arrows(exception: CharacterBody3D) -> void:
+	_refresh_field_players()
+	for actor in _field_players:
+		if actor == exception:
+			continue
+		var arrow := actor.get_node_or_null("AimArrow") as Node3D
+		if arrow != null:
+			arrow.visible = false
+
+
+func _cancel_active_charge(wait_for_release: bool) -> void:
+	_hide_aim_arrow()
+	_charge_seconds = 0.0
+	_charge_cancelled_until_release = wait_for_release
+	if _slap_actor != null:
+		_slap_actor.call("set_stick_slap_angle", 0.0)
+		_slap_actor.call("set_shot_aim_locked", false)
+	_slap_actor = null
+	_clear_charge_feedback()
 
 
 func _planar_distance_to_player() -> float:
@@ -339,6 +365,24 @@ func get_control_owner_actor_id() -> StringName:
 func get_control_owner_team() -> StringName:
 	var actor := _actor_for_controller(_control_owner)
 	return actor.call("get_team") if actor != null else &""
+
+
+func get_human_control_actor_id() -> StringName:
+	var owner := _actor_for_controller(_control_owner)
+	if owner != null and owner.call("get_team") == &"red":
+		return owner.call("get_actor_id")
+	_refresh_field_players()
+	var nearest_id: StringName = &""
+	var nearest_distance := INF
+	for actor in _field_players:
+		if actor.call("get_team") != &"red":
+			continue
+		var offset := actor.global_position - global_position
+		var distance := Vector2(offset.x, offset.z).length_squared()
+		if distance < nearest_distance:
+			nearest_distance = distance
+			nearest_id = actor.call("get_actor_id")
+	return nearest_id
 
 
 func get_shot_charge_ratio() -> float:

@@ -66,7 +66,7 @@ func _physics_process(delta: float) -> void:
 	global_position = boundary.position
 	velocity = boundary.velocity
 
-	if velocity.length_squared() > 0.04 and not _shot_aim_locked:
+	if velocity.length_squared() > 0.04:
 		_facing_direction = Vector3(velocity.x, 0.0, velocity.z).normalized()
 		rotation.y = lerp_angle(rotation.y, atan2(_facing_direction.x, _facing_direction.z), minf(1.0, delta * 12.0))
 	if _mobile_controls != null and _mobile_controls.has_method("set_dash_cooldown_ratio"):
@@ -113,7 +113,7 @@ func get_squad_slot() -> int:
 
 func is_human_controlled() -> bool:
 	var ball := get_parent().get_node_or_null("Ball")
-	return ball != null and ball.has_method("is_controlled_by_actor") and bool(ball.call("is_controlled_by_actor", get_actor_id()))
+	return ball != null and ball.has_method("get_human_control_actor_id") and ball.call("get_human_control_actor_id") == get_actor_id()
 
 
 func set_shot_aim_locked(value: bool) -> void:
