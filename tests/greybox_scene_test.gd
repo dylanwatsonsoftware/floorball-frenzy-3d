@@ -24,13 +24,11 @@ func run_test() -> void:
 		"Arena/Player",
 		"Arena/Player/StickRig/Shaft",
 		"Arena/Player/StickRig/Blade",
-		"Arena/Player/StickRig/BladeToe",
 		"Arena/Player/DashStreak",
 		"Arena/Player/DashStreak/DashRing",
 		"Arena/Player/FuegoAura",
 		"Arena/Opponent/StickRig/Shaft",
 		"Arena/Opponent/StickRig/Blade",
-		"Arena/Opponent/StickRig/BladeToe",
 		"Arena/Opponent/DashStreak",
 		"Arena/Opponent/DashStreak/DashRing",
 		"Arena/Opponent/FuegoAura",
@@ -48,6 +46,7 @@ func run_test() -> void:
 		"HUD/MobileControls",
 		"HUD/WebDisplayControls/FullscreenButton",
 		"HUD/WebDisplayControls/OrientationHint",
+		"HUD/MobileControls/SwitchButton",
 		"HUD/ScoreLabel",
 		"HUD/MessageLabel",
 		"HUD/GoalFlash",
@@ -173,7 +172,9 @@ func run_test() -> void:
 		fail("Bolt eligibility must expire after the original 200 ms timing window")
 		return
 	var player_blade := scene.get_node("Arena/Player/StickRig/Blade") as MeshInstance3D
-	if player_blade.position.z <= 0.5 or player_blade.position.x >= 0.0 or player_blade.global_position.y > 0.3:
+	var blade_bounds := player_blade.get_aabb()
+	var blade_world_center := player_blade.to_global(blade_bounds.get_center())
+	if blade_bounds.end.z <= 0.5 or blade_bounds.position.x >= 0.0 or blade_world_center.y > 0.3:
 		fail("The stick blade must finish grounded, forward, and to the player's right")
 		return
 	if not player.has_method("set_stick_slap_angle"):

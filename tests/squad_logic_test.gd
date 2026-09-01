@@ -22,6 +22,30 @@ func _init() -> void:
 	if upper_support.y >= -2.5 or lower_support.y <= 2.5 or upper_support.x <= 0.0 or lower_support.x <= 0.0:
 		fail("Red off-ball players must spread into distinct forward support lanes")
 		return
+	var defensive_support: Vector2 = squad.support_target(&"red", 1, Vector3.ZERO, false)
+	if defensive_support.x > -5.5 or defensive_support.y > -4.5:
+		fail("Off-ball defenders must hold a genuinely separated lane instead of swarming the ball; target=%s" % defensive_support)
+		return
+	var switch_target: StringName = squad.next_human_actor_id(
+		&"red_1",
+		[
+			{"actor_id": &"red_1", "position": Vector3(8.0, 0.75, 0.0)},
+			{"actor_id": &"red_2", "position": Vector3(1.0, 0.75, 0.0)},
+			{"actor_id": &"red_3", "position": Vector3(4.0, 0.75, 0.0)},
+		],
+		Vector3.ZERO
+	)
+	if switch_target != &"red_2":
+		fail("Switch control must advance from the current player to the closest teammate to the ball; got %s" % switch_target)
+		return
+	var next_switch: StringName = squad.next_human_actor_id(&"red_2", [
+		{"actor_id": &"red_1", "position": Vector3(8.0, 0.75, 0.0)},
+		{"actor_id": &"red_2", "position": Vector3(1.0, 0.75, 0.0)},
+		{"actor_id": &"red_3", "position": Vector3(4.0, 0.75, 0.0)},
+	], Vector3.ZERO)
+	if next_switch != &"red_3":
+		fail("A second switch must advance to the next-closest teammate; got %s" % next_switch)
+		return
 
 	var pass_decision: Dictionary = squad.pass_plan(
 		Vector3(2.0, 0.75, 0.0),

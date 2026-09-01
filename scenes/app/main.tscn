@@ -169,6 +169,9 @@ layout_mode = 0
 [node name="DashButton" type="Control" parent="HUD/MobileControls"]
 layout_mode = 0
 
+[node name="SwitchButton" type="Control" parent="HUD/MobileControls"]
+layout_mode = 0
+
 [node name="WebDisplayControls" type="Control" parent="HUD"]
 layout_mode = 3
 anchors_preset = 15

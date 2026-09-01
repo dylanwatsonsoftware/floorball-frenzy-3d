@@ -36,6 +36,10 @@ func _init() -> void:
 	if action != &"dash":
 		fail("The mobile HUD secondary button must trigger the core dash action")
 		return
+	var switch_action: StringName = controls.action_at_position(Vector2(934.0, 282.0), Vector2(1000.0, 600.0))
+	if switch_action != &"switch_player":
+		fail("The mobile HUD needs a dedicated player-switch button")
+		return
 	if not is_equal_approx(controls.normalize_cooldown_ratio(1.4), 1.0):
 		fail("Dash cooldown feedback must clamp above one")
 		return

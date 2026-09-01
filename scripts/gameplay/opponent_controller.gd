@@ -5,6 +5,7 @@ const PlayerMotorScript = preload("res://scripts/gameplay/player_motor.gd")
 const RinkCollisionScript = preload("res://scripts/simulation/rink_collision.gd")
 const HeatSystemScript = preload("res://scripts/simulation/heat_system.gd")
 const PlayerContactScript = preload("res://scripts/simulation/player_contact.gd")
+const SquadLogicScript = preload("res://scripts/simulation/squad_logic.gd")
 const RINK_HALF_LENGTH := 19.1
 const RINK_HALF_WIDTH := 9.1
 const SHOT_CHARGE_SECONDS := 0.55
@@ -66,6 +67,16 @@ func _physics_process(delta: float) -> void:
 		has_possession,
 		_opening_grace_remaining > 0.0
 	)
+	var teammates := []
+	for actor in get_parent().call("get_team_players", &"blue"):
+		teammates.append({"actor_id": actor.call("get_actor_id"), "position": actor.global_position})
+	var owner_team: StringName = _ball.call("get_control_owner_team") if _ball.has_method("get_control_owner_team") else &""
+	var owner_actor: StringName = _ball.call("get_control_owner_actor_id") if _ball.has_method("get_control_owner_actor_id") else &""
+	var should_press := owner_team != &"blue" and SquadLogicScript.is_closest_to_ball(get_actor_id(), global_position, teammates, _ball.global_position)
+	if owner_actor != get_actor_id() and not should_press:
+		var support_target := SquadLogicScript.support_target(&"blue", 0, _ball.global_position, owner_team == &"blue")
+		decision.movement = (support_target - Vector2(global_position.x, global_position.z)).normalized()
+		decision.wants_dash = false
 	if decision.wants_dash:
 		try_dash(decision.movement)
 	if is_dashing():

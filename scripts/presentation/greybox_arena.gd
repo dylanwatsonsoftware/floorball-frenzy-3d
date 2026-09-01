@@ -502,28 +502,29 @@ func _add_stick(parent: Node3D, color: Color) -> void:
 	rig.add_child(neck)
 
 	var blade_color := Color("f4d84a")
-	_add_blade_piece(rig, "Blade", Vector3(0.28, 0.075, 0.055), Vector3(-0.13, 0.0, 1.16), 8.0, blade_color)
-	_add_blade_piece(rig, "BladeBackRail", Vector3(0.28, 0.075, 0.055), Vector3(-0.13, 0.0, 1.03), 8.0, blade_color)
-	_add_blade_piece(rig, "BladeMid", Vector3(0.27, 0.075, 0.055), Vector3(-0.38, 0.0, 1.11), 18.0, blade_color)
-	_add_blade_piece(rig, "BladeMidBack", Vector3(0.27, 0.075, 0.055), Vector3(-0.38, 0.0, 0.98), 18.0, blade_color)
-	_add_blade_piece(rig, "BladeToe", Vector3(0.23, 0.075, 0.055), Vector3(-0.59, 0.0, 1.01), 31.0, blade_color)
-	_add_blade_piece(rig, "BladeToeBack", Vector3(0.23, 0.075, 0.055), Vector3(-0.59, 0.0, 0.89), 31.0, blade_color)
-	_add_blade_piece(rig, "BladeTip", Vector3(0.18, 0.085, 0.06), Vector3(-0.74, 0.0, 0.85), 48.0, blade_color)
-	_add_blade_piece(rig, "BladeRib1", Vector3(0.055, 0.068, 0.14), Vector3(-0.24, 0.0, 1.07), 12.0, blade_color)
-	_add_blade_piece(rig, "BladeRib2", Vector3(0.055, 0.068, 0.14), Vector3(-0.43, 0.0, 1.02), 22.0, blade_color)
-	_add_blade_piece(rig, "BladeRib3", Vector3(0.055, 0.068, 0.13), Vector3(-0.60, 0.0, 0.95), 34.0, blade_color)
+	_add_floorball_blade(rig, blade_color)
 
 
-func _add_blade_piece(rig: Node3D, piece_name: String, size: Vector3, piece_position: Vector3, yaw_degrees: float, color: Color) -> void:
-	var piece := MeshInstance3D.new()
-	piece.name = piece_name
-	var piece_mesh := BoxMesh.new()
-	piece_mesh.size = size
-	piece.mesh = piece_mesh
-	piece.position = piece_position
-	piece.rotation_degrees.y = yaw_degrees
-	piece.material_override = _material(color, 0.48)
-	rig.add_child(piece)
+func _add_floorball_blade(rig: Node3D, color: Color) -> void:
+	var blade := MeshInstance3D.new()
+	blade.name = "Blade"
+	var arrays := []
+	arrays.resize(ArrayMesh.ARRAY_MAX)
+	arrays[ArrayMesh.ARRAY_VERTEX] = PackedVector3Array([
+		Vector3(0.02, 0.0, 1.17), Vector3(-0.28, 0.0, 1.14),
+		Vector3(-0.58, 0.0, 1.02), Vector3(-0.79, 0.0, 0.82),
+		Vector3(-0.66, 0.0, 0.71), Vector3(-0.34, 0.0, 0.90),
+		Vector3(0.02, 0.0, 1.00),
+	])
+	arrays[ArrayMesh.ARRAY_INDEX] = PackedInt32Array([0, 1, 6, 1, 5, 6, 1, 2, 5, 2, 4, 5, 2, 3, 4])
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	blade.mesh = mesh
+	var material := _material(color, 0.42)
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	blade.material_override = material
+	rig.add_child(blade)
 
 
 func _add_dash_streak(parent: Node3D, color: Color) -> void:
@@ -668,7 +669,7 @@ func _apply_camera_preset(index: int) -> void:
 	_camera_tracking_initialized = true
 	_camera_charge_pullback = 0.0
 	if _camera_label != null:
-		_camera_label.text = "CAMERA %d · %s\nCONTROL FOLLOWS RED POSSESSION · MOVE · SHIFT DASH · HOLD SHOOT" % [index + 1, preset.name.to_upper()]
+		_camera_label.text = "CAMERA %d · %s\nCONTROL FOLLOWS RED POSSESSION · TAB SWITCH · SHIFT DASH · HOLD SHOOT" % [index + 1, preset.name.to_upper()]
 
 
 func _add_box(node_name: String, size: Vector3, position: Vector3, color: Color, shadow: bool = true) -> MeshInstance3D:

@@ -27,14 +27,12 @@ func run_test() -> void:
 		for child in rig.get_children():
 			if child.name.begins_with("Blade"):
 				blade_parts.append(child)
-		if blade_parts.size() < 7:
-			fail("The blade must have a curved, open lattice silhouette rather than one solid box; parts=%d" % blade_parts.size())
+		if blade_parts.size() > 2:
+			fail("The blade must read as one clean curved silhouette rather than repeated H-shaped rails and ribs; parts=%d" % blade_parts.size())
 			return
 		var blade := rig.get_node("Blade") as MeshInstance3D
-		var toe := rig.get_node("BladeToe") as MeshInstance3D
-		var tip := rig.get_node_or_null("BladeTip") as MeshInstance3D
-		if tip == null or absf(tip.rotation_degrees.y) <= absf(blade.rotation_degrees.y) or tip.position.x >= toe.position.x:
-			fail("The blade toe must visibly curl around the ball-carrying face")
+		if not blade.mesh is ArrayMesh or (blade.mesh as ArrayMesh).get_surface_count() != 1:
+			fail("The floorball blade must use a single lightweight curved mesh")
 			return
 		var blade_material := blade.material_override as StandardMaterial3D
 		if blade_material.albedo_color.get_luminance() < 0.55:

@@ -12,10 +12,32 @@ static func human_actor_id(owner_actor_id: StringName, owner_team: StringName, h
 
 static func support_target(team: StringName, slot: int, ball_position: Vector3, team_has_possession: bool) -> Vector2:
 	var attack_direction := 1.0 if team == &"red" else -1.0
-	var lane_z := -4.0 if slot == 1 else 4.0 if slot == 2 else 0.0
-	var longitudinal_offset := 3.4 if team_has_possession else -3.2
+	var lane_width := 4.0 if team_has_possession else 5.5
+	var lane_z := -lane_width if slot == 1 else lane_width if slot == 2 else 0.0
+	var longitudinal_offset := 3.4 if team_has_possession else -6.6
 	var target_x := clampf(ball_position.x + attack_direction * longitudinal_offset, -14.0, 14.0)
 	return Vector2(target_x, lane_z)
+
+
+static func next_human_actor_id(current_actor_id: StringName, teammates: Array, ball_position: Vector3) -> StringName:
+	if teammates.is_empty():
+		return &""
+	var ranked := teammates.duplicate()
+	ranked.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		var distance_a := _planar(a.position).distance_squared_to(_planar(ball_position))
+		var distance_b := _planar(b.position).distance_squared_to(_planar(ball_position))
+		if is_equal_approx(distance_a, distance_b):
+			return String(a.actor_id) < String(b.actor_id)
+		return distance_a < distance_b
+	)
+	var current_index := -1
+	for index in ranked.size():
+		if StringName(ranked[index].actor_id) == current_actor_id:
+			current_index = index
+			break
+	if current_index < 0:
+		return StringName(ranked[0].actor_id)
+	return StringName(ranked[(current_index + 1) % ranked.size()].actor_id)
 
 
 static func is_closest_to_ball(actor_id: StringName, actor_position: Vector3, teammates: Array, ball_position: Vector3) -> bool:

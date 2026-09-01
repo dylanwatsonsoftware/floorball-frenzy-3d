@@ -53,6 +53,8 @@ var _pass_index := 0
 var _ai_pass_cooldown := 0.0
 var _aim_arrow_actor: CharacterBody3D
 var _charge_cancelled_until_release := false
+var _manual_human_actor_id: StringName = &""
+var _manual_owner_snapshot: StringName = &""
 
 signal goal_scored(scorer: StringName)
 
@@ -65,6 +67,8 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if Input.is_action_just_pressed("switch_player"):
+		switch_human_player()
 	_last_touch_age += delta
 	_update_scoop_feedback(delta)
 	_update_steal_feedback(delta)
@@ -125,6 +129,8 @@ func reset_for_faceoff() -> void:
 	_ai_possession_seconds = 0.0
 	_ai_pass_cooldown = 0.0
 	_charge_cancelled_until_release = false
+	_manual_human_actor_id = &""
+	_manual_owner_snapshot = &""
 	_clear_charge_feedback()
 	_set_trail_visible(false)
 	_set_shot_trail_style(false, false, false)
@@ -369,9 +375,17 @@ func get_control_owner_team() -> StringName:
 
 func get_human_control_actor_id() -> StringName:
 	var owner := _actor_for_controller(_control_owner)
+	_refresh_field_players()
+	if _manual_human_actor_id != &"":
+		var owner_id: StringName = owner.call("get_actor_id") if owner != null else &""
+		if owner_id == _manual_owner_snapshot:
+			for actor in _field_players:
+				if actor.call("get_actor_id") == _manual_human_actor_id and actor.call("get_team") == &"red":
+					return _manual_human_actor_id
+		_manual_human_actor_id = &""
+		_manual_owner_snapshot = &""
 	if owner != null and owner.call("get_team") == &"red":
 		return owner.call("get_actor_id")
-	_refresh_field_players()
 	var nearest_id: StringName = &""
 	var nearest_distance := INF
 	for actor in _field_players:
@@ -383,6 +397,23 @@ func get_human_control_actor_id() -> StringName:
 			nearest_distance = distance
 			nearest_id = actor.call("get_actor_id")
 	return nearest_id
+
+
+func switch_human_player() -> StringName:
+	_refresh_field_players()
+	var current := get_human_control_actor_id()
+	var red_players := []
+	for actor in _field_players:
+		if actor.call("get_team") == &"red":
+			red_players.append({"actor_id": actor.call("get_actor_id"), "position": actor.global_position})
+	var next_actor: StringName = SquadLogicScript.next_human_actor_id(current, red_players, global_position)
+	if next_actor == &"":
+		return current
+	_manual_human_actor_id = next_actor
+	_manual_owner_snapshot = get_control_owner_actor_id()
+	if _charge_seconds > 0.0:
+		_cancel_active_charge(true)
+	return get_human_control_actor_id()
 
 
 func get_shot_charge_ratio() -> float:

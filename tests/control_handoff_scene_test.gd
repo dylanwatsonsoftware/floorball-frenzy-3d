@@ -25,7 +25,10 @@ func run_test() -> void:
 	if _human_count(players) != 1 or not red_two.call("is_human_controlled"):
 		fail("Loose-ball play must assign exactly one nearby red player; count=%d red_2=%s" % [_human_count(players), red_two.call("is_human_controlled")])
 		return
-
+	var switched_actor: StringName = ball.call("switch_human_player")
+	if switched_actor != &"red_1" or _human_count(players) != 1:
+		fail("Manual switching must advance from the current closest player to the next distance-ranked teammate; actor=%s count=%d" % [switched_actor, _human_count(players)])
+		return
 	# Capture and charge while changing direction. Charging must not freeze facing.
 	ball.ball_velocity = Vector3.ZERO
 	ball.position = red_two.position + Vector3(0.9, -0.53, 0.75)
