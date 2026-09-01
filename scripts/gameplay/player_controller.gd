@@ -2,6 +2,7 @@ extends CharacterBody3D
 
 const PlayerMotorScript = preload("res://scripts/gameplay/player_motor.gd")
 const RinkCollisionScript = preload("res://scripts/simulation/rink_collision.gd")
+const HeatSystemScript = preload("res://scripts/simulation/heat_system.gd")
 const RINK_HALF_LENGTH := 18.1
 const RINK_HALF_WIDTH := 8.6
 const DASH_STREAK_SECONDS := 0.18
@@ -15,14 +16,21 @@ var _dash_streak_remaining := 0.0
 var _dash_streak: Node3D
 var _dash_direction := Vector3.RIGHT
 var _recent_dash_remaining := 0.0
+var _heat := 0.0
+var _fuego_remaining := 0.0
+var _fuego_aura: MeshInstance3D
+var _heat_bar: ProgressBar
 
 
 func _ready() -> void:
 	_mobile_controls = get_node_or_null("../../HUD/MobileControls") as Control
 	_dash_streak = get_node_or_null("DashStreak") as Node3D
+	_fuego_aura = get_node_or_null("FuegoAura") as MeshInstance3D
+	_heat_bar = get_node_or_null("../../HUD/RedHeatBar") as ProgressBar
 
 
 func _physics_process(delta: float) -> void:
+	_step_heat(delta)
 	var keyboard_input := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	var touch_input := Vector2.ZERO
 	if _mobile_controls != null and _mobile_controls.has_method("get_movement_vector"):
@@ -41,7 +49,7 @@ func _physics_process(delta: float) -> void:
 	if is_dashing():
 		velocity = _dash_direction * PlayerMotorScript.DASH_SPEED
 	else:
-		velocity = PlayerMotorScript.step_velocity(velocity, input_vector, delta)
+		velocity = PlayerMotorScript.step_velocity(velocity, input_vector, delta, HeatSystemScript.speed_multiplier(_fuego_remaining))
 	move_and_slide()
 	var boundary := RinkCollisionScript.constrain_body(global_position, velocity, RINK_HALF_LENGTH, RINK_HALF_WIDTH, 1.8)
 	global_position = boundary.position
@@ -81,10 +89,57 @@ func try_dash(input_vector: Vector2 = Vector2.ZERO) -> bool:
 	_dash_cooldown = dash.cooldown
 	_dash_streak_remaining = DASH_STREAK_SECONDS
 	_recent_dash_remaining = BOLT_WINDOW_SECONDS
+	add_heat(5.0)
 	if _dash_streak != null:
 		_dash_streak.scale = Vector3.ONE
 		_dash_streak.visible = true
 	return true
+
+
+func add_heat(amount: float) -> bool:
+	var result := HeatSystemScript.add_heat(_heat, _fuego_remaining, amount)
+	_heat = result.heat
+	_fuego_remaining = result.fuego_remaining
+	_update_heat_presentation()
+	return result.activated
+
+
+func get_heat_ratio() -> float:
+	return clampf(_heat / HeatSystemScript.MAX_HEAT, 0.0, 1.0)
+
+
+func is_en_fuego() -> bool:
+	return _fuego_remaining > 0.0
+
+
+func reset_heat() -> void:
+	_heat = 0.0
+	_fuego_remaining = 0.0
+	_update_heat_presentation()
+
+
+func _step_heat(delta: float) -> void:
+	var result := HeatSystemScript.step(_heat, _fuego_remaining, delta)
+	_heat = result.heat
+	_fuego_remaining = result.fuego_remaining
+	if is_en_fuego():
+		_dash_cooldown = 0.0
+	_update_heat_presentation()
+
+
+func _update_heat_presentation() -> void:
+	if _fuego_aura == null:
+		_fuego_aura = get_node_or_null("FuegoAura") as MeshInstance3D
+	if _heat_bar == null:
+		_heat_bar = get_node_or_null("../../HUD/RedHeatBar") as ProgressBar
+	if _fuego_aura != null:
+		_fuego_aura.visible = is_en_fuego()
+		if _fuego_aura.visible:
+			var pulse := 1.0 + sin(Time.get_ticks_msec() * 0.018) * 0.09
+			_fuego_aura.scale = Vector3.ONE * pulse
+	if _heat_bar != null:
+		_heat_bar.value = _heat
+		_heat_bar.modulate = Color("ffb12e") if is_en_fuego() else Color("ff765c")
 
 
 func set_stick_slap_angle(angle_degrees: float) -> void:

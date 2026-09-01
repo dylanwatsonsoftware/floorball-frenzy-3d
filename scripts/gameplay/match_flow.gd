@@ -47,6 +47,7 @@ func _on_goal_scored(scorer: StringName) -> void:
 	_winner = result.winner
 	_update_score_label()
 	_show_goal_flash(scorer)
+	_award_goal_heat(scorer)
 
 	if _winner != &"":
 		_message_label.text = "%s WINS!" % String(_winner).to_upper()
@@ -62,6 +63,10 @@ func _reset_faceoff() -> void:
 		score.red = 0
 		score.blue = 0
 		_winner = &""
+		if _player.has_method("reset_heat"):
+			_player.call("reset_heat")
+		if _opponent.has_method("reset_heat"):
+			_opponent.call("reset_heat")
 		_update_score_label()
 
 	_player.position = PLAYER_FACEOFF_POSITION
@@ -75,6 +80,12 @@ func _reset_faceoff() -> void:
 
 func _update_score_label() -> void:
 	_score_label.text = "RED  %d  —  %d  BLUE" % [score.red, score.blue]
+
+
+func _award_goal_heat(scorer: StringName) -> void:
+	var actor := _player if scorer == &"red" else _opponent
+	if actor != null and actor.has_method("add_heat"):
+		actor.call("add_heat", 50.0)
 
 
 func _show_goal_flash(scorer: StringName) -> void:

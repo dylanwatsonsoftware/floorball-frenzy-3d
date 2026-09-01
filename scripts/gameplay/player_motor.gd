@@ -12,12 +12,13 @@ static func combine_inputs(primary: Vector2, secondary: Vector2) -> Vector2:
 	return (primary + secondary).limit_length(1.0)
 
 
-static func step_velocity(current: Vector3, input_vector: Vector2, delta: float) -> Vector3:
+static func step_velocity(current: Vector3, input_vector: Vector2, delta: float, speed_multiplier: float = 1.0) -> Vector3:
 	var planar := Vector3(current.x, 0.0, current.z)
 	var input_direction := input_vector.limit_length(1.0)
-	var target := Vector3(input_direction.x, 0.0, input_direction.y) * MAX_SPEED
+	var boosted_max_speed := MAX_SPEED * maxf(1.0, speed_multiplier)
+	var target := Vector3(input_direction.x, 0.0, input_direction.y) * boosted_max_speed
 	var rate := ACCELERATION if not input_direction.is_zero_approx() else DECELERATION
-	return planar.move_toward(target, rate * delta).limit_length(MAX_SPEED)
+	return planar.move_toward(target, rate * delta).limit_length(boosted_max_speed)
 
 
 static func start_dash(input_vector: Vector2, cooldown_remaining: float, facing: Vector3 = Vector3.RIGHT) -> Dictionary:

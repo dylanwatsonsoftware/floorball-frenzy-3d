@@ -27,11 +27,13 @@ func run_test() -> void:
 		"Arena/Player/StickRig/BladeToe",
 		"Arena/Player/DashStreak",
 		"Arena/Player/DashStreak/DashRing",
+		"Arena/Player/FuegoAura",
 		"Arena/Opponent/StickRig/Shaft",
 		"Arena/Opponent/StickRig/Blade",
 		"Arena/Opponent/StickRig/BladeToe",
 		"Arena/Opponent/DashStreak",
 		"Arena/Opponent/DashStreak/DashRing",
+		"Arena/Opponent/FuegoAura",
 		"Arena/Ball",
 		"Arena/Ball/ShotTrail",
 		"Arena/ShotImpact",
@@ -49,6 +51,10 @@ func run_test() -> void:
 		"HUD/ScoreLabel",
 		"HUD/MessageLabel",
 		"HUD/GoalFlash",
+		"HUD/RedHeatBar",
+		"HUD/BlueHeatBar",
+		"HUD/RedHeatLabel",
+		"HUD/BlueHeatLabel",
 		"MatchFlow",
 	]
 	for path in required_nodes:
@@ -74,6 +80,9 @@ func run_test() -> void:
 	if not opponent.has_method("try_dash") or not opponent.has_method("is_dashing"):
 		fail("Blue AI must expose the same sustained dash mechanics as the player")
 		return
+	if not opponent.has_method("add_heat") or not opponent.has_method("is_en_fuego"):
+		fail("Blue AI must participate in the shared Heat and En Fuego system")
+		return
 	var opponent_dash_start: Vector3 = opponent.position
 	if not opponent.call("try_dash", Vector2.LEFT):
 		fail("A ready blue AI dash must start")
@@ -90,6 +99,9 @@ func run_test() -> void:
 	var ai_steal_label := scene.get_node("HUD/ChargeLabel") as Label
 	if ai_dash_ball.ball_velocity.x >= opponent.velocity.x or ai_steal_label.text != "BLUE STEAL!":
 		fail("Blue AI body contact during dash must use the same physical steal; velocity=%s label=%s" % [ai_dash_ball.ball_velocity, ai_steal_label.text])
+		return
+	if opponent.call("get_heat_ratio") < 0.19 or (scene.get_node("HUD/BlueHeatBar") as ProgressBar).value < 19.0:
+		fail("Blue dash and steal rewards must feed the visible Heat meter")
 		return
 	ai_dash_ball.reset_for_faceoff()
 	for frame in 8:
@@ -114,6 +126,9 @@ func run_test() -> void:
 	if not player.has_method("has_recent_dash"):
 		fail("The player must expose the original short Bolt-shot timing window")
 		return
+	if not player.has_method("add_heat") or not player.has_method("is_en_fuego"):
+		fail("Red player must participate in the shared Heat and En Fuego system")
+		return
 	var dash_start: Vector3 = player.position
 	if not player.call("try_dash", Vector2.RIGHT):
 		fail("A ready player dash must start")
@@ -132,6 +147,9 @@ func run_test() -> void:
 	var steal_label := scene.get_node("HUD/ChargeLabel") as Label
 	if bolt_probe.ball_velocity.x <= player.velocity.x or steal_label.text != "STEAL!":
 		fail("Dashing through the ball must produce a strong one-hit steal poke and feedback; velocity=%s label=%s" % [bolt_probe.ball_velocity, steal_label.text])
+		return
+	if player.call("get_heat_ratio") < 0.19 or (scene.get_node("HUD/RedHeatBar") as ProgressBar).value < 19.0:
+		fail("Red dash and steal rewards must feed the visible Heat meter")
 		return
 	bolt_probe.position = player.position + Vector3(0.9, -0.53, 0.75)
 	bolt_probe.ball_velocity = Vector3.ZERO
@@ -230,9 +248,26 @@ func run_test() -> void:
 	if not goal_flash.visible or goal_flash.color.r <= goal_flash.color.b or goal_flash.color.a <= 0.0:
 		fail("A red goal must trigger a visible red celebration flash")
 		return
+	await physics_frame
+	var red_fuego_aura := scene.get_node("Arena/Player/FuegoAura") as MeshInstance3D
+	if not player.call("is_en_fuego") or not red_fuego_aura.visible or (scene.get_node("HUD/RedHeatBar") as ProgressBar).value < 99.0:
+		fail("Perfect-shot and goal rewards must activate visible Red En Fuego")
+		return
+	if player.call("get_dash_cooldown_ratio") > 0.0:
+		fail("En Fuego must instantly recharge the player's dash")
+		return
 	match_flow.call("_reset_faceoff")
 	if goal_flash.visible:
 		fail("Faceoff reset must clear any remaining goal flash")
+		return
+	if not player.call("is_en_fuego"):
+		fail("En Fuego must persist across ordinary goal faceoffs")
+		return
+	for goal_index in 4:
+		match_flow.call("_on_goal_scored", &"red")
+	match_flow.call("_reset_faceoff")
+	if player.call("is_en_fuego") or player.call("get_heat_ratio") > 0.0:
+		fail("Starting a new match after first-to-five must reset Heat")
 		return
 
 	print("Greybox scene contract is valid.")

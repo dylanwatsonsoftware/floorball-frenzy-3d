@@ -19,6 +19,10 @@ func _init() -> void:
 	if capped.length() > script.MAX_SPEED + 0.001:
 		fail("Player speed must be capped")
 		return
+	var fuego_capped: Vector3 = script.step_velocity(Vector3(100.0, 0.0, 0.0), Vector2.RIGHT, 1.0, 1.2)
+	if not is_equal_approx(fuego_capped.length(), script.MAX_SPEED * 1.2):
+		fail("En Fuego movement must use the boosted maximum speed")
+		return
 
 	var slowed: Vector3 = script.step_velocity(Vector3(5.0, 0.0, 0.0), Vector2.ZERO, 0.1)
 	if slowed.length() >= 5.0:

@@ -78,6 +78,8 @@ func launch(planar_direction: Vector2, charge: float, inherited_velocity: Vector
 	_set_shot_trail_style(bolt)
 	if shooter != &"":
 		record_touch(shooter)
+		if BallSimulationScript.is_perfect_charge(charge):
+			_award_heat(shooter, 30.0)
 
 
 func reset_for_faceoff() -> void:
@@ -246,6 +248,7 @@ func _apply_dash_steal(body_controller: int) -> void:
 	ball_velocity = DashStealScript.poke_velocity(actor.velocity)
 	_dash_steal_consumed[body_controller] = true
 	record_touch(team)
+	_award_heat(team, 20.0)
 	_show_steal_feedback(team)
 	var feedback_color := STEAL_COLOR if team == &"red" else BLUE_STEAL_COLOR
 	var arena := get_parent()
@@ -273,6 +276,12 @@ func _show_steal_feedback(team: StringName) -> void:
 	_steal_feedback_remaining = STEAL_FEEDBACK_SECONDS
 	_charge_label.text = "STEAL!" if team == &"red" else "BLUE STEAL!"
 	_charge_label.add_theme_color_override("font_color", STEAL_COLOR if team == &"red" else BLUE_STEAL_COLOR)
+
+
+func _award_heat(team: StringName, amount: float) -> void:
+	var actor := _player if team == &"red" else _opponent
+	if actor != null and actor.has_method("add_heat"):
+		actor.call("add_heat", amount)
 
 
 func _update_steal_feedback(delta: float) -> void:

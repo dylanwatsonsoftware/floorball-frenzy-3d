@@ -151,6 +151,7 @@ func _build_player() -> void:
 	player.add_child(body)
 	_add_stick(player, Color("202a38"))
 	_add_dash_streak(player, Color(1.0, 0.32, 0.2, 0.76))
+	_add_fuego_aura(player, Color("ff7a24"))
 
 
 func _build_opponent() -> void:
@@ -174,6 +175,7 @@ func _build_opponent() -> void:
 	opponent.add_child(body)
 	_add_stick(opponent, Color("202a38"))
 	_add_dash_streak(opponent, Color(0.18, 0.55, 1.0, 0.78))
+	_add_fuego_aura(opponent, Color("ffb52e"))
 
 
 func _add_stick(parent: Node3D, color: Color) -> void:
@@ -230,6 +232,22 @@ func _add_dash_streak(parent: Node3D, color: Color) -> void:
 	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	ring.material_override = _material(color, 0.2, Color(color))
 	streak.add_child(ring)
+
+
+func _add_fuego_aura(parent: Node3D, color: Color) -> void:
+	var aura := MeshInstance3D.new()
+	aura.name = "FuegoAura"
+	var ring := TorusMesh.new()
+	ring.inner_radius = 0.7
+	ring.outer_radius = 0.92
+	ring.rings = 28
+	ring.ring_segments = 10
+	aura.mesh = ring
+	aura.position = Vector3(0.0, -0.49, 0.0)
+	aura.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	aura.material_override = _material(Color(color, 0.74), 0.15, color)
+	aura.visible = false
+	parent.add_child(aura)
 
 
 func _build_ball() -> void:
