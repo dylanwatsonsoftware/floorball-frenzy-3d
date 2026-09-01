@@ -432,6 +432,14 @@ func _update_ai_pass(delta: float) -> void:
 		_reset_ai_shot()
 		return
 	_ai_possession_seconds += delta
+	if StringName(carrier.get_meta("role", &"field")) == &"goalkeeper" and _ai_possession_seconds >= 0.55:
+		var clear_direction := (Vector2.ZERO - Vector2(carrier.global_position.x, carrier.global_position.z)).normalized()
+		ball_velocity = BallSimulationScript.pass_velocity(clear_direction, carrier.velocity)
+		_control_owner = -1
+		_ai_possession_seconds = 0.0
+		_ai_pass_cooldown = 0.8
+		record_touch(&"blue")
+		return
 	if _ai_carrier_should_shoot(carrier):
 		_update_ai_shot(carrier, delta)
 		return

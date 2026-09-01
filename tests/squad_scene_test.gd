@@ -11,11 +11,11 @@ func run_test() -> void:
 	await process_frame
 	var arena := scene.get_node("Arena")
 	if not arena.has_method("get_field_players"):
-		fail("The arena must expose its 3v3 field-player roster")
+		fail("The arena must expose its 6v6 roster")
 		return
 	var players: Array = arena.call("get_field_players")
-	if players.size() != 6:
-		fail("A local match must contain exactly six field players; got %d" % players.size())
+	if players.size() != 12:
+		fail("A local match must contain twelve players; got %d" % players.size())
 		return
 	var teams := {&"red": 0, &"blue": 0}
 	var ids := {}
@@ -27,8 +27,8 @@ func run_test() -> void:
 		var actor_id: StringName = actor.call("get_actor_id")
 		teams[team] += 1
 		ids[actor_id] = true
-	if teams.red != 3 or teams.blue != 3 or ids.size() != 6:
-		fail("The roster must have three uniquely identified players per team; teams=%s ids=%s" % [teams, ids])
+	if teams.red != 6 or teams.blue != 6 or ids.size() != 12:
+		fail("The roster must have six uniquely identified players per team; teams=%s ids=%s" % [teams, ids])
 		return
 	var initial_humans := []
 	for actor in players:
@@ -133,7 +133,7 @@ func run_test() -> void:
 		fail("Every squad player must return to a distinct formation position after a goal")
 		return
 
-	print("3v3 scene roster and loose-ball control state are valid.")
+	print("6v6 scene roster and loose-ball control state are valid.")
 	scene.queue_free()
 	quit(0)
 

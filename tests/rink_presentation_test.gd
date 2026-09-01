@@ -99,8 +99,8 @@ func run_test() -> void:
 		if absf(left_leg.rotation.x) < 0.08 or left_leg.rotation.x * right_leg.rotation.x >= 0.0:
 			fail("Running must visibly swing the legs in opposing directions")
 			return
-	if lamb_variants.size() != 3 or pirate_variants.size() != 3:
-		fail("All three characters on each team must be visually distinguishable; lambs=%d pirates=%d" % [lamb_variants.size(), pirate_variants.size()])
+	if lamb_variants.size() != 6 or pirate_variants.size() != 6:
+		fail("All six characters on each team must be visually distinguishable; lambs=%d pirates=%d" % [lamb_variants.size(), pirate_variants.size()])
 		return
 	for actor in red_players:
 		if actor.get_node_or_null("PlayerMarker") == null:
@@ -122,6 +122,7 @@ func run_test() -> void:
 	ball.ball_velocity = Vector3.ZERO
 	await physics_frame
 	await physics_frame
+	await process_frame
 	await process_frame
 	if not red_two.get_node("PlayerMarker").visible or _visible_marker_count(red_players) != 1:
 		fail("The floating arrow must follow possession-based control handoffs to red_2; owner=%s human=%s visible=%d" % [ball.call("get_control_owner_actor_id"), ball.call("get_human_control_actor_id"), _visible_marker_count(red_players)])

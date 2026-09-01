@@ -111,8 +111,14 @@ func _build_world() -> void:
 	_build_opponent()
 	_build_support_player("RedTeammate2", &"red_2", &"red", 1, Vector3(-7.0, 0.75, -4.0), Color("e34b62"))
 	_build_support_player("RedTeammate3", &"red_3", &"red", 2, Vector3(-7.0, 0.75, 4.0), Color("c92749"))
+	_build_support_player("RedTeammate4", &"red_4", &"red", 3, Vector3(-1.0, 0.75, -4.5), Color("168a45"))
+	_build_support_player("RedTeammate5", &"red_5", &"red", 4, Vector3(-1.0, 0.75, 4.5), Color("168a45"))
 	_build_support_player("BlueTeammate2", &"blue_2", &"blue", 1, Vector3(7.0, 0.75, -4.0), Color("3d75ed"))
 	_build_support_player("BlueTeammate3", &"blue_3", &"blue", 2, Vector3(7.0, 0.75, 4.0), Color("1f55c8"))
+	_build_support_player("BlueTeammate4", &"blue_4", &"blue", 3, Vector3(1.0, 0.75, -4.5), Color("75d4ed"))
+	_build_support_player("BlueTeammate5", &"blue_5", &"blue", 4, Vector3(1.0, 0.75, 4.5), Color("75d4ed"))
+	_build_goalkeeper("LambsGoalkeeper", &"red_gk", &"red", Vector3(-15.75, 0.55, 0.0))
+	_build_goalkeeper("PiratesGoalkeeper", &"blue_gk", &"blue", Vector3(15.75, 0.55, 0.0))
 	_build_lighting()
 	_build_camera()
 
@@ -316,6 +322,35 @@ func _build_support_player(node_name: String, actor_id: StringName, team: String
 		_add_player_marker(actor)
 
 
+func _build_goalkeeper(node_name: String, actor_id: StringName, team: StringName, start_position: Vector3) -> void:
+	var keeper := CharacterBody3D.new()
+	keeper.name = node_name
+	keeper.position = start_position
+	keeper.set_meta("actor_id", actor_id)
+	keeper.set_meta("team", team)
+	keeper.set_meta("squad_slot", 5)
+	keeper.set_meta("role", &"goalkeeper")
+	keeper.set_meta("faceoff_position", start_position)
+	keeper.set_script(load("res://scripts/gameplay/goalkeeper_controller.gd"))
+	add_child(keeper)
+	_field_players.append(keeper)
+	var shape := CollisionShape3D.new()
+	var capsule := CapsuleShape3D.new()
+	capsule.radius = 0.68
+	capsule.height = 1.1
+	shape.shape = capsule
+	keeper.add_child(shape)
+	_add_humanoid(keeper, team, 5)
+	var body_rig := keeper.get_node("BodyRig") as Node3D
+	body_rig.position.y = -0.28
+	body_rig.set_meta("kneeling", true)
+	_add_goalkeeper_helmet(keeper, Color("073d27") if team == &"red" else Color("87d4e3"))
+	if team == &"red":
+		_add_control_ring(keeper)
+		_add_aim_arrow(keeper)
+		_add_player_marker(keeper)
+
+
 func _add_humanoid(parent: Node3D, team: StringName, slot: int) -> void:
 	var model_path := "res://assets/models/lamb_player.glb" if team == &"red" else "res://assets/models/pirate_player.glb"
 	var packed_model := load(model_path) as PackedScene
@@ -327,7 +362,10 @@ func _add_humanoid(parent: Node3D, team: StringName, slot: int) -> void:
 	parent.add_child(rig)
 	var lamb_jerseys := [Color("168a45"), Color("24a653"), Color("0d6f38")]
 	var pirate_jerseys := [Color("171c25"), Color("242a34"), Color("0e1118")]
-	var jersey_color: Color = lamb_jerseys[slot] if team == &"red" else pirate_jerseys[slot]
+	var variant_index := posmod(slot, 3)
+	var jersey_color: Color = lamb_jerseys[variant_index] if team == &"red" else pirate_jerseys[variant_index]
+	if StringName(parent.get_meta("role", &"field")) == &"goalkeeper":
+		jersey_color = Color("06462a") if team == &"red" else Color("72b7c8")
 	for part_name in ["Torso", "LeftArm", "RightArm"]:
 		var part := rig.get_node_or_null(part_name) as MeshInstance3D
 		if part != null:
@@ -339,7 +377,38 @@ func _add_humanoid(parent: Node3D, team: StringName, slot: int) -> void:
 			part.material_override = _material(accent_color, 0.76)
 	# Small proportion changes distinguish teammates without reverting to
 	# primitive accessories pasted onto the authored body.
-	rig.scale = [Vector3.ONE, Vector3(0.97, 1.03, 0.97), Vector3(1.04, 0.98, 1.04)][slot]
+	rig.scale = [Vector3.ONE, Vector3(0.97, 1.03, 0.97), Vector3(1.04, 0.98, 1.04)][variant_index]
+
+
+func _add_goalkeeper_helmet(parent: Node3D, color: Color) -> void:
+	var helmet := MeshInstance3D.new()
+	helmet.name = "GoalkeeperHelmet"
+	var vertices := PackedVector3Array()
+	var indices := PackedInt32Array()
+	var segments := 18
+	var rings := 5
+	for ring in rings + 1:
+		var phi := (PI * 0.58) * float(ring) / float(rings)
+		for segment in segments:
+			var theta := TAU * float(segment) / float(segments)
+			vertices.append(Vector3(sin(phi) * cos(theta) * 0.36, cos(phi) * 0.34 + 0.70, sin(phi) * sin(theta) * 0.34))
+	for ring in rings:
+		for segment in segments:
+			var next := (segment + 1) % segments
+			var a := ring * segments + segment
+			var b := ring * segments + next
+			var c := (ring + 1) * segments + next
+			var d := (ring + 1) * segments + segment
+			indices.append_array(PackedInt32Array([a, d, c, a, c, b]))
+	var arrays := []
+	arrays.resize(ArrayMesh.ARRAY_MAX)
+	arrays[ArrayMesh.ARRAY_VERTEX] = vertices
+	arrays[ArrayMesh.ARRAY_INDEX] = indices
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	helmet.mesh = mesh
+	helmet.material_override = _material(color, 0.48)
+	parent.add_child(helmet)
 
 
 func _add_lamb_head(rig: Node3D, slot: int) -> void:

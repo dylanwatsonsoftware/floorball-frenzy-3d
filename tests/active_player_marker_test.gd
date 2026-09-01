@@ -11,8 +11,8 @@ func run_test() -> void:
 	root.add_child(scene)
 	await process_frame
 	var players: Array = scene.get_node("Arena").call("get_team_players", &"red")
-	if players.size() != 3:
-		fail("The active-player marker contract requires all three controllable Lambs")
+	if players.size() != 6:
+		fail("The active-player marker contract requires all six selectable Lambs")
 		return
 	for player in players:
 		var marker := player.get_node_or_null("PlayerMarker") as Node3D

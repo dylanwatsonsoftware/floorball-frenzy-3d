@@ -11,6 +11,11 @@ func run_test() -> void:
 	await process_frame
 	var players: Array = scene.get_node("Arena").call("get_field_players")
 	for actor in players:
+		if StringName(actor.get_meta("role", &"field")) == &"goalkeeper":
+			if actor.get_node_or_null("StickRig") != null:
+				fail("Floorball goalkeepers must not carry sticks")
+				return
+			continue
 		var rig := actor.get_node_or_null("StickRig") as Node3D
 		if rig == null:
 			fail("Every field player needs a floorball stick")

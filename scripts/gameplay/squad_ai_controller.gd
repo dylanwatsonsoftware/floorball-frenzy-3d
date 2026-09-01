@@ -7,6 +7,7 @@ const RINK_HALF_LENGTH := 19.1
 const RINK_HALF_WIDTH := 9.1
 const STICK_BASE_Y_ANGLE := -28.0
 const DASH_STREAK_SECONDS := 0.18
+const OPENING_GRACE_SECONDS := 2.0
 
 var _facing_direction := Vector3.RIGHT
 var _ball: Node3D
@@ -17,6 +18,7 @@ var _dash_cooldown := 0.0
 var _dash_streak_remaining := 0.0
 var _dash_direction := Vector3.RIGHT
 var _dash_streak: Node3D
+var _opening_grace_remaining := OPENING_GRACE_SECONDS
 
 
 func _ready() -> void:
@@ -38,7 +40,8 @@ func _physics_process(delta: float) -> void:
 		if _dash_streak != null:
 			_dash_streak.visible = false
 		return
-	var movement := _human_movement() if is_human_controlled() else _ai_movement()
+	_opening_grace_remaining = maxf(0.0, _opening_grace_remaining - delta)
+	var movement := _human_movement() if is_human_controlled() else Vector2.ZERO if get_team() == &"blue" and _opening_grace_remaining > 0.0 else _ai_movement()
 	_dash_cooldown = maxf(0.0, _dash_cooldown - delta)
 	_dash_streak_remaining = maxf(0.0, _dash_streak_remaining - delta)
 	_update_dash_feedback()
@@ -133,6 +136,11 @@ func try_dash(input_vector: Vector2 = Vector2.ZERO) -> bool:
 
 func get_dash_cooldown_ratio() -> float:
 	return clampf(_dash_cooldown / PlayerMotorScript.DASH_COOLDOWN, 0.0, 1.0)
+
+
+func reset_for_faceoff() -> void:
+	_opening_grace_remaining = OPENING_GRACE_SECONDS
+	velocity = Vector3.ZERO
 
 
 func _update_dash_feedback() -> void:

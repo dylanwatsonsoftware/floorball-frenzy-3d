@@ -4,7 +4,7 @@ extends SceneTree
 func _init() -> void:
 	var squad := load("res://scripts/simulation/squad_logic.gd")
 	if squad == null:
-		fail("3v3 squad logic is missing")
+		fail("6v6 squad logic is missing")
 		return
 
 	if squad.human_actor_id(&"red_2", &"red") != &"red_2":
@@ -76,7 +76,7 @@ func _init() -> void:
 		fail("An unpressured carrier must be allowed to keep dribbling instead of always passing")
 		return
 
-	print("3v3 squad decisions are valid.")
+	print("6v6 squad decisions are valid.")
 	quit(0)
 
 

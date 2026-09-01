@@ -19,7 +19,7 @@ func run_test() -> void:
 		fail("The match presentation must identify the local Lambs versus Pirates matchup")
 		return
 	if "CONTROL FOLLOWS LAMBS POSSESSION" not in camera_label.text:
-		fail("The 3v3 HUD must explain that human control follows the Lambs ball carrier")
+		fail("The 6v6 HUD must explain that human control follows the Lambs ball carrier")
 		return
 	if "DASH" not in camera_label.text:
 		fail("The core HUD must make the restored desktop dash control discoverable")

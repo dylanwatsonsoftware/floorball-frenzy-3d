@@ -10,6 +10,9 @@ func _process(delta: float) -> void:
 	var actor := get_parent() as CharacterBody3D
 	if actor == null:
 		return
+	if StringName(actor.get_meta("role", &"field")) == &"goalkeeper":
+		apply_goalkeeper_pose()
+		return
 	var speed := Vector2(actor.velocity.x, actor.velocity.z).length()
 	_run_time += delta * maxf(2.4, speed * RUN_CYCLE_RATE)
 	var dashing := actor.has_method("is_dashing") and bool(actor.call("is_dashing"))
@@ -36,3 +39,19 @@ func apply_movement_pose(speed: float, cycle_time: float, dashing: bool) -> void
 	var bob := absf(sin(cycle_time)) * 0.045 * movement_ratio
 	position.y = bob - (0.05 if dashing else 0.0)
 	rotation.x = -0.12 if dashing else 0.0
+
+
+func apply_goalkeeper_pose() -> void:
+	var left_leg := get_node("LeftLeg") as Node3D
+	var right_leg := get_node("RightLeg") as Node3D
+	var left_arm := get_node("LeftArm") as Node3D
+	var right_arm := get_node("RightArm") as Node3D
+	left_leg.rotation.x = -1.30
+	right_leg.rotation.x = -1.30
+	left_leg.rotation.z = -0.16
+	right_leg.rotation.z = 0.16
+	left_arm.rotation.x = -0.72
+	right_arm.rotation.x = -0.72
+	left_arm.rotation.z = -0.62
+	right_arm.rotation.z = 0.62
+	position.y = -0.28

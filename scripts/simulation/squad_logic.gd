@@ -12,9 +12,9 @@ static func human_actor_id(owner_actor_id: StringName, owner_team: StringName, h
 
 static func support_target(team: StringName, slot: int, ball_position: Vector3, team_has_possession: bool) -> Vector2:
 	var attack_direction := 1.0 if team == &"red" else -1.0
-	var lane_width := 4.0 if team_has_possession else 5.5
-	var lane_z := -lane_width if slot == 1 else lane_width if slot == 2 else 0.0
-	var longitudinal_offset := 3.4 if team_has_possession else -6.6
+	var lane_width := 4.2 if team_has_possession else 5.2
+	var lane_z: float = float({-1: 0.0, 0: 0.0, 1: -lane_width, 2: lane_width, 3: -lane_width * 0.52, 4: lane_width * 0.52}.get(slot, 0.0))
+	var longitudinal_offset := (3.4 if slot <= 2 else -2.8) if team_has_possession else (-6.2 if slot <= 2 else -8.0)
 	var target_x := clampf(ball_position.x + attack_direction * longitudinal_offset, -14.0, 14.0)
 	return Vector2(target_x, lane_z)
 

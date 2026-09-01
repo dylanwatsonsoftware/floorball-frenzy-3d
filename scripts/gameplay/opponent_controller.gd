@@ -37,6 +37,7 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	var frame_start_position := global_position
 	_step_heat(delta)
 	_parry_window_remaining = maxf(0.0, _parry_window_remaining - delta)
 	if not _ball.is_physics_processing():
@@ -86,6 +87,9 @@ func _physics_process(delta: float) -> void:
 	global_position = boundary.position
 	velocity = boundary.velocity
 	_resolve_player_contact()
+	if _opening_grace_remaining > 0.0 and not is_dashing():
+		global_position = frame_start_position
+		velocity = Vector3.ZERO
 
 	var facing_planar: Vector2 = decision.shot_direction if decision.wants_shot else decision.movement
 	if not facing_planar.is_zero_approx():
