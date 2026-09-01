@@ -317,28 +317,29 @@ func _build_support_player(node_name: String, actor_id: StringName, team: String
 
 
 func _add_humanoid(parent: Node3D, team: StringName, slot: int) -> void:
-	var rig := Node3D.new()
+	var model_path := "res://assets/models/lamb_player.glb" if team == &"red" else "res://assets/models/pirate_player.glb"
+	var packed_model := load(model_path) as PackedScene
+	var rig := packed_model.instantiate() as Node3D
 	rig.name = "BodyRig"
 	rig.set_script(load("res://scripts/presentation/humanoid_player_visual.gd"))
 	rig.set_meta("variant_signature", "%s_%d" % ["lamb" if team == &"red" else "pirate", slot])
+	rig.set_meta("authored_mesh", true)
 	parent.add_child(rig)
 	var lamb_jerseys := [Color("168a45"), Color("24a653"), Color("0d6f38")]
 	var pirate_jerseys := [Color("171c25"), Color("242a34"), Color("0e1118")]
 	var jersey_color: Color = lamb_jerseys[slot] if team == &"red" else pirate_jerseys[slot]
-	var pirate_fur_colors: Array[Color] = [Color("66727f"), Color("9aa2aa"), Color("454c58")]
-	var hand_color: Color = Color("f1f1e8") if team == &"red" else pirate_fur_colors[slot]
-	_add_capsule_part(rig, "Torso", Vector3(0.0, 0.12, 0.0), 0.35, 0.72, jersey_color)
-	_add_box_part(rig, "JerseyStripe", Vector3(0.0, 0.15, 0.337), Vector3(0.11, 0.48, 0.025), Color("f5f7fb") if team == &"red" else Color("75d4ed"))
-	_add_box_part(rig, "Shorts", Vector3(0.0, -0.22, 0.0), Vector3(0.58, 0.24, 0.4), Color("17243a"))
-	_add_limb(rig, "LeftArm", Vector3(-0.34, 0.35, 0.02), 0.12, 0.58, jersey_color, hand_color, true)
-	_add_limb(rig, "RightArm", Vector3(0.34, 0.35, 0.02), 0.12, 0.58, jersey_color, hand_color, true)
-	var sock_color: Color = Color("f1f1e8") if team == &"red" else Color("75d4ed")
-	_add_limb(rig, "LeftLeg", Vector3(-0.17, -0.27, 0.0), 0.14, 0.65, sock_color, hand_color, false)
-	_add_limb(rig, "RightLeg", Vector3(0.17, -0.27, 0.0), 0.14, 0.65, sock_color, hand_color, false)
-	if team == &"red":
-		_add_lamb_head(rig, slot)
-	else:
-		_add_pirate_head(rig, slot)
+	for part_name in ["Torso", "LeftArm", "RightArm"]:
+		var part := rig.get_node_or_null(part_name) as MeshInstance3D
+		if part != null:
+			part.material_override = _material(jersey_color, 0.78)
+	var accent_color := Color("f4f5ed") if team == &"red" else Color("75d4ed")
+	for part_name in ["JerseyStripe", "LeftLeg", "RightLeg"]:
+		var part := rig.get_node_or_null(part_name) as MeshInstance3D
+		if part != null:
+			part.material_override = _material(accent_color, 0.76)
+	# Small proportion changes distinguish teammates without reverting to
+	# primitive accessories pasted onto the authored body.
+	rig.scale = [Vector3.ONE, Vector3(0.97, 1.03, 0.97), Vector3(1.04, 0.98, 1.04)][slot]
 
 
 func _add_lamb_head(rig: Node3D, slot: int) -> void:
