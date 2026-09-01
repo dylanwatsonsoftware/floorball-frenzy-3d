@@ -18,6 +18,10 @@ func run_test() -> void:
 	var required_nodes := [
 		"Arena/RinkFloor",
 		"Arena/Player",
+		"Arena/Player/StickRig/Shaft",
+		"Arena/Player/StickRig/Blade",
+		"Arena/Opponent/StickRig/Shaft",
+		"Arena/Opponent/StickRig/Blade",
 		"Arena/Ball",
 		"Arena/LeftGoal",
 		"Arena/RightGoal",
@@ -50,6 +54,14 @@ func run_test() -> void:
 	var opponent := scene.get_node("Arena/Opponent")
 	if not opponent.has_method("is_ai_controlled"):
 		fail("Blue opponent must be controlled by the local-match AI")
+		return
+	var player_stick := scene.get_node("Arena/Player/StickRig") as Node3D
+	if player_stick.position.x <= 0.0 or player_stick.rotation.y <= 0.2:
+		fail("The stick must angle across the body toward the player's right")
+		return
+	var player_blade := scene.get_node("Arena/Player/StickRig/Blade") as MeshInstance3D
+	if player_blade.position.z <= 0.5 or player_blade.position.x <= 0.0:
+		fail("The stick blade must finish forward and to the player's right")
 		return
 
 	var ball := scene.get_node("Arena/Ball")

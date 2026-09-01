@@ -150,15 +150,30 @@ func _build_opponent() -> void:
 
 
 func _add_stick(parent: Node3D, color: Color) -> void:
-	var stick := MeshInstance3D.new()
-	stick.name = "Stick"
-	var mesh := BoxMesh.new()
-	mesh.size = Vector3(0.09, 0.09, 1.65)
-	stick.mesh = mesh
-	stick.position = Vector3(0.46, -0.42, 0.75)
-	stick.rotation.x = deg_to_rad(-12.0)
-	stick.material_override = _material(color, 0.65)
-	parent.add_child(stick)
+	var rig := Node3D.new()
+	rig.name = "StickRig"
+	rig.position = Vector3(0.18, -0.18, 0.0)
+	rig.rotation_degrees = Vector3(12.0, 28.0, -5.0)
+	parent.add_child(rig)
+
+	var shaft := MeshInstance3D.new()
+	shaft.name = "Shaft"
+	var shaft_mesh := BoxMesh.new()
+	shaft_mesh.size = Vector3(0.075, 0.075, 1.55)
+	shaft.mesh = shaft_mesh
+	shaft.position = Vector3(0.0, 0.0, 0.35)
+	shaft.material_override = _material(color, 0.65)
+	rig.add_child(shaft)
+
+	var blade := MeshInstance3D.new()
+	blade.name = "Blade"
+	var blade_mesh := BoxMesh.new()
+	blade_mesh.size = Vector3(0.48, 0.11, 0.13)
+	blade.mesh = blade_mesh
+	blade.position = Vector3(0.18, 0.0, 1.08)
+	blade.rotation_degrees.y = -12.0
+	blade.material_override = _material(color, 0.58)
+	rig.add_child(blade)
 
 
 func _build_ball() -> void:
