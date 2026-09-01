@@ -10,3 +10,5 @@ addons/godot_mcp/
 *.csproj.old
 scripts/godot-mono-arm64
 tests/godot_mono_arm64_launcher_test.sh
+.vercel
+.env*
