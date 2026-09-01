@@ -30,6 +30,8 @@ func run_test() -> void:
 		"Arena/Opponent/StickRig/Shaft",
 		"Arena/Opponent/StickRig/Blade",
 		"Arena/Opponent/StickRig/BladeToe",
+		"Arena/Opponent/DashStreak",
+		"Arena/Opponent/DashStreak/DashRing",
 		"Arena/Ball",
 		"Arena/Ball/ShotTrail",
 		"Arena/ShotImpact",
@@ -69,6 +71,34 @@ func run_test() -> void:
 	if not opponent.has_method("is_ai_controlled"):
 		fail("Blue opponent must be controlled by the local-match AI")
 		return
+	if not opponent.has_method("try_dash") or not opponent.has_method("is_dashing"):
+		fail("Blue AI must expose the same sustained dash mechanics as the player")
+		return
+	var opponent_dash_start: Vector3 = opponent.position
+	if not opponent.call("try_dash", Vector2.LEFT):
+		fail("A ready blue AI dash must start")
+		return
+	var opponent_dash_streak := scene.get_node("Arena/Opponent/DashStreak") as Node3D
+	if not opponent_dash_streak.visible:
+		fail("Blue AI dash must reveal its team-colored streak")
+		return
+	var ai_dash_ball := scene.get_node("Arena/Ball")
+	ai_dash_ball.position = opponent.position + Vector3(-0.35, -0.53, 0.0)
+	ai_dash_ball.ball_velocity = Vector3.ZERO
+	await physics_frame
+	await physics_frame
+	var ai_steal_label := scene.get_node("HUD/ChargeLabel") as Label
+	if ai_dash_ball.ball_velocity.x >= opponent.velocity.x or ai_steal_label.text != "BLUE STEAL!":
+		fail("Blue AI body contact during dash must use the same physical steal; velocity=%s label=%s" % [ai_dash_ball.ball_velocity, ai_steal_label.text])
+		return
+	ai_dash_ball.reset_for_faceoff()
+	for frame in 8:
+		await physics_frame
+	if not opponent.call("is_dashing") or opponent.position.distance_to(opponent_dash_start) < 1.65:
+		fail("Blue AI dash must sustain the same movement burst; displacement=%s" % opponent.position.distance_to(opponent_dash_start))
+		return
+	opponent.position = Vector3(5.0, 0.75, 0.0)
+	opponent.velocity = Vector3.ZERO
 	var player_stick := scene.get_node("Arena/Player/StickRig") as Node3D
 	if player_stick.position.x >= 0.0 or player_stick.rotation.y >= -0.2:
 		fail("The stick must angle across the body toward the player's right")

@@ -19,6 +19,7 @@ const BOLT_TRAIL_COLOR := Color(0.18, 0.72, 1.0, 0.76)
 const BOLT_TRAIL_EMISSION := Color("42b8ff")
 const STEAL_FEEDBACK_SECONDS := 0.38
 const STEAL_COLOR := Color("7dff6a")
+const BLUE_STEAL_COLOR := Color("58a8ff")
 
 var ball_velocity := Vector3.ZERO
 var _charge_seconds := 0.0
@@ -33,7 +34,7 @@ var _pending_one_touch := false
 var _pending_bolt := false
 var _last_touch_actor: StringName = &""
 var _last_touch_age := INF
-var _dash_steal_consumed := false
+var _dash_steal_consumed := {0: false, 1: false}
 var _steal_feedback_remaining := 0.0
 
 signal goal_scored(scorer: StringName)
@@ -48,14 +49,13 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	_last_touch_age += delta
 	_update_steal_feedback(delta)
-	if not bool(_player.call("is_dashing")):
-		_dash_steal_consumed = false
 	_advance_slap(delta)
 	var previous_position := position
 	var next_state := BallSimulationScript.step(position, ball_velocity, delta)
 	var interaction_state := BallInteractionScript.step(next_state.position, next_state.velocity, _interaction_participants(), delta)
 	position = interaction_state.position
 	ball_velocity = interaction_state.velocity
+	_update_dash_steal_latches()
 	_apply_dash_steal(interaction_state.body_controller)
 	var scorer := MatchSimulationScript.detect_goal(previous_position, position, ball_velocity)
 	if scorer != &"":
@@ -87,7 +87,7 @@ func reset_for_faceoff() -> void:
 	_cancel_slap()
 	_last_touch_actor = &""
 	_last_touch_age = INF
-	_dash_steal_consumed = false
+	_dash_steal_consumed = {0: false, 1: false}
 	_steal_feedback_remaining = 0.0
 	_clear_charge_feedback()
 	_set_trail_visible(false)
@@ -236,34 +236,50 @@ func _record_body_touch(controller: int) -> void:
 
 
 func _apply_dash_steal(body_controller: int) -> void:
-	var player_dashing := bool(_player.call("is_dashing"))
-	if not DashStealScript.can_steal(body_controller, player_dashing, _dash_steal_consumed):
+	if body_controller < 0 or body_controller > 1:
 		return
-	ball_velocity = DashStealScript.poke_velocity(_player.velocity)
-	_dash_steal_consumed = true
-	record_touch(&"red")
-	_show_steal_feedback()
+	var dashing_controller := body_controller if _is_controller_dashing(body_controller) else -1
+	if not DashStealScript.can_steal(body_controller, dashing_controller, bool(_dash_steal_consumed[body_controller])):
+		return
+	var actor := _player if body_controller == 0 else _opponent
+	var team: StringName = &"red" if body_controller == 0 else &"blue"
+	ball_velocity = DashStealScript.poke_velocity(actor.velocity)
+	_dash_steal_consumed[body_controller] = true
+	record_touch(team)
+	_show_steal_feedback(team)
+	var feedback_color := STEAL_COLOR if team == &"red" else BLUE_STEAL_COLOR
 	var arena := get_parent()
 	if arena.has_method("play_shot_impact"):
 		arena.call("play_shot_impact", global_position, {
 			"scale": 1.65,
 			"kick": 0.065,
 			"duration": 0.22,
-			"color": STEAL_COLOR,
+			"color": feedback_color,
 		})
 
 
-func _show_steal_feedback() -> void:
+func _update_dash_steal_latches() -> void:
+	for controller in 2:
+		if not _is_controller_dashing(controller):
+			_dash_steal_consumed[controller] = false
+
+
+func _is_controller_dashing(controller: int) -> bool:
+	var actor := _player if controller == 0 else _opponent
+	return actor != null and actor.has_method("is_dashing") and bool(actor.call("is_dashing"))
+
+
+func _show_steal_feedback(team: StringName) -> void:
 	_steal_feedback_remaining = STEAL_FEEDBACK_SECONDS
-	_charge_label.text = "STEAL!"
-	_charge_label.add_theme_color_override("font_color", STEAL_COLOR)
+	_charge_label.text = "STEAL!" if team == &"red" else "BLUE STEAL!"
+	_charge_label.add_theme_color_override("font_color", STEAL_COLOR if team == &"red" else BLUE_STEAL_COLOR)
 
 
 func _update_steal_feedback(delta: float) -> void:
 	if _steal_feedback_remaining <= 0.0:
 		return
 	_steal_feedback_remaining = maxf(0.0, _steal_feedback_remaining - delta)
-	if _steal_feedback_remaining <= 0.0 and _charge_label.text == "STEAL!":
+	if _steal_feedback_remaining <= 0.0 and _charge_label.text in ["STEAL!", "BLUE STEAL!"]:
 		_clear_charge_feedback()
 
 

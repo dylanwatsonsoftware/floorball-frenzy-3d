@@ -4,8 +4,8 @@ extends RefCounted
 const POKE_FORCE_MULTIPLIER := 1.6
 
 
-static func can_steal(body_controller: int, player_dashing: bool, already_consumed: bool) -> bool:
-	return body_controller == 0 and player_dashing and not already_consumed
+static func can_steal(body_controller: int, dashing_controller: int, already_consumed: bool) -> bool:
+	return body_controller >= 0 and body_controller == dashing_controller and not already_consumed
 
 
 static func poke_velocity(player_velocity: Vector3) -> Vector3:

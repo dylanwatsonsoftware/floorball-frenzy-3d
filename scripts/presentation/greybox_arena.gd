@@ -150,7 +150,7 @@ func _build_player() -> void:
 	body.material_override = _material(Color("dd3155"), 0.42)
 	player.add_child(body)
 	_add_stick(player, Color("202a38"))
-	_add_dash_streak(player)
+	_add_dash_streak(player, Color(1.0, 0.32, 0.2, 0.76))
 
 
 func _build_opponent() -> void:
@@ -173,6 +173,7 @@ func _build_opponent() -> void:
 	body.material_override = _material(Color("2b64e8"), 0.42)
 	opponent.add_child(body)
 	_add_stick(opponent, Color("202a38"))
+	_add_dash_streak(opponent, Color(0.18, 0.55, 1.0, 0.78))
 
 
 func _add_stick(parent: Node3D, color: Color) -> void:
@@ -212,7 +213,7 @@ func _add_stick(parent: Node3D, color: Color) -> void:
 	rig.add_child(blade_toe)
 
 
-func _add_dash_streak(parent: Node3D) -> void:
+func _add_dash_streak(parent: Node3D, color: Color) -> void:
 	var streak := Node3D.new()
 	streak.name = "DashStreak"
 	streak.position = Vector3(0.0, -0.49, 0.0)
@@ -227,7 +228,7 @@ func _add_dash_streak(parent: Node3D) -> void:
 	ring_mesh.ring_segments = 8
 	ring.mesh = ring_mesh
 	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	ring.material_override = _material(Color(1.0, 0.32, 0.2, 0.76), 0.2, Color("ff4a25"))
+	ring.material_override = _material(color, 0.2, Color(color))
 	streak.add_child(ring)
 
 

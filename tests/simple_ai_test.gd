@@ -19,6 +19,24 @@ func _init() -> void:
 	if chase.wants_shot:
 		fail("Blue AI must not shoot while out of stick range")
 		return
+	if chase.wants_dash:
+		fail("Blue AI must save its dash while the ball is already nearby")
+		return
+
+	var far_chase: Dictionary = ai.decide(
+		Vector3(12.0, 0.75, 0.0),
+		Vector3(0.0, 0.22, 0.0),
+		Vector3(-5.0, 0.75, 0.0),
+		Vector3.ZERO,
+		true
+	)
+	if not far_chase.wants_dash:
+		fail("Blue AI must use a ready dash when the loose ball is over the original range threshold")
+		return
+	var cooling_down: Dictionary = ai.decide(Vector3(12.0, 0.75, 0.0), Vector3.ZERO, Vector3(-5.0, 0.75, 0.0), Vector3.ZERO, false)
+	if cooling_down.wants_dash:
+		fail("Blue AI must not request another dash during cooldown")
+		return
 
 	var in_range: Dictionary = ai.decide(
 		Vector3(1.0, 0.75, 0.0),
