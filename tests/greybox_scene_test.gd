@@ -81,6 +81,9 @@ func run_test() -> void:
 	if not player.has_method("get_dash_cooldown_ratio"):
 		fail("The player must expose dash cooldown feedback")
 		return
+	if not player.has_method("has_recent_dash"):
+		fail("The player must expose the original short Bolt-shot timing window")
+		return
 	var dash_start: Vector3 = player.position
 	if not player.call("try_dash", Vector2.RIGHT):
 		fail("A ready player dash must start")
@@ -88,13 +91,27 @@ func run_test() -> void:
 	if not dash_streak.visible or player.call("get_dash_cooldown_ratio") <= 0.0:
 		fail("Starting a dash must reveal its streak and cooldown feedback; visible=%s cooldown=%s" % [dash_streak.visible, player.call("get_dash_cooldown_ratio")])
 		return
+	if not player.call("has_recent_dash"):
+		fail("A new dash must immediately arm a Bolt shot")
+		return
+	var bolt_probe := scene.get_node("Arena/Ball")
+	bolt_probe.position = Vector3(-4.1, 0.22, 0.75)
+	bolt_probe.begin_slap(Vector2.RIGHT, 0.5)
+	var bolt_label := scene.get_node("HUD/ChargeLabel") as Label
+	if bolt_label.text != "BOLT!":
+		fail("Releasing during the dash window must show unmistakable Bolt feedback")
+		return
+	bolt_probe.reset_for_faceoff()
 	for frame in 8:
 		await physics_frame
 	if not player.has_method("is_dashing") or not player.call("is_dashing") or player.position.distance_to(dash_start) < 1.65:
 		fail("Dash movement must sustain its burst speed; displacement=%s" % player.position.distance_to(dash_start))
 		return
-	for frame in 4:
+	for frame in 5:
 		await physics_frame
+	if player.call("has_recent_dash"):
+		fail("Bolt eligibility must expire after the original 200 ms timing window")
+		return
 	var player_blade := scene.get_node("Arena/Player/StickRig/Blade") as MeshInstance3D
 	if player_blade.position.z <= 0.5 or player_blade.position.x >= 0.0 or player_blade.global_position.y > 0.3:
 		fail("The stick blade must finish grounded, forward, and to the player's right")

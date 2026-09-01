@@ -12,6 +12,10 @@ const SHOOT_RANGE := 2.35
 const TRAIL_SPEED_THRESHOLD := 10.0
 const TRAIL_MIN_LENGTH := 0.55
 const TRAIL_MAX_LENGTH := 1.75
+const NORMAL_TRAIL_COLOR := Color(1.0, 0.3, 0.04, 0.58)
+const NORMAL_TRAIL_EMISSION := Color("ff5a00")
+const BOLT_TRAIL_COLOR := Color(0.18, 0.72, 1.0, 0.76)
+const BOLT_TRAIL_EMISSION := Color("42b8ff")
 
 var ball_velocity := Vector3.ZERO
 var _charge_seconds := 0.0
@@ -23,6 +27,7 @@ var _slap_elapsed := -1.0
 var _pending_slap_charge := 0.0
 var _pending_slap_direction := Vector2.RIGHT
 var _pending_one_touch := false
+var _pending_bolt := false
 var _last_touch_actor: StringName = &""
 var _last_touch_age := INF
 
@@ -59,8 +64,9 @@ func _physics_process(delta: float) -> void:
 	_record_body_touch(interaction_state.body_controller)
 
 
-func launch(planar_direction: Vector2, charge: float, inherited_velocity: Vector3 = Vector3.ZERO, one_touch: bool = false, shooter: StringName = &"") -> void:
-	ball_velocity = BallSimulationScript.shot_velocity(planar_direction, charge, inherited_velocity, one_touch)
+func launch(planar_direction: Vector2, charge: float, inherited_velocity: Vector3 = Vector3.ZERO, one_touch: bool = false, shooter: StringName = &"", bolt: bool = false) -> void:
+	ball_velocity = BallSimulationScript.shot_velocity(planar_direction, charge, inherited_velocity, one_touch, bolt)
+	_set_shot_trail_style(bolt)
 	if shooter != &"":
 		record_touch(shooter)
 
@@ -74,6 +80,7 @@ func reset_for_faceoff() -> void:
 	_last_touch_age = INF
 	_clear_charge_feedback()
 	_set_trail_visible(false)
+	_set_shot_trail_style(false)
 	set_physics_process(true)
 
 
@@ -137,8 +144,16 @@ func _configure_slap(direction: Vector2, charge: float, start_elapsed: float) ->
 	_pending_slap_direction = direction.normalized() if not direction.is_zero_approx() else Vector2.RIGHT
 	_pending_slap_charge = clampf(charge, 0.0, 2.0)
 	_pending_one_touch = is_one_touch_ready(&"red")
-	_charge_label.text = "ONE TOUCH!" if _pending_one_touch else "SLAP!"
-	if _pending_one_touch:
+	_pending_bolt = _player.has_method("has_recent_dash") and bool(_player.call("has_recent_dash"))
+	if _pending_one_touch and _pending_bolt:
+		_charge_label.text = "ONE TOUCH BOLT!"
+	elif _pending_one_touch:
+		_charge_label.text = "ONE TOUCH!"
+	elif _pending_bolt:
+		_charge_label.text = "BOLT!"
+	else:
+		_charge_label.text = "SLAP!"
+	if _pending_one_touch or _pending_bolt:
 		_charge_label.add_theme_color_override("font_color", Color("70f7ff"))
 
 
@@ -153,8 +168,8 @@ func _advance_slap(delta: float) -> void:
 	_slap_elapsed += delta
 	_player.call("set_stick_slap_angle", StickSlapScript.angle_at(_slap_elapsed))
 	if StickSlapScript.crossed_contact(previous_elapsed, _slap_elapsed) and _ball_in_player_blade():
-		launch(_pending_slap_direction, _pending_slap_charge, _player.velocity, _pending_one_touch, &"red")
-		_play_contact_feedback(_pending_slap_charge)
+		launch(_pending_slap_direction, _pending_slap_charge, _player.velocity, _pending_one_touch, &"red", _pending_bolt)
+		_play_contact_feedback(_pending_slap_charge, _pending_bolt)
 	if _slap_elapsed >= StickSlapScript.TOTAL_SECONDS:
 		_cancel_slap()
 
@@ -163,9 +178,10 @@ func _cancel_slap() -> void:
 	_slap_elapsed = -1.0
 	_pending_slap_charge = 0.0
 	_pending_one_touch = false
+	_pending_bolt = false
 	if _player != null:
 		_player.call("set_stick_slap_angle", 0.0)
-	if _charge_label != null and (_charge_label.text == "SLAP!" or _charge_label.text == "ONE TOUCH!"):
+	if _charge_label != null and _charge_label.text in ["SLAP!", "ONE TOUCH!", "BOLT!", "ONE TOUCH BOLT!"]:
 		_clear_charge_feedback()
 
 
@@ -186,10 +202,10 @@ func _ball_in_player_blade() -> bool:
 	return BallInteractionScript.is_in_blade_pocket(global_position, participant)
 
 
-func _play_contact_feedback(charge: float) -> void:
+func _play_contact_feedback(charge: float, bolt: bool = false) -> void:
 	var arena := get_parent()
 	if arena.has_method("play_shot_impact"):
-		arena.call("play_shot_impact", global_position, ShotImpactFeedbackScript.for_charge(charge))
+		arena.call("play_shot_impact", global_position, ShotImpactFeedbackScript.for_charge(charge, bolt))
 
 
 func record_touch(actor: StringName) -> void:
@@ -237,6 +253,16 @@ func _set_trail_visible(value: bool) -> void:
 		_shot_trail = get_node_or_null("ShotTrail") as MeshInstance3D
 	if _shot_trail != null:
 		_shot_trail.visible = value
+
+
+func _set_shot_trail_style(bolt: bool) -> void:
+	if _shot_trail == null:
+		_shot_trail = get_node_or_null("ShotTrail") as MeshInstance3D
+	if _shot_trail == null:
+		return
+	var material := _shot_trail.material_override as StandardMaterial3D
+	material.albedo_color = BOLT_TRAIL_COLOR if bolt else NORMAL_TRAIL_COLOR
+	material.emission = BOLT_TRAIL_EMISSION if bolt else NORMAL_TRAIL_EMISSION
 
 
 func _apply_charge_feedback(normalized_charge: float) -> void:

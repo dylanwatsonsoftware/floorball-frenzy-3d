@@ -39,6 +39,10 @@ func _init() -> void:
 	if not is_equal_approx(one_touch_shot.x, static_shot.x * 1.25) or not is_equal_approx(one_touch_shot.y, static_shot.y):
 		fail("One-touch must preserve lift while applying the original 25% planar power bonus")
 		return
+	var bolt_shot: Vector3 = script.shot_velocity(Vector2.RIGHT, 0.5, Vector3.ZERO, false, true)
+	if not is_equal_approx(bolt_shot.x, static_shot.x * 1.44) or not is_equal_approx(bolt_shot.y, static_shot.y):
+		fail("Bolt must preserve lift while stacking the original two 20% dash-shot boosts")
+		return
 
 	var airborne: Dictionary = script.step(Vector3(0.0, 3.0, 0.0), Vector3.ZERO, 0.1)
 	if airborne.velocity.y >= 0.0:

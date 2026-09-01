@@ -11,6 +11,8 @@ const SHOT_LIFT_SCALE := 5.5
 const PERFECT_CHARGE_WINDOW := 0.08
 const PERFECT_SHOT_MULTIPLIER := 1.12
 const ONE_TOUCH_MULTIPLIER := 1.25
+const TRAILBLAZER_MULTIPLIER := 1.2
+const BOLT_MULTIPLIER := 1.2
 const BALL_RADIUS := 0.22
 const RINK_HALF_LENGTH := RinkCollisionScript.HALF_LENGTH
 const RINK_HALF_WIDTH := RinkCollisionScript.HALF_WIDTH
@@ -21,7 +23,7 @@ const ROLLING_DECELERATION := 1.8
 const MIN_VERTICAL_BOUNCE := 0.6
 
 
-static func shot_velocity(aim: Vector2, charge: float, inherited_velocity: Vector3 = Vector3.ZERO, one_touch: bool = false) -> Vector3:
+static func shot_velocity(aim: Vector2, charge: float, inherited_velocity: Vector3 = Vector3.ZERO, one_touch: bool = false, bolt: bool = false) -> Vector3:
 	var direction := aim.normalized() if not aim.is_zero_approx() else Vector2.RIGHT
 	var clamped_charge := clampf(charge, 0.0, 2.0)
 	var power_fraction := clamped_charge if clamped_charge <= 1.0 else 2.0 - clamped_charge
@@ -30,6 +32,8 @@ static func shot_velocity(aim: Vector2, charge: float, inherited_velocity: Vecto
 		speed *= PERFECT_SHOT_MULTIPLIER
 	if one_touch:
 		speed *= ONE_TOUCH_MULTIPLIER
+	if bolt:
+		speed *= TRAILBLAZER_MULTIPLIER * BOLT_MULTIPLIER
 	var lift := SHOT_BASE_LIFT + SHOT_LIFT_SCALE * power_fraction
 	return Vector3(direction.x * speed + inherited_velocity.x, lift, direction.y * speed + inherited_velocity.z)
 

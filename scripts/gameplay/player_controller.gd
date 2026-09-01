@@ -5,6 +5,7 @@ const RinkCollisionScript = preload("res://scripts/simulation/rink_collision.gd"
 const RINK_HALF_LENGTH := 18.1
 const RINK_HALF_WIDTH := 8.6
 const DASH_STREAK_SECONDS := 0.18
+const BOLT_WINDOW_SECONDS := 0.2
 const STICK_BASE_Y_ANGLE := -28.0
 
 var _facing_direction := Vector3.RIGHT
@@ -13,6 +14,7 @@ var _dash_cooldown := 0.0
 var _dash_streak_remaining := 0.0
 var _dash_streak: Node3D
 var _dash_direction := Vector3.RIGHT
+var _recent_dash_remaining := 0.0
 
 
 func _ready() -> void:
@@ -28,6 +30,7 @@ func _physics_process(delta: float) -> void:
 	var input_vector: Vector2 = PlayerMotorScript.combine_inputs(keyboard_input, touch_input)
 	_dash_cooldown = maxf(0.0, _dash_cooldown - delta)
 	_dash_streak_remaining = maxf(0.0, _dash_streak_remaining - delta)
+	_recent_dash_remaining = maxf(0.0, _recent_dash_remaining - delta)
 	if _dash_streak != null:
 		_dash_streak.visible = _dash_streak_remaining > 0.0
 		if _dash_streak.visible:
@@ -63,6 +66,10 @@ func is_dashing() -> bool:
 	return _dash_streak_remaining > 0.0
 
 
+func has_recent_dash() -> bool:
+	return _recent_dash_remaining > 0.0001
+
+
 func try_dash(input_vector: Vector2 = Vector2.ZERO) -> bool:
 	if _dash_streak == null:
 		_dash_streak = get_node_or_null("DashStreak") as Node3D
@@ -73,6 +80,7 @@ func try_dash(input_vector: Vector2 = Vector2.ZERO) -> bool:
 	_dash_direction = dash.velocity.normalized()
 	_dash_cooldown = dash.cooldown
 	_dash_streak_remaining = DASH_STREAK_SECONDS
+	_recent_dash_remaining = BOLT_WINDOW_SECONDS
 	if _dash_streak != null:
 		_dash_streak.scale = Vector3.ONE
 		_dash_streak.visible = true

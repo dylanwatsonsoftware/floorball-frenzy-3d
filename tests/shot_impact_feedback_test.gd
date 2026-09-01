@@ -9,6 +9,7 @@ func _init() -> void:
 	var normal: Dictionary = feedback.for_charge(0.5)
 	var perfect: Dictionary = feedback.for_charge(1.0)
 	var overcharged: Dictionary = feedback.for_charge(1.6)
+	var bolt: Dictionary = feedback.for_charge(0.5, true)
 	if normal.scale >= perfect.scale or normal.kick >= perfect.kick:
 		fail("Perfect contact must create the strongest impact feedback")
 		return
@@ -20,6 +21,9 @@ func _init() -> void:
 		return
 	if normal.duration <= 0.0 or perfect.duration <= 0.0:
 		fail("Impact feedback must have a visible lifetime")
+		return
+	if bolt.color.b <= bolt.color.r or bolt.kick <= normal.kick:
+		fail("Bolt contact must create a stronger electric-blue impact")
 		return
 	print("Shot impact feedback is valid.")
 	quit(0)
