@@ -12,7 +12,7 @@ var _stick_knob_offset := Vector2.ZERO
 
 
 func _ready() -> void:
-	visible = DisplayServer.is_touchscreen_available()
+	visible = should_show_mobile_controls(OS.has_feature("web"), DisplayServer.is_touchscreen_available(), _browser_touch_available())
 	set_process_input(true)
 	resized.connect(queue_redraw)
 
@@ -29,6 +29,17 @@ static func calculate_stick_vector(offset: Vector2, radius: float, deadzone: flo
 		return Vector2.ZERO
 	var scaled_length := (normalized_length - deadzone) / (1.0 - deadzone)
 	return offset.normalized() * scaled_length
+
+
+static func should_show_mobile_controls(is_web: bool, display_touch_available: bool, browser_touch_available: bool) -> bool:
+	return display_touch_available or (is_web and browser_touch_available)
+
+
+static func _browser_touch_available() -> bool:
+	if not OS.has_feature("web"):
+		return false
+	var detected: Variant = JavaScriptBridge.eval("navigator.maxTouchPoints > 0 || window.matchMedia('(pointer: coarse)').matches", true)
+	return bool(detected)
 
 
 func _input(event: InputEvent) -> void:

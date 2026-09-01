@@ -48,4 +48,12 @@ func _toggle_fullscreen() -> void:
 
 func _update_orientation_hint() -> void:
 	var window_size := Vector2(DisplayServer.window_get_size())
-	_orientation_hint.visible = should_show_orientation_hint(window_size, DisplayServer.is_touchscreen_available())
+	var touch_available := DisplayServer.is_touchscreen_available() or _browser_touch_available()
+	_orientation_hint.visible = should_show_orientation_hint(window_size, touch_available)
+
+
+static func _browser_touch_available() -> bool:
+	if not OS.has_feature("web"):
+		return false
+	var detected: Variant = JavaScriptBridge.eval("navigator.maxTouchPoints > 0 || window.matchMedia('(pointer: coarse)').matches", true)
+	return bool(detected)

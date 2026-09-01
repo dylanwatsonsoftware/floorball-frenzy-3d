@@ -22,6 +22,16 @@ func _init() -> void:
 		fail("Joystick movement must clamp to unit length; got %s" % clamped)
 		return
 
+	if not controls.should_show_mobile_controls(true, false, true):
+		fail("Web browser touch detection must show mobile controls when Godot touch detection is unavailable")
+		return
+	if controls.should_show_mobile_controls(true, false, false):
+		fail("Desktop web browsers must not show mobile controls")
+		return
+	if not controls.should_show_mobile_controls(false, true, false):
+		fail("Native touchscreen builds must show mobile controls")
+		return
+
 	print("Mobile control math is valid.")
 	quit(0)
 
