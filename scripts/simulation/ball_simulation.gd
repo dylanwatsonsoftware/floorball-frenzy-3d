@@ -13,6 +13,9 @@ const PERFECT_SHOT_MULTIPLIER := 1.12
 const ONE_TOUCH_MULTIPLIER := 1.25
 const TRAILBLAZER_MULTIPLIER := 1.2
 const BOLT_MULTIPLIER := 1.2
+const SCOOP_CHARGE_WINDOW := 0.3125
+const SCOOP_BACKWARD_SPEED := 3.75
+const SCOOP_LIFT := 9.0
 const BALL_RADIUS := 0.22
 const RINK_HALF_LENGTH := RinkCollisionScript.HALF_LENGTH
 const RINK_HALF_WIDTH := RinkCollisionScript.HALF_WIDTH
@@ -24,6 +27,10 @@ const MIN_VERTICAL_BOUNCE := 0.6
 
 
 static func shot_velocity(aim: Vector2, charge: float, inherited_velocity: Vector3 = Vector3.ZERO, one_touch: bool = false, bolt: bool = false) -> Vector3:
+	return shot_plan(aim, charge, inherited_velocity, one_touch, bolt).velocity
+
+
+static func shot_plan(aim: Vector2, charge: float, inherited_velocity: Vector3 = Vector3.ZERO, one_touch: bool = false, bolt: bool = false) -> Dictionary:
 	var direction := aim.normalized() if not aim.is_zero_approx() else Vector2.RIGHT
 	var clamped_charge := clampf(charge, 0.0, 2.0)
 	var power_fraction := clamped_charge if clamped_charge <= 1.0 else 2.0 - clamped_charge
@@ -34,8 +41,18 @@ static func shot_velocity(aim: Vector2, charge: float, inherited_velocity: Vecto
 		speed *= ONE_TOUCH_MULTIPLIER
 	if bolt:
 		speed *= TRAILBLAZER_MULTIPLIER * BOLT_MULTIPLIER
-	var lift := SHOT_BASE_LIFT + SHOT_LIFT_SCALE * power_fraction
-	return Vector3(direction.x * speed + inherited_velocity.x, lift, direction.y * speed + inherited_velocity.z)
+	var scoop := is_scoop_shot(direction, clamped_charge, inherited_velocity)
+	var lift := SCOOP_LIFT if scoop else SHOT_BASE_LIFT + SHOT_LIFT_SCALE * power_fraction
+	return {
+		"velocity": Vector3(direction.x * speed + inherited_velocity.x, lift, direction.y * speed + inherited_velocity.z),
+		"is_scoop": scoop,
+	}
+
+
+static func is_scoop_shot(aim: Vector2, charge: float, inherited_velocity: Vector3) -> bool:
+	var direction := aim.normalized() if not aim.is_zero_approx() else Vector2.RIGHT
+	var planar_velocity := Vector2(inherited_velocity.x, inherited_velocity.z)
+	return charge < SCOOP_CHARGE_WINDOW and direction.dot(planar_velocity) < -SCOOP_BACKWARD_SPEED
 
 
 static func is_perfect_charge(charge: float) -> bool:

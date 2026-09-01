@@ -176,6 +176,17 @@ func run_test() -> void:
 	if not player.has_method("set_stick_slap_angle"):
 		fail("The player must expose physical slap-stick animation")
 		return
+	if not player.has_method("set_shot_aim_locked") or not player.has_method("is_shot_aim_locked"):
+		fail("Holding a shot must be able to lock aim independently from retreating movement")
+		return
+	var locked_aim: Vector3 = player.call("get_facing_direction")
+	player.call("set_shot_aim_locked", true)
+	player.velocity = -locked_aim * 8.0
+	if not player.call("is_shot_aim_locked") or player.call("get_facing_direction").dot(locked_aim) < 0.99:
+		fail("Retreating during a held shot must preserve the locked stick aim")
+		return
+	player.velocity = Vector3.ZERO
+	player.call("set_shot_aim_locked", false)
 
 	var ball := scene.get_node("Arena/Ball")
 	if not ball.has_method("launch"):
@@ -190,6 +201,9 @@ func run_test() -> void:
 	if not ball.has_method("record_touch") or not ball.has_method("is_one_touch_ready"):
 		fail("Ball gameplay must track the original one-touch timing window")
 		return
+	if not ball.has_method("is_scoop_active"):
+		fail("Ball gameplay must expose the original retreating quick-release scoop state")
+		return
 	var shot_trail := scene.get_node("Arena/Ball/ShotTrail") as MeshInstance3D
 	if shot_trail.visible:
 		fail("The ball trail must remain hidden at faceoff")
@@ -197,6 +211,15 @@ func run_test() -> void:
 	if scene.get_node_or_null("HUD/ChargeLabel") == null:
 		fail("HUD must expose shot charging feedback")
 		return
+	ball.launch(Vector2.RIGHT, 0.2, Vector3(-4.0, 0.0, 0.0), false, &"red")
+	if not ball.call("is_scoop_active") or ball.ball_velocity.y < 8.0 or (scene.get_node("HUD/ChargeLabel") as Label).text != "SCOOP!":
+		fail("A retreating quick release must create a high, clearly labelled scoop; velocity=%s" % ball.ball_velocity)
+		return
+	await physics_frame
+	if (scene.get_node("HUD/ChargeLabel") as Label).text != "SCOOP!":
+		fail("Scoop feedback must remain readable beyond its launch frame")
+		return
+	ball.reset_for_faceoff()
 	var mobile_controls := scene.get_node("HUD/MobileControls")
 	if not mobile_controls.has_method("get_movement_vector"):
 		fail("Mobile controls must expose a movement vector")

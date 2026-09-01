@@ -20,6 +20,7 @@ var _heat := 0.0
 var _fuego_remaining := 0.0
 var _fuego_aura: MeshInstance3D
 var _heat_bar: ProgressBar
+var _shot_aim_locked := false
 
 
 func _ready() -> void:
@@ -55,7 +56,7 @@ func _physics_process(delta: float) -> void:
 	global_position = boundary.position
 	velocity = boundary.velocity
 
-	if velocity.length_squared() > 0.04:
+	if velocity.length_squared() > 0.04 and not _shot_aim_locked:
 		_facing_direction = Vector3(velocity.x, 0.0, velocity.z).normalized()
 		rotation.y = lerp_angle(rotation.y, atan2(_facing_direction.x, _facing_direction.z), minf(1.0, delta * 12.0))
 	if _mobile_controls != null and _mobile_controls.has_method("set_dash_cooldown_ratio"):
@@ -64,6 +65,14 @@ func _physics_process(delta: float) -> void:
 
 func get_facing_direction() -> Vector3:
 	return _facing_direction
+
+
+func set_shot_aim_locked(value: bool) -> void:
+	_shot_aim_locked = value
+
+
+func is_shot_aim_locked() -> bool:
+	return _shot_aim_locked
 
 
 func get_dash_cooldown_ratio() -> float:

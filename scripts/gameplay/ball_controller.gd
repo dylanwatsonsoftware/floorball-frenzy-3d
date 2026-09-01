@@ -17,6 +17,9 @@ const NORMAL_TRAIL_COLOR := Color(1.0, 0.3, 0.04, 0.58)
 const NORMAL_TRAIL_EMISSION := Color("ff5a00")
 const BOLT_TRAIL_COLOR := Color(0.18, 0.72, 1.0, 0.76)
 const BOLT_TRAIL_EMISSION := Color("42b8ff")
+const SCOOP_TRAIL_COLOR := Color(0.48, 0.92, 1.0, 0.78)
+const SCOOP_TRAIL_EMISSION := Color("7deaff")
+const SCOOP_FEEDBACK_SECONDS := 0.8
 const STEAL_FEEDBACK_SECONDS := 0.38
 const STEAL_COLOR := Color("7dff6a")
 const BLUE_STEAL_COLOR := Color("58a8ff")
@@ -32,6 +35,7 @@ var _pending_slap_charge := 0.0
 var _pending_slap_direction := Vector2.RIGHT
 var _pending_one_touch := false
 var _pending_bolt := false
+var _scoop_remaining := 0.0
 var _last_touch_actor: StringName = &""
 var _last_touch_age := INF
 var _dash_steal_consumed := {0: false, 1: false}
@@ -48,6 +52,7 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	_last_touch_age += delta
+	_update_scoop_feedback(delta)
 	_update_steal_feedback(delta)
 	_advance_slap(delta)
 	var previous_position := position
@@ -74,8 +79,13 @@ func _physics_process(delta: float) -> void:
 
 
 func launch(planar_direction: Vector2, charge: float, inherited_velocity: Vector3 = Vector3.ZERO, one_touch: bool = false, shooter: StringName = &"", bolt: bool = false) -> void:
-	ball_velocity = BallSimulationScript.shot_velocity(planar_direction, charge, inherited_velocity, one_touch, bolt)
-	_set_shot_trail_style(bolt)
+	var plan: Dictionary = BallSimulationScript.shot_plan(planar_direction, charge, inherited_velocity, one_touch, bolt)
+	ball_velocity = plan.velocity
+	_scoop_remaining = SCOOP_FEEDBACK_SECONDS if plan.is_scoop else 0.0
+	_set_shot_trail_style(bolt, plan.is_scoop)
+	if plan.is_scoop and _charge_label != null:
+		_charge_label.text = "SCOOP!"
+		_charge_label.add_theme_color_override("font_color", SCOOP_TRAIL_EMISSION)
 	if shooter != &"":
 		record_touch(shooter)
 		if BallSimulationScript.is_perfect_charge(charge):
@@ -91,9 +101,10 @@ func reset_for_faceoff() -> void:
 	_last_touch_age = INF
 	_dash_steal_consumed = {0: false, 1: false}
 	_steal_feedback_remaining = 0.0
+	_scoop_remaining = 0.0
 	_clear_charge_feedback()
 	_set_trail_visible(false)
-	_set_shot_trail_style(false)
+	_set_shot_trail_style(false, false)
 	set_physics_process(true)
 
 
@@ -102,6 +113,8 @@ func _update_shot_charge(delta: float) -> void:
 		return
 	var in_range := _planar_distance_to_player() <= SHOOT_RANGE
 	if Input.is_action_pressed("shoot") and in_range:
+		if _charge_seconds <= 0.0:
+			_player.call("set_shot_aim_locked", true)
 		_charge_seconds = minf(MAX_CHARGE_SECONDS * 2.0, _charge_seconds + delta)
 		var charge_ratio := _charge_seconds / MAX_CHARGE_SECONDS
 		var backswing_ratio := minf(1.0, charge_ratio)
@@ -116,7 +129,8 @@ func _update_shot_charge(delta: float) -> void:
 			_clear_charge_feedback()
 			_player.call("set_stick_slap_angle", 0.0)
 	elif not Input.is_action_pressed("shoot"):
-		if _steal_feedback_remaining <= 0.0:
+		_player.call("set_shot_aim_locked", false)
+		if _steal_feedback_remaining <= 0.0 and _scoop_remaining <= 0.0:
 			_clear_charge_feedback()
 		_player.call("set_stick_slap_angle", 0.0)
 
@@ -195,6 +209,7 @@ func _cancel_slap() -> void:
 	_pending_bolt = false
 	if _player != null:
 		_player.call("set_stick_slap_angle", 0.0)
+		_player.call("set_shot_aim_locked", false)
 	if _charge_label != null and _charge_label.text in ["SLAP!", "ONE TOUCH!", "BOLT!", "ONE TOUCH BOLT!"]:
 		_clear_charge_feedback()
 
@@ -229,6 +244,10 @@ func record_touch(actor: StringName) -> void:
 
 func is_one_touch_ready(shooter: StringName = &"red") -> bool:
 	return OneTouchScript.is_eligible(_last_touch_actor, _last_touch_age, shooter)
+
+
+func is_scoop_active() -> bool:
+	return _scoop_remaining > 0.0
 
 
 func _record_body_touch(controller: int) -> void:
@@ -292,6 +311,14 @@ func _update_steal_feedback(delta: float) -> void:
 		_clear_charge_feedback()
 
 
+func _update_scoop_feedback(delta: float) -> void:
+	if _scoop_remaining <= 0.0:
+		return
+	_scoop_remaining = maxf(0.0, _scoop_remaining - delta)
+	if _scoop_remaining <= 0.0 and _charge_label != null and _charge_label.text == "SCOOP!":
+		_clear_charge_feedback()
+
+
 func _update_spin(delta: float) -> void:
 	var planar_speed := Vector2(ball_velocity.x, ball_velocity.z).length()
 	if planar_speed > 0.05:
@@ -324,14 +351,14 @@ func _set_trail_visible(value: bool) -> void:
 		_shot_trail.visible = value
 
 
-func _set_shot_trail_style(bolt: bool) -> void:
+func _set_shot_trail_style(bolt: bool, scoop: bool = false) -> void:
 	if _shot_trail == null:
 		_shot_trail = get_node_or_null("ShotTrail") as MeshInstance3D
 	if _shot_trail == null:
 		return
 	var material := _shot_trail.material_override as StandardMaterial3D
-	material.albedo_color = BOLT_TRAIL_COLOR if bolt else NORMAL_TRAIL_COLOR
-	material.emission = BOLT_TRAIL_EMISSION if bolt else NORMAL_TRAIL_EMISSION
+	material.albedo_color = BOLT_TRAIL_COLOR if bolt else SCOOP_TRAIL_COLOR if scoop else NORMAL_TRAIL_COLOR
+	material.emission = BOLT_TRAIL_EMISSION if bolt else SCOOP_TRAIL_EMISSION if scoop else NORMAL_TRAIL_EMISSION
 
 
 func _apply_charge_feedback(normalized_charge: float) -> void:
