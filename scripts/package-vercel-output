@@ -1,0 +1,53 @@
+#!/bin/sh
+set -eu
+
+if [ ! -f build/web/index.html ]; then
+	echo "Missing build/web/index.html; run scripts/export-web first." >&2
+	exit 1
+fi
+
+rm -rf .vercel/output
+mkdir -p .vercel/output/static
+cp -R build/web/. .vercel/output/static/
+
+cat > .vercel/output/config.json <<'JSON'
+{
+  "version": 3,
+  "routes": [
+    {
+      "src": "/.*\\.wasm$",
+      "headers": {
+        "Cache-Control": "public, max-age=0, must-revalidate"
+      },
+      "continue": true
+    },
+    {
+      "src": "/.*\\.pck$",
+      "headers": {
+        "Cache-Control": "public, max-age=0, must-revalidate"
+      },
+      "continue": true
+    },
+    {
+      "src": "/(index\\.html|index\\.service\\.worker\\.js|index\\.manifest\\.json)$",
+      "headers": {
+        "Cache-Control": "public, max-age=0, must-revalidate"
+      },
+      "continue": true
+    },
+    {
+      "handle": "filesystem"
+    }
+  ],
+  "overrides": {
+    "index.wasm": {
+      "contentType": "application/wasm"
+    },
+    "index.pck": {
+      "contentType": "application/octet-stream"
+    }
+  }
+}
+JSON
+
+echo "Packaged Vercel Build Output in .vercel/output."

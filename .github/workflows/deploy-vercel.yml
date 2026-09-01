@@ -1,0 +1,77 @@
+name: Build and deploy web game
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: production-vercel
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  GODOT_VERSION: "4.7.2"
+  GODOT_CI_CACHE: ${{ github.workspace }}/.godot-ci
+  XDG_DATA_HOME: ${{ github.workspace }}/.godot-ci/data
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Cache Godot web toolchain
+        uses: actions/cache@v4
+        with:
+          path: .godot-ci
+          key: godot-${{ runner.os }}-${{ env.GODOT_VERSION }}-web-v1
+
+      - name: Install Godot web toolchain
+        run: ./scripts/install-godot-web-ci
+
+      - name: Run deployment contracts
+        run: |
+          ./tests/project_baseline_test.sh
+          ./tests/web_export_config_test.sh
+          ./tests/deployment_pipeline_test.sh
+
+      - name: Export Godot PWA
+        env:
+          GODOT_BIN: ${{ github.workspace }}/.godot-ci/bin/godot
+        run: ./scripts/export-web
+
+      - name: Package Vercel output
+        run: ./scripts/package-vercel-output
+
+      - name: Retain web build
+        uses: actions/upload-artifact@v4
+        with:
+          name: floorball-frenzy-web
+          path: build/web
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Link Vercel project
+        if: ${{ secrets.VERCEL_TOKEN != '' && secrets.VERCEL_ORG_ID != '' && secrets.VERCEL_PROJECT_ID != '' }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          mkdir -p .vercel
+          jq -n \
+            --arg orgId "$VERCEL_ORG_ID" \
+            --arg projectId "$VERCEL_PROJECT_ID" \
+            '{orgId: $orgId, projectId: $projectId}' > .vercel/project.json
+
+      - name: Deploy production to Vercel
+        if: ${{ secrets.VERCEL_TOKEN != '' && secrets.VERCEL_ORG_ID != '' && secrets.VERCEL_PROJECT_ID != '' }}
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: npx --yes vercel@latest deploy --prebuilt --prod --token="$VERCEL_TOKEN"

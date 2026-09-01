@@ -1,0 +1,38 @@
+#!/bin/sh
+set -eu
+
+godot_version="${GODOT_VERSION:-4.7.2}"
+cache_root="${GODOT_CI_CACHE:-$PWD/.godot-ci}"
+data_root="${XDG_DATA_HOME:-$cache_root/data}"
+godot_binary="$cache_root/bin/godot"
+template_dir="$data_root/godot/export_templates/${godot_version}.stable"
+
+mkdir -p "$cache_root/bin" "$template_dir"
+
+if [ ! -x "$godot_binary" ]; then
+	editor_archive="$(mktemp -t godot-editor.XXXXXX.zip)"
+	curl -fsSL \
+		"https://github.com/godotengine/godot/releases/download/${godot_version}-stable/Godot_v${godot_version}-stable_linux.x86_64.zip" \
+		-o "$editor_archive"
+	unzip -p "$editor_archive" "Godot_v${godot_version}-stable_linux.x86_64" > "$godot_binary"
+	chmod +x "$godot_binary"
+	rm -f "$editor_archive"
+fi
+
+if [ ! -f "$template_dir/web_nothreads_release.zip" ]; then
+	template_archive="$(mktemp -t godot-templates.XXXXXX.tpz)"
+	curl -fsSL \
+		"https://godot-releases.nbg1.your-objectstorage.com/${godot_version}-stable/Godot_v${godot_version}-stable_export_templates.tpz" \
+		-o "$template_archive"
+	unzip -j -o "$template_archive" \
+		templates/version.txt \
+		templates/web_debug.zip \
+		templates/web_nothreads_debug.zip \
+		templates/web_nothreads_release.zip \
+		templates/web_release.zip \
+		-d "$template_dir"
+	rm -f "$template_archive"
+fi
+
+"$godot_binary" --version
+printf 'Godot web toolchain ready at %s\n' "$godot_binary"

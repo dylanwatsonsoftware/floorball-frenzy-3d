@@ -3,6 +3,8 @@
 .claude/
 .codex/
 build/
+.godot-ci/
+.vercel/
 addons/godot_mcp/
 *.csproj
 *.csproj.old
