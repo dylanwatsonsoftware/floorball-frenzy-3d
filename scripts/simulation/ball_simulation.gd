@@ -1,6 +1,8 @@
 class_name BallSimulation
 extends RefCounted
 
+const GoalCollisionScript = preload("res://scripts/simulation/goal_collision.gd")
+
 const SHOT_BASE_SPEED := 13.0
 const SHOT_SPEED_SCALE := 12.0
 const SHOT_BASE_LIFT := 1.5
@@ -38,6 +40,10 @@ static func step(position: Vector3, velocity: Vector3, delta: float) -> Dictiona
 		planar = planar.move_toward(Vector2.ZERO, ROLLING_DECELERATION * delta)
 		next_velocity.x = planar.x
 		next_velocity.z = planar.y
+
+	var goal_collision := GoalCollisionScript.resolve(position, next_position, next_velocity)
+	next_position = goal_collision.position
+	next_velocity = goal_collision.velocity
 
 	if absf(next_position.x) > RINK_HALF_LENGTH:
 		next_position.x = clampf(next_position.x, -RINK_HALF_LENGTH, RINK_HALF_LENGTH)

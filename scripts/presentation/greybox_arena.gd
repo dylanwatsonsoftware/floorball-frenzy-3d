@@ -87,6 +87,8 @@ func _build_goal(goal_name: String, x_position: float, color: Color) -> void:
 	_add_goal_post(goal, "BottomPost", Vector3(0.0, 0.75, 1.25), Vector3(0.12, 1.5, 0.12), color)
 	_add_goal_post(goal, "Crossbar", Vector3(0.0, 1.48, 0.0), Vector3(0.12, 0.12, 2.6), color)
 	_add_goal_post(goal, "Backbar", Vector3(direction * 1.35, 0.65, 0.0), Vector3(0.1, 1.3, 2.6), Color(color, 0.45))
+	_add_goal_post(goal, "TopSideNet", Vector3(direction * 0.675, 0.72, -1.25), Vector3(1.35, 1.44, 0.05), Color(color, 0.2))
+	_add_goal_post(goal, "BottomSideNet", Vector3(direction * 0.675, 0.72, 1.25), Vector3(1.35, 1.44, 0.05), Color(color, 0.2))
 
 
 func _add_goal_post(parent: Node3D, node_name: String, local_position: Vector3, size: Vector3, color: Color) -> void:
