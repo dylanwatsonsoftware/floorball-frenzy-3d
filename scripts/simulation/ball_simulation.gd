@@ -8,6 +8,8 @@ const SHOT_BASE_SPEED := 13.0
 const SHOT_SPEED_SCALE := 12.0
 const SHOT_BASE_LIFT := 1.5
 const SHOT_LIFT_SCALE := 5.5
+const PERFECT_CHARGE_WINDOW := 0.08
+const PERFECT_SHOT_MULTIPLIER := 1.12
 const BALL_RADIUS := 0.22
 const RINK_HALF_LENGTH := RinkCollisionScript.HALF_LENGTH
 const RINK_HALF_WIDTH := RinkCollisionScript.HALF_WIDTH
@@ -20,10 +22,17 @@ const MIN_VERTICAL_BOUNCE := 0.6
 
 static func shot_velocity(aim: Vector2, charge: float, inherited_velocity: Vector3 = Vector3.ZERO) -> Vector3:
 	var direction := aim.normalized() if not aim.is_zero_approx() else Vector2.RIGHT
-	var clamped_charge := clampf(charge, 0.0, 1.0)
-	var speed := SHOT_BASE_SPEED + SHOT_SPEED_SCALE * clamped_charge
-	var lift := SHOT_BASE_LIFT + SHOT_LIFT_SCALE * clamped_charge
+	var clamped_charge := clampf(charge, 0.0, 2.0)
+	var power_fraction := clamped_charge if clamped_charge <= 1.0 else 2.0 - clamped_charge
+	var speed := SHOT_BASE_SPEED + SHOT_SPEED_SCALE * power_fraction
+	if is_perfect_charge(clamped_charge):
+		speed *= PERFECT_SHOT_MULTIPLIER
+	var lift := SHOT_BASE_LIFT + SHOT_LIFT_SCALE * power_fraction
 	return Vector3(direction.x * speed + inherited_velocity.x, lift, direction.y * speed + inherited_velocity.z)
+
+
+static func is_perfect_charge(charge: float) -> bool:
+	return absf(charge - 1.0) <= PERFECT_CHARGE_WINDOW
 
 
 static func step(position: Vector3, velocity: Vector3, delta: float) -> Dictionary:

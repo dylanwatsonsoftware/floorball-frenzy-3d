@@ -4,6 +4,7 @@ const BallSimulationScript = preload("res://scripts/simulation/ball_simulation.g
 const MatchSimulationScript = preload("res://scripts/simulation/match_simulation.gd")
 const BallInteractionScript = preload("res://scripts/simulation/ball_interaction.gd")
 const StickSlapScript = preload("res://scripts/simulation/stick_slap.gd")
+const ShotChargeFeedbackScript = preload("res://scripts/presentation/shot_charge_feedback.gd")
 const MAX_CHARGE_SECONDS := 0.8
 const SHOOT_RANGE := 2.35
 const TRAIL_SPEED_THRESHOLD := 10.0
@@ -41,7 +42,7 @@ func _physics_process(delta: float) -> void:
 		ball_velocity = Vector3.ZERO
 		_charge_seconds = 0.0
 		_cancel_slap()
-		_charge_label.text = ""
+		_clear_charge_feedback()
 		_set_trail_visible(false)
 		set_physics_process(false)
 		goal_scored.emit(scorer)
@@ -60,7 +61,7 @@ func reset_for_faceoff() -> void:
 	ball_velocity = Vector3.ZERO
 	_charge_seconds = 0.0
 	_cancel_slap()
-	_charge_label.text = ""
+	_clear_charge_feedback()
 	_set_trail_visible(false)
 	set_physics_process(true)
 
@@ -70,21 +71,21 @@ func _update_shot_charge(delta: float) -> void:
 		return
 	var in_range := _planar_distance_to_player() <= SHOOT_RANGE
 	if Input.is_action_pressed("shoot") and in_range:
-		_charge_seconds = minf(MAX_CHARGE_SECONDS, _charge_seconds + delta)
+		_charge_seconds = minf(MAX_CHARGE_SECONDS * 2.0, _charge_seconds + delta)
 		var charge_ratio := _charge_seconds / MAX_CHARGE_SECONDS
-		var percentage := roundi(100.0 * charge_ratio)
-		_player.call("set_stick_slap_angle", lerpf(-2.0, StickSlapScript.BACKSWING_ANGLE, charge_ratio * charge_ratio))
-		_charge_label.text = "SHOT %d%%" % percentage
+		var backswing_ratio := minf(1.0, charge_ratio)
+		_player.call("set_stick_slap_angle", lerpf(-2.0, StickSlapScript.BACKSWING_ANGLE, backswing_ratio * backswing_ratio))
+		_apply_charge_feedback(charge_ratio)
 	elif Input.is_action_just_released("shoot"):
 		if _charge_seconds > 0.0 and in_range:
 			var facing: Vector3 = _player.call("get_facing_direction")
 			_release_charged_slap(Vector2(facing.x, facing.z), _charge_seconds / MAX_CHARGE_SECONDS)
 		_charge_seconds = 0.0
 		if _slap_elapsed < 0.0:
-			_charge_label.text = ""
+			_clear_charge_feedback()
 			_player.call("set_stick_slap_angle", 0.0)
 	elif not Input.is_action_pressed("shoot"):
-		_charge_label.text = ""
+		_clear_charge_feedback()
 		_player.call("set_stick_slap_angle", 0.0)
 
 
@@ -123,7 +124,7 @@ func _release_charged_slap(direction: Vector2, charge: float) -> void:
 func _configure_slap(direction: Vector2, charge: float, start_elapsed: float) -> void:
 	_slap_elapsed = start_elapsed
 	_pending_slap_direction = direction.normalized() if not direction.is_zero_approx() else Vector2.RIGHT
-	_pending_slap_charge = clampf(charge, 0.0, 1.0)
+	_pending_slap_charge = clampf(charge, 0.0, 2.0)
 	_charge_label.text = "SLAP!"
 
 
@@ -149,7 +150,7 @@ func _cancel_slap() -> void:
 	if _player != null:
 		_player.call("set_stick_slap_angle", 0.0)
 	if _charge_label != null and _charge_label.text == "SLAP!":
-		_charge_label.text = ""
+		_clear_charge_feedback()
 
 
 func _current_slap_phase() -> StringName:
@@ -199,3 +200,16 @@ func _set_trail_visible(value: bool) -> void:
 		_shot_trail = get_node_or_null("ShotTrail") as MeshInstance3D
 	if _shot_trail != null:
 		_shot_trail.visible = value
+
+
+func _apply_charge_feedback(normalized_charge: float) -> void:
+	var feedback := ShotChargeFeedbackScript.for_charge(normalized_charge)
+	_charge_label.text = feedback.label
+	_charge_label.add_theme_color_override("font_color", feedback.color)
+
+
+func _clear_charge_feedback() -> void:
+	if _charge_label == null:
+		return
+	_charge_label.text = ""
+	_charge_label.add_theme_color_override("font_color", ShotChargeFeedbackScript.CHARGING_COLOR)
