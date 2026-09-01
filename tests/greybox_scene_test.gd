@@ -23,6 +23,7 @@ func run_test() -> void:
 		"Arena/RightGoal",
 		"Arena/BroadcastCamera",
 		"HUD/CameraLabel",
+		"HUD/MobileControls",
 	]
 	for path in required_nodes:
 		if scene.get_node_or_null(path) == null:
@@ -40,6 +41,16 @@ func run_test() -> void:
 		return
 	if scene.get_node_or_null("HUD/ChargeLabel") == null:
 		fail("HUD must expose shot charging feedback")
+		return
+	var mobile_controls := scene.get_node("HUD/MobileControls")
+	if not mobile_controls.has_method("get_movement_vector"):
+		fail("Mobile controls must expose a movement vector")
+		return
+	if scene.get_node_or_null("HUD/MobileControls/MoveBase") == null:
+		fail("Mobile controls must show a movement joystick")
+		return
+	if scene.get_node_or_null("HUD/MobileControls/ShootButton") == null:
+		fail("Mobile controls must show a shoot button")
 		return
 	var ball_start: Vector3 = ball.position
 	ball.launch(Vector2.RIGHT, 1.0)

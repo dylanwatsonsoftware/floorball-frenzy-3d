@@ -6,6 +6,10 @@ const ACCELERATION := 32.0
 const DECELERATION := 24.0
 
 
+static func combine_inputs(primary: Vector2, secondary: Vector2) -> Vector2:
+	return (primary + secondary).limit_length(1.0)
+
+
 static func step_velocity(current: Vector3, input_vector: Vector2, delta: float) -> Vector3:
 	var planar := Vector3(current.x, 0.0, current.z)
 	var input_direction := input_vector.limit_length(1.0)

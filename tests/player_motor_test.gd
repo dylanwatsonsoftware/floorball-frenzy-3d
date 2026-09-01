@@ -25,6 +25,11 @@ func _init() -> void:
 		fail("Player must decelerate with no input")
 		return
 
+	var combined: Vector2 = script.combine_inputs(Vector2.RIGHT, Vector2.DOWN)
+	if not is_equal_approx(combined.length(), 1.0) or combined.x <= 0.0 or combined.y <= 0.0:
+		fail("Keyboard and touch movement must combine without exceeding unit length; got %s" % combined)
+		return
+
 	print("Player motor is valid.")
 	quit(0)
 

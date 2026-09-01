@@ -192,7 +192,7 @@ func _apply_camera_preset(index: int) -> void:
 	_camera.fov = preset.fov
 	_camera.look_at(preset.target, Vector3.UP)
 	if _camera_label != null:
-		_camera_label.text = "CAMERA %d · %s\nWASD / ARROWS TO MOVE · HOLD SPACE TO SHOOT · 1–3 CAMERAS" % [index + 1, preset.name.to_upper()]
+		_camera_label.text = "CAMERA %d · %s\nMOVE + HOLD SHOOT · KEYBOARD: WASD / SPACE · 1–3 CAMERAS" % [index + 1, preset.name.to_upper()]
 
 
 func _add_box(node_name: String, size: Vector3, position: Vector3, color: Color, shadow: bool = true) -> MeshInstance3D:

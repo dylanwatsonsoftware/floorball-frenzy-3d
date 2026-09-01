@@ -5,10 +5,19 @@ const RINK_HALF_LENGTH := 18.1
 const RINK_HALF_WIDTH := 8.6
 
 var _facing_direction := Vector3.RIGHT
+var _mobile_controls: Control
+
+
+func _ready() -> void:
+	_mobile_controls = get_node_or_null("../../HUD/MobileControls") as Control
 
 
 func _physics_process(delta: float) -> void:
-	var input_vector := Input.get_vector("move_left", "move_right", "move_up", "move_down")
+	var keyboard_input := Input.get_vector("move_left", "move_right", "move_up", "move_down")
+	var touch_input := Vector2.ZERO
+	if _mobile_controls != null and _mobile_controls.has_method("get_movement_vector"):
+		touch_input = _mobile_controls.call("get_movement_vector")
+	var input_vector: Vector2 = PlayerMotorScript.combine_inputs(keyboard_input, touch_input)
 	velocity = PlayerMotorScript.step_velocity(velocity, input_vector, delta)
 	move_and_slide()
 	global_position.x = clampf(global_position.x, -RINK_HALF_LENGTH, RINK_HALF_LENGTH)
