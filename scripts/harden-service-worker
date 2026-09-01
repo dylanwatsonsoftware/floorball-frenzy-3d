@@ -1,0 +1,39 @@
+#!/bin/sh
+set -eu
+
+worker_file="${1:-build/web/index.service.worker.js}"
+
+if [ ! -f "$worker_file" ]; then
+	echo "Missing Godot service worker: $worker_file" >&2
+	exit 1
+fi
+
+python3 - "$worker_file" <<'PY'
+from pathlib import Path
+import sys
+
+worker = Path(sys.argv[1])
+source = worker.read_text()
+marker = "// Floorball Frenzy immediate-update policy."
+
+if marker not in source:
+    source += """
+
+// Floorball Frenzy immediate-update policy.
+// Godot's default worker waits for every old tab to close before activating.
+self.addEventListener('install', (event) => {
+    event.waitUntil(self.skipWaiting());
+});
+
+self.addEventListener('activate', (event) => {
+    event.waitUntil(
+        self.clients.claim()
+            .then(() => self.clients.matchAll({ type: 'window' }))
+            .then((clients) => Promise.all(clients.map((client) => client.navigate(client.url))))
+    );
+});
+"""
+    worker.write_text(source)
+PY
+
+echo "Hardened Godot service-worker updates."

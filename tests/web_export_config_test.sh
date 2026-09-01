@@ -12,6 +12,11 @@ grep -Fq 'variant/thread_support=false' export_presets.cfg
 grep -Fq 'exclude_filter="build/*, addons/*, tests/*, docs/*, .github/*, vercel.json"' export_presets.cfg
 test -x scripts/export-web
 grep -Fq 'mkdir -p build/web' scripts/export-web
+grep -Fq './scripts/harden-service-worker' scripts/export-web
+test -x scripts/harden-service-worker
+grep -Fq 'self.skipWaiting()' scripts/harden-service-worker
+grep -Fq 'self.clients.claim()' scripts/harden-service-worker
+grep -Fq 'client.navigate(client.url)' scripts/harden-service-worker
 grep -Fq 'window/stretch/aspect="expand"' project.godot
 
 echo "Web export preset is deployment-ready."
