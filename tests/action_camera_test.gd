@@ -25,6 +25,29 @@ func _init() -> void:
 	if charged.target.x > -1.0:
 		fail("At full charge the framing must include enough of the red half to reveal the player's own goal; target=%s" % charged.target)
 		return
+	var neutral_view: Vector3 = (neutral.target - neutral.position).normalized()
+	var charged_view: Vector3 = (charged.target - charged.position).normalized()
+	if neutral_view.dot(charged_view) < 0.9999:
+		fail("Charge pullback must preserve the camera angle so screen-space shot direction does not rotate; neutral=%s charged=%s" % [neutral_view, charged_view])
+		return
+
+	if not camera_logic.has_method("follow_target") or not camera_logic.has_method("transition_blend"):
+		fail("Action tracking needs explicit dead-zone and transition timing behavior")
+		return
+	var current_target := Vector3(2.0, 0.3, 1.0)
+	var tiny_motion: Vector3 = camera_logic.follow_target(current_target, current_target + Vector3(0.45, 0.0, 0.25))
+	if not tiny_motion.is_equal_approx(current_target):
+		fail("Small action movement must remain inside a natural camera dead-zone instead of being tracked mechanically; got %s" % tiny_motion)
+		return
+	var large_motion: Vector3 = camera_logic.follow_target(current_target, current_target + Vector3(4.0, 0.0, 0.0))
+	if large_motion.x <= current_target.x or large_motion.x >= current_target.x + 4.0:
+		fail("Large action movement must pull the camera after consuming the dead-zone; got %s" % large_motion)
+		return
+	var old_snap_blend := 1.0 - exp(-0.1 * 4.8)
+	var charge_blend: float = camera_logic.transition_blend(0.1, true)
+	if charge_blend >= old_snap_blend * 0.65:
+		fail("Charge pullback must be substantially slower than the old jarring camera transition; old=%s new=%s" % [old_snap_blend, charge_blend])
+		return
 
 	var clamped: Dictionary = camera_logic.frame(Vector3(30.0, 0.2, 20.0), Vector3(30.0, 0.75, 20.0), false, 0.0)
 	if clamped.target.x > 13.5 or clamped.target.z > 5.5:

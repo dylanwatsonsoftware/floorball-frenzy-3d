@@ -2,10 +2,13 @@ class_name ActionCamera
 extends RefCounted
 
 const NORMAL_OFFSET := Vector3(4.0, 18.5, 18.0)
-const CHARGE_OFFSET := Vector3(2.0, 27.0, 27.5)
+const CHARGE_OFFSET := Vector3(6.0, 27.75, 27.0)
 const NORMAL_FOV := 34.0
 const CHARGE_FOV := 46.0
 const RED_GOAL_FRAMING := Vector3(-5.5, 0.3, 0.0)
+const FOLLOW_DEAD_ZONE := 0.9
+const FOLLOW_RATE := 2.8
+const CHARGE_PULLBACK_RATE := 2.4
 
 
 static func frame(ball_position: Vector3, action_actor_position: Vector3, charging: bool, charge_ratio: float) -> Dictionary:
@@ -25,3 +28,16 @@ static func frame(ball_position: Vector3, action_actor_position: Vector3, chargi
 		"position": target + offset,
 		"fov": lerpf(NORMAL_FOV, CHARGE_FOV, pullback),
 	}
+
+
+static func follow_target(current_target: Vector3, desired_target: Vector3) -> Vector3:
+	var planar_delta := Vector2(desired_target.x - current_target.x, desired_target.z - current_target.z)
+	if planar_delta.length() <= FOLLOW_DEAD_ZONE:
+		return Vector3(current_target.x, desired_target.y, current_target.z)
+	var overflow := planar_delta.normalized() * (planar_delta.length() - FOLLOW_DEAD_ZONE)
+	return Vector3(current_target.x + overflow.x, desired_target.y, current_target.z + overflow.y)
+
+
+static func transition_blend(delta: float, pulling_back: bool) -> float:
+	var rate := CHARGE_PULLBACK_RATE if pulling_back else FOLLOW_RATE
+	return 1.0 - exp(-maxf(0.0, delta) * rate)

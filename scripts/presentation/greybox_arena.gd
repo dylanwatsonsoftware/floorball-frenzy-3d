@@ -15,6 +15,10 @@ var _shot_impact_tween: Tween
 var _camera_kick_tween: Tween
 var _field_players: Array[CharacterBody3D] = []
 var _follow_action_camera := true
+var _camera_follow_target := Vector3.ZERO
+var _camera_look_target := Vector3.ZERO
+var _camera_tracking_initialized := false
+var _camera_charge_pullback := 0.0
 
 
 func _ready() -> void:
@@ -32,13 +36,23 @@ func _process(delta: float) -> void:
 	var action_actor := _action_actor(ball)
 	var actor_position := ball.global_position if action_actor == null else action_actor.global_position
 	var charge_ratio := float(ball.call("get_shot_charge_ratio")) if ball.has_method("get_shot_charge_ratio") else 0.0
-	var frame: Dictionary = ActionCameraScript.frame(ball.global_position, actor_position, charge_ratio > 0.0, charge_ratio)
-	var blend := 1.0 - exp(-delta * 4.8)
+	var pulling_back := charge_ratio > _camera_charge_pullback
+	_camera_charge_pullback = lerpf(_camera_charge_pullback, charge_ratio, ActionCameraScript.transition_blend(delta, pulling_back))
+	var frame: Dictionary = ActionCameraScript.frame(ball.global_position, actor_position, _camera_charge_pullback > 0.001, _camera_charge_pullback)
+	if not _camera_tracking_initialized:
+		_camera_follow_target = frame.target
+		_camera_look_target = frame.target
+		_camera_tracking_initialized = true
+	var dead_zone_target: Vector3 = ActionCameraScript.follow_target(_camera_follow_target, frame.target)
+	var blend: float = ActionCameraScript.transition_blend(delta, false)
+	_camera_follow_target = _camera_follow_target.lerp(dead_zone_target, blend)
+	var offset: Vector3 = frame.position - frame.target
+	frame.target = _camera_follow_target
+	frame.position = _camera_follow_target + offset
 	_camera.global_position = _camera.global_position.lerp(frame.position, blend)
 	_camera.fov = lerpf(_camera.fov, float(frame.fov), blend)
-	var current_forward_target := _camera.global_position + -_camera.global_basis.z * 20.0
-	var smooth_target := current_forward_target.lerp(frame.target, blend)
-	_camera.look_at(smooth_target, Vector3.UP)
+	_camera_look_target = _camera_look_target.lerp(frame.target, blend)
+	_camera.look_at(_camera_look_target, Vector3.UP)
 
 
 func _action_actor(ball: MeshInstance3D) -> CharacterBody3D:
@@ -529,6 +543,10 @@ func _apply_camera_preset(index: int) -> void:
 	_camera.position = preset.position
 	_camera.fov = preset.fov
 	_camera.look_at(preset.target, Vector3.UP)
+	_camera_follow_target = preset.target
+	_camera_look_target = preset.target
+	_camera_tracking_initialized = true
+	_camera_charge_pullback = 0.0
 	if _camera_label != null:
 		_camera_label.text = "CAMERA %d · %s\nCONTROL FOLLOWS RED POSSESSION · MOVE + HOLD SHOOT" % [index + 1, preset.name.to_upper()]
 
