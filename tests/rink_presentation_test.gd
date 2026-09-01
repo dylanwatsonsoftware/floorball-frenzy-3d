@@ -46,6 +46,24 @@ func run_test() -> void:
 		return
 
 	var red_players: Array = arena.call("get_team_players", &"red")
+	for actor in arena.call("get_field_players"):
+		var rig := actor.get_node_or_null("BodyRig") as Node3D
+		if rig == null:
+			fail("Every field player needs a lightweight animated humanoid rig")
+			return
+		for part_name in ["Torso", "Head", "LeftArm", "RightArm", "LeftLeg", "RightLeg"]:
+			if rig.get_node_or_null(part_name) == null:
+				fail("Humanoid rig is missing %s on %s" % [part_name, actor.name])
+				return
+		if not rig.has_method("apply_movement_pose"):
+			fail("Humanoid rigs must expose deterministic running animation")
+			return
+		var left_leg := rig.get_node("LeftLeg") as Node3D
+		var right_leg := rig.get_node("RightLeg") as Node3D
+		rig.call("apply_movement_pose", 7.0, 0.18, false)
+		if absf(left_leg.rotation.x) < 0.08 or left_leg.rotation.x * right_leg.rotation.x >= 0.0:
+			fail("Running must visibly swing the legs in opposing directions")
+			return
 	for actor in red_players:
 		if actor.get_node_or_null("PlayerMarker") == null:
 			fail("Every potentially controlled red player needs a floating downward arrow")

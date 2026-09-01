@@ -233,14 +233,7 @@ func _build_player() -> void:
 	shape.shape = capsule_shape
 	player.add_child(shape)
 
-	var body := MeshInstance3D.new()
-	body.name = "Body"
-	var capsule := CapsuleMesh.new()
-	capsule.radius = 0.52
-	capsule.height = 1.5
-	body.mesh = capsule
-	body.material_override = _material(Color("dd3155"), 0.42)
-	player.add_child(body)
+	_add_humanoid(player, Color("dd3155"), 0)
 	_add_stick(player, Color("202a38"))
 	_add_control_ring(player)
 	_add_aim_arrow(player)
@@ -266,13 +259,7 @@ func _build_opponent() -> void:
 	capsule_shape.height = 1.5
 	shape.shape = capsule_shape
 	opponent.add_child(shape)
-	var body := MeshInstance3D.new()
-	var capsule := CapsuleMesh.new()
-	capsule.radius = 0.52
-	capsule.height = 1.5
-	body.mesh = capsule
-	body.material_override = _material(Color("2b64e8"), 0.42)
-	opponent.add_child(body)
+	_add_humanoid(opponent, Color("2b64e8"), 0)
 	_add_stick(opponent, Color("202a38"))
 	_add_dash_streak(opponent, Color(0.18, 0.55, 1.0, 0.78))
 	_add_fuego_aura(opponent, Color("ffb52e"))
@@ -295,20 +282,87 @@ func _build_support_player(node_name: String, actor_id: StringName, team: String
 	capsule_shape.height = 1.5
 	shape.shape = capsule_shape
 	actor.add_child(shape)
-	var body := MeshInstance3D.new()
-	body.name = "Body"
-	var capsule := CapsuleMesh.new()
-	capsule.radius = 0.52
-	capsule.height = 1.5
-	body.mesh = capsule
-	body.material_override = _material(color, 0.42)
-	actor.add_child(body)
+	_add_humanoid(actor, color, slot)
 	_add_stick(actor, Color("202a38"))
 	_add_dash_streak(actor, Color(1.0, 0.32, 0.2, 0.76) if team == &"red" else Color(0.18, 0.55, 1.0, 0.78))
 	if team == &"red":
 		_add_control_ring(actor)
 		_add_aim_arrow(actor)
 		_add_player_marker(actor)
+
+
+func _add_humanoid(parent: Node3D, jersey_color: Color, slot: int) -> void:
+	var rig := Node3D.new()
+	rig.name = "BodyRig"
+	rig.set_script(load("res://scripts/presentation/humanoid_player_visual.gd"))
+	parent.add_child(rig)
+	var skin_colors := [Color("e5aa7a"), Color("8f5b3f"), Color("c9825b")]
+	var skin: Color = skin_colors[slot % skin_colors.size()]
+	_add_capsule_part(rig, "Torso", Vector3(0.0, 0.12, 0.0), 0.35, 0.72, jersey_color)
+	_add_sphere_part(rig, "Head", Vector3(0.0, 0.73, 0.0), 0.25, skin)
+	var hair := _add_sphere_part(rig, "Hair", Vector3(0.0, 0.88, -0.015), 0.255, Color("35251f"))
+	hair.scale = Vector3(1.0, 0.48, 1.0)
+	_add_sphere_part(rig, "Nose", Vector3(0.0, 0.73, 0.235), 0.055, skin)
+	_add_box_part(rig, "JerseyStripe", Vector3(0.0, 0.15, 0.337), Vector3(0.11, 0.48, 0.025), Color("f5f7fb"))
+	_add_box_part(rig, "Shorts", Vector3(0.0, -0.22, 0.0), Vector3(0.58, 0.24, 0.4), Color("17243a"))
+	_add_limb(rig, "LeftArm", Vector3(-0.34, 0.35, 0.02), 0.12, 0.58, jersey_color, skin, true)
+	_add_limb(rig, "RightArm", Vector3(0.34, 0.35, 0.02), 0.12, 0.58, jersey_color, skin, true)
+	_add_limb(rig, "LeftLeg", Vector3(-0.17, -0.27, 0.0), 0.14, 0.65, Color("e8edf4"), skin, false)
+	_add_limb(rig, "RightLeg", Vector3(0.17, -0.27, 0.0), 0.14, 0.65, Color("e8edf4"), skin, false)
+
+
+func _add_limb(parent: Node3D, limb_name: String, pivot_position: Vector3, radius: float, length: float, color: Color, end_color: Color, is_arm: bool) -> void:
+	var pivot := Node3D.new()
+	pivot.name = limb_name
+	pivot.position = pivot_position
+	parent.add_child(pivot)
+	_add_capsule_part(pivot, "Limb", Vector3(0.0, -length * 0.5, 0.0), radius, length, color)
+	if is_arm:
+		_add_sphere_part(pivot, "Hand", Vector3(0.0, -length - 0.03, 0.0), radius * 0.88, end_color)
+	else:
+		_add_box_part(pivot, "Shoe", Vector3(0.0, -length - 0.05, 0.09), Vector3(radius * 1.7, 0.15, 0.35), Color("111827"))
+
+
+func _add_capsule_part(parent: Node3D, part_name: String, part_position: Vector3, radius: float, height: float, color: Color) -> MeshInstance3D:
+	var part := MeshInstance3D.new()
+	part.name = part_name
+	var mesh := CapsuleMesh.new()
+	mesh.radius = radius
+	mesh.height = height
+	mesh.radial_segments = 10
+	mesh.rings = 4
+	part.mesh = mesh
+	part.position = part_position
+	part.material_override = _material(color, 0.68)
+	parent.add_child(part)
+	return part
+
+
+func _add_sphere_part(parent: Node3D, part_name: String, part_position: Vector3, radius: float, color: Color) -> MeshInstance3D:
+	var part := MeshInstance3D.new()
+	part.name = part_name
+	var mesh := SphereMesh.new()
+	mesh.radius = radius
+	mesh.height = radius * 2.0
+	mesh.radial_segments = 12
+	mesh.rings = 6
+	part.mesh = mesh
+	part.position = part_position
+	part.material_override = _material(color, 0.72)
+	parent.add_child(part)
+	return part
+
+
+func _add_box_part(parent: Node3D, part_name: String, part_position: Vector3, size: Vector3, color: Color) -> MeshInstance3D:
+	var part := MeshInstance3D.new()
+	part.name = part_name
+	var mesh := BoxMesh.new()
+	mesh.size = size
+	part.mesh = mesh
+	part.position = part_position
+	part.material_override = _material(color, 0.72)
+	parent.add_child(part)
+	return part
 
 
 func _add_player_marker(parent: Node3D) -> void:
