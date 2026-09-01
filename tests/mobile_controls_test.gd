@@ -36,6 +36,12 @@ func _init() -> void:
 	if action != &"dash":
 		fail("The upper-right mobile action must trigger dash")
 		return
+	if not is_equal_approx(controls.normalize_cooldown_ratio(1.4), 1.0):
+		fail("Dash cooldown feedback must clamp above one")
+		return
+	if not is_equal_approx(controls.normalize_cooldown_ratio(-0.2), 0.0):
+		fail("Dash cooldown feedback must clamp below zero")
+		return
 
 	var viewport_size := Vector2(844.0, 390.0)
 	if not controls.can_start_floating_stick(Vector2(200.0, 180.0), viewport_size):

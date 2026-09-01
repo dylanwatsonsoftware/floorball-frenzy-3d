@@ -125,6 +125,7 @@ func _build_player() -> void:
 	body.material_override = _material(Color("dd3155"), 0.42)
 	player.add_child(body)
 	_add_stick(player, Color("202a38"))
+	_add_dash_streak(player)
 
 
 func _build_opponent() -> void:
@@ -174,6 +175,28 @@ func _add_stick(parent: Node3D, color: Color) -> void:
 	blade.rotation_degrees.y = -12.0
 	blade.material_override = _material(color, 0.58)
 	rig.add_child(blade)
+
+
+func _add_dash_streak(parent: Node3D) -> void:
+	var streak := Node3D.new()
+	streak.name = "DashStreak"
+	streak.position = Vector3(0.0, -0.48, -1.0)
+	streak.visible = false
+	parent.add_child(streak)
+	_add_dash_strip(streak, "CenterTrail", Vector3(0.0, 0.0, -0.25), Vector3(0.18, 0.045, 1.9), Color(1.0, 0.22, 0.34, 0.72))
+	_add_dash_strip(streak, "LeftTrail", Vector3(-0.34, 0.0, 0.0), Vector3(0.09, 0.035, 1.3), Color(1.0, 0.55, 0.24, 0.52))
+	_add_dash_strip(streak, "RightTrail", Vector3(0.34, 0.0, 0.0), Vector3(0.09, 0.035, 1.3), Color(1.0, 0.55, 0.24, 0.52))
+
+
+func _add_dash_strip(parent: Node3D, node_name: String, local_position: Vector3, size: Vector3, color: Color) -> void:
+	var strip := MeshInstance3D.new()
+	strip.name = node_name
+	var mesh := BoxMesh.new()
+	mesh.size = size
+	strip.mesh = mesh
+	strip.position = local_position
+	strip.material_override = _material(color, 0.25, Color(color.r, color.g, color.b))
+	parent.add_child(strip)
 
 
 func _build_ball() -> void:

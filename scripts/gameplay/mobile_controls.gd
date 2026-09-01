@@ -13,6 +13,7 @@ var _movement_vector := Vector2.ZERO
 var _stick_knob_offset := Vector2.ZERO
 var _stick_origin := Vector2.ZERO
 var _movement_origin := Vector2.ZERO
+var _dash_cooldown_ratio := 0.0
 
 
 func _ready() -> void:
@@ -23,6 +24,15 @@ func _ready() -> void:
 
 func get_movement_vector() -> Vector2:
 	return _movement_vector
+
+
+func set_dash_cooldown_ratio(value: float) -> void:
+	_dash_cooldown_ratio = normalize_cooldown_ratio(value)
+	queue_redraw()
+
+
+static func normalize_cooldown_ratio(value: float) -> float:
+	return clampf(value, 0.0, 1.0)
 
 
 static func calculate_stick_vector(offset: Vector2, radius: float, deadzone: float) -> Vector2:
@@ -155,9 +165,12 @@ func _draw() -> void:
 	var label_size := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
 	draw_string(font, shoot_center - label_size * 0.5 + Vector2(0.0, label_size.y), label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color.WHITE)
 	var dash_center := _dash_center()
-	var dash_color := Color(0.22, 0.72, 1.0, 0.92) if _dash_touch != -1 else Color(0.12, 0.48, 0.86, 0.78)
+	var dash_ready := _dash_cooldown_ratio <= 0.001
+	var dash_color := Color(0.22, 0.72, 1.0, 0.92) if _dash_touch != -1 and dash_ready else Color(0.12, 0.48, 0.86, 0.78) if dash_ready else Color(0.14, 0.2, 0.3, 0.72)
 	draw_circle(dash_center, DASH_RADIUS, dash_color)
 	draw_arc(dash_center, DASH_RADIUS, 0.0, TAU, 48, Color.WHITE, 3.0)
+	if not dash_ready:
+		draw_arc(dash_center, DASH_RADIUS - 6.0, -PI * 0.5, -PI * 0.5 + TAU * _dash_cooldown_ratio, 40, Color(0.35, 0.82, 1.0, 0.95), 6.0)
 	var dash_label := "DASH"
 	var dash_size := font.get_string_size(dash_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 17)
 	draw_string(font, dash_center - dash_size * 0.5 + Vector2(0.0, dash_size.y), dash_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 17, Color.WHITE)
