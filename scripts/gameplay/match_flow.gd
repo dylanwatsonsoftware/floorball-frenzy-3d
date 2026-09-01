@@ -59,6 +59,8 @@ func _reset_faceoff() -> void:
 	_player.position = PLAYER_FACEOFF_POSITION
 	_player.velocity = Vector3.ZERO
 	_opponent.position = OPPONENT_FACEOFF_POSITION
+	if _opponent is CharacterBody3D:
+		(_opponent as CharacterBody3D).velocity = Vector3.ZERO
 	_ball.call("reset_for_faceoff")
 	_message_label.text = ""
 

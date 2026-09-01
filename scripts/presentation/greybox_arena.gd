@@ -46,8 +46,8 @@ func _build_world() -> void:
 	_build_goal("LeftGoal", -16.0, Color("dd3155"))
 	_build_goal("RightGoal", 16.0, Color("2b64e8"))
 	_build_player()
-	_build_opponent()
 	_build_ball()
+	_build_opponent()
 	_build_lighting()
 	_build_camera()
 
@@ -126,10 +126,17 @@ func _build_player() -> void:
 
 
 func _build_opponent() -> void:
-	var opponent := Node3D.new()
+	var opponent := CharacterBody3D.new()
 	opponent.name = "Opponent"
 	opponent.position = Vector3(5.0, 0.75, 0.0)
+	opponent.set_script(load("res://scripts/gameplay/opponent_controller.gd"))
 	add_child(opponent)
+	var shape := CollisionShape3D.new()
+	var capsule_shape := CapsuleShape3D.new()
+	capsule_shape.radius = 0.52
+	capsule_shape.height = 1.5
+	shape.shape = capsule_shape
+	opponent.add_child(shape)
 	var body := MeshInstance3D.new()
 	var capsule := CapsuleMesh.new()
 	capsule.radius = 0.52
