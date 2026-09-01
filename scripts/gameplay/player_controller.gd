@@ -129,6 +129,14 @@ func is_en_fuego() -> bool:
 	return _fuego_remaining > 0.0
 
 
+func activate_en_fuego() -> void:
+	var result := HeatSystemScript.activate()
+	_heat = result.heat
+	_fuego_remaining = result.fuego_remaining
+	_dash_cooldown = 0.0
+	_update_heat_presentation()
+
+
 func reset_heat() -> void:
 	_heat = 0.0
 	_fuego_remaining = 0.0

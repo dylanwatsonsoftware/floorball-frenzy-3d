@@ -298,6 +298,7 @@ func run_test() -> void:
 		return
 	player.call("add_heat", 100.0)
 	await physics_frame
+	player.call("reset_heat")
 	if not player.call("try_dash", Vector2.LEFT) or not player.call("has_parry_window"):
 		fail("Red's dash must arm its 150 ms parry window")
 		return
@@ -307,10 +308,14 @@ func run_test() -> void:
 	if ball.ball_velocity.x < 20.0 or charge_label.text != "PARRY!":
 		fail("Red must reflect a fast incoming body shot at 1.5x speed; velocity=%s label=%s" % [ball.ball_velocity, charge_label.text])
 		return
+	if not player.call("is_en_fuego") or player.call("get_heat_ratio") < 0.99:
+		fail("A red perfect parry must instantly award the original full-Heat En Fuego payoff")
+		return
 
 	ball.reset_for_faceoff()
 	opponent.call("add_heat", 100.0)
 	await physics_frame
+	opponent.call("reset_heat")
 	if not opponent.call("try_dash", Vector2.RIGHT) or not opponent.call("has_parry_window"):
 		fail("Blue's dash must arm the same 150 ms parry window")
 		return
@@ -319,6 +324,9 @@ func run_test() -> void:
 	await physics_frame
 	if ball.ball_velocity.x > -20.0 or charge_label.text != "BLUE PARRY!":
 		fail("Blue must reflect a fast incoming body shot at 1.5x speed; velocity=%s label=%s" % [ball.ball_velocity, charge_label.text])
+		return
+	if not opponent.call("is_en_fuego") or opponent.call("get_heat_ratio") < 0.99:
+		fail("A blue perfect parry must receive the same full-Heat En Fuego payoff")
 		return
 	ball.set_physics_process(false)
 	opponent.call("_physics_process", 0.2)

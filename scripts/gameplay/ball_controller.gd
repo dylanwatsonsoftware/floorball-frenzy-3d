@@ -296,6 +296,8 @@ func _apply_parry(body_controller: int) -> bool:
 	ball_velocity = ParryScript.reflected_velocity(ball_velocity)
 	_dash_steal_consumed[body_controller] = true
 	record_touch(team)
+	if actor.has_method("activate_en_fuego"):
+		actor.call("activate_en_fuego")
 	_steal_feedback_remaining = STEAL_FEEDBACK_SECONDS
 	_charge_label.text = "PARRY!" if team == &"red" else "BLUE PARRY!"
 	_charge_label.add_theme_color_override("font_color", PARRY_TRAIL_EMISSION)

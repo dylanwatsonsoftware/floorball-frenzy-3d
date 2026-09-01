@@ -15,6 +15,10 @@ static func add_heat(heat: float, fuego_remaining: float, amount: float) -> Dict
 	return _result(next_heat, EN_FUEGO_SECONDS if activated else 0.0, activated)
 
 
+static func activate() -> Dictionary:
+	return _result(MAX_HEAT, EN_FUEGO_SECONDS, true)
+
+
 static func step(heat: float, fuego_remaining: float, delta: float) -> Dictionary:
 	if fuego_remaining > 0.0:
 		var next_fuego := maxf(0.0, fuego_remaining - delta)
