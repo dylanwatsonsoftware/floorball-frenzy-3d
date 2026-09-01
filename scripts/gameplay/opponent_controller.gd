@@ -8,16 +8,12 @@ const PlayerContactScript = preload("res://scripts/simulation/player_contact.gd"
 const SquadLogicScript = preload("res://scripts/simulation/squad_logic.gd")
 const RINK_HALF_LENGTH := 19.1
 const RINK_HALF_WIDTH := 9.1
-const SHOT_CHARGE_SECONDS := 0.55
-const SHOT_COOLDOWN_SECONDS := 0.8
 const DASH_STREAK_SECONDS := 0.18
 const PARRY_WINDOW_SECONDS := 0.15
 const OPENING_GRACE_SECONDS := 2.0
 const ACTIVE_PLAYER_GRACE_SECONDS := 0.5
 
 var _facing_direction := Vector3.LEFT
-var _shot_charge := 0.0
-var _shot_cooldown := 0.0
 var _ball: MeshInstance3D
 var _player: CharacterBody3D
 var _dash_cooldown := 0.0
@@ -50,14 +46,13 @@ func _physics_process(delta: float) -> void:
 			_dash_streak.visible = false
 		return
 
-	_shot_cooldown = maxf(0.0, _shot_cooldown - delta)
 	_dash_cooldown = maxf(0.0, _dash_cooldown - delta)
 	_opening_grace_remaining = maxf(0.0, _opening_grace_remaining - delta)
 	if _player.velocity.length_squared() > 0.04:
 		_opening_grace_remaining = minf(_opening_grace_remaining, ACTIVE_PLAYER_GRACE_SECONDS)
 	_dash_streak_remaining = maxf(0.0, _dash_streak_remaining - delta)
 	_update_dash_streak()
-	var has_possession := _ball.has_method("is_controlled_by") and bool(_ball.call("is_controlled_by", &"blue"))
+	var has_possession := _ball.has_method("is_controlled_by_actor") and bool(_ball.call("is_controlled_by_actor", get_actor_id()))
 	var decision := SimpleAIScript.decide(
 		global_position,
 		_ball.global_position,
@@ -97,18 +92,6 @@ func _physics_process(delta: float) -> void:
 		_facing_direction = Vector3(facing_planar.x, 0.0, facing_planar.y).normalized()
 		rotation.y = lerp_angle(rotation.y, atan2(_facing_direction.x, _facing_direction.z), minf(1.0, delta * 10.0))
 
-	_update_shot(decision, delta)
-
-
-func _update_shot(decision: Dictionary, delta: float) -> void:
-	if decision.wants_shot and _shot_cooldown <= 0.0:
-		_shot_charge += delta
-		if _shot_charge >= SHOT_CHARGE_SECONDS:
-			_ball.call("launch", decision.shot_direction, 0.72, Vector3.ZERO, false, &"blue")
-			_shot_charge = 0.0
-			_shot_cooldown = SHOT_COOLDOWN_SECONDS
-	else:
-		_shot_charge = 0.0
 
 
 func _resolve_player_contact() -> void:
@@ -150,8 +133,6 @@ func is_ai_controlled() -> bool:
 
 func reset_for_faceoff() -> void:
 	_opening_grace_remaining = OPENING_GRACE_SECONDS
-	_shot_charge = 0.0
-	_shot_cooldown = 0.0
 	_dash_streak_remaining = 0.0
 	_parry_window_remaining = 0.0
 	if _dash_streak != null:

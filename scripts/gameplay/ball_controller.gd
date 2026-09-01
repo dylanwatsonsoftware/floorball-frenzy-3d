@@ -28,6 +28,9 @@ const SCOOP_FEEDBACK_SECONDS := 0.8
 const STEAL_FEEDBACK_SECONDS := 0.38
 const STEAL_COLOR := Color("7dff6a")
 const BLUE_STEAL_COLOR := Color("58a8ff")
+const AI_GOAL := Vector2(-16.5, 0.0)
+const AI_SHOOT_DISTANCE := 16.0
+const AI_SHOT_CHARGE_SECONDS := 0.55
 
 var ball_velocity := Vector3.ZERO
 var _charge_seconds := 0.0
@@ -49,6 +52,8 @@ var _dash_steal_consumed := {0: false, 1: false}
 var _steal_feedback_remaining := 0.0
 var _control_owner := -1
 var _ai_possession_seconds := 0.0
+var _ai_shot_seconds := 0.0
+var _ai_shot_actor: CharacterBody3D
 var _pass_index := 0
 var _ai_pass_cooldown := 0.0
 var _aim_arrow_actor: CharacterBody3D
@@ -105,6 +110,7 @@ func launch(planar_direction: Vector2, charge: float, inherited_velocity: Vector
 		_cancel_active_charge(true)
 	_control_owner = -1
 	_ai_possession_seconds = 0.0
+	_reset_ai_shot()
 	var plan: Dictionary = BallSimulationScript.shot_plan(planar_direction, charge, inherited_velocity, one_touch, bolt)
 	ball_velocity = plan.velocity
 	_scoop_remaining = SCOOP_FEEDBACK_SECONDS if plan.is_scoop else 0.0
@@ -130,6 +136,7 @@ func reset_for_faceoff() -> void:
 	_scoop_remaining = 0.0
 	_control_owner = -1
 	_ai_possession_seconds = 0.0
+	_reset_ai_shot()
 	_ai_pass_cooldown = 0.0
 	_charge_cancelled_until_release = false
 	_clear_charge_feedback()
@@ -422,8 +429,13 @@ func _update_ai_pass(delta: float) -> void:
 	var carrier := _actor_for_controller(_control_owner)
 	if carrier == null or carrier.call("get_team") != &"blue":
 		_ai_possession_seconds = 0.0
+		_reset_ai_shot()
 		return
 	_ai_possession_seconds += delta
+	if _ai_carrier_should_shoot(carrier):
+		_update_ai_shot(carrier, delta)
+		return
+	_reset_ai_shot()
 	if _ai_possession_seconds < 0.75 or _ai_pass_cooldown > 0.0:
 		return
 	var teammates: Array = []
@@ -444,6 +456,38 @@ func _update_ai_pass(delta: float) -> void:
 	_ai_pass_cooldown = 0.8
 	_pass_index += 1
 	record_touch(&"blue")
+
+
+func _ai_carrier_should_shoot(carrier: CharacterBody3D) -> bool:
+	var carrier_position := Vector2(carrier.global_position.x, carrier.global_position.z)
+	return carrier_position.distance_to(AI_GOAL) <= AI_SHOOT_DISTANCE and global_position.y <= 0.7 and Vector2(ball_velocity.x, ball_velocity.z).length() <= 8.0
+
+
+func _update_ai_shot(carrier: CharacterBody3D, delta: float) -> void:
+	if _ai_shot_actor != carrier:
+		_reset_ai_shot()
+		_ai_shot_actor = carrier
+	_ai_shot_seconds += delta
+	var charge_ratio := clampf(_ai_shot_seconds / AI_SHOT_CHARGE_SECONDS, 0.0, 1.0)
+	carrier.call("set_shot_aim_locked", true)
+	carrier.call("set_stick_slap_angle", lerpf(-2.0, StickSlapScript.BACKSWING_ANGLE, charge_ratio * charge_ratio))
+	if _ai_shot_seconds < AI_SHOT_CHARGE_SECONDS:
+		return
+	var direction := (AI_GOAL - Vector2(global_position.x, global_position.z)).normalized()
+	carrier.call("set_stick_slap_angle", 0.0)
+	carrier.call("set_shot_aim_locked", false)
+	_ai_shot_actor = null
+	_ai_shot_seconds = 0.0
+	launch(direction, 0.72, carrier.velocity, false, &"blue")
+	_ai_pass_cooldown = 0.8
+
+
+func _reset_ai_shot() -> void:
+	if _ai_shot_actor != null:
+		_ai_shot_actor.call("set_stick_slap_angle", 0.0)
+		_ai_shot_actor.call("set_shot_aim_locked", false)
+	_ai_shot_actor = null
+	_ai_shot_seconds = 0.0
 
 
 func _record_body_touch(controller: int) -> void:
