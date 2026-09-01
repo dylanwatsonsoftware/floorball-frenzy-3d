@@ -163,6 +163,7 @@ func _build_ball() -> void:
 	ball.mesh = sphere
 	ball.position = Vector3(0.0, 0.22, 0.0)
 	ball.material_override = _material(Color("ff8a1f"), 0.38, Color("ff5a00"))
+	ball.set_script(load("res://scripts/gameplay/ball_controller.gd"))
 	add_child(ball)
 
 
@@ -191,7 +192,7 @@ func _apply_camera_preset(index: int) -> void:
 	_camera.fov = preset.fov
 	_camera.look_at(preset.target, Vector3.UP)
 	if _camera_label != null:
-		_camera_label.text = "CAMERA %d · %s\nWASD / ARROWS TO MOVE · 1–3 CAMERAS" % [index + 1, preset.name.to_upper()]
+		_camera_label.text = "CAMERA %d · %s\nWASD / ARROWS TO MOVE · HOLD SPACE TO SHOOT · 1–3 CAMERAS" % [index + 1, preset.name.to_upper()]
 
 
 func _add_box(node_name: String, size: Vector3, position: Vector3, color: Color, shadow: bool = true) -> MeshInstance3D:

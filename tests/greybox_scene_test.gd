@@ -34,6 +34,21 @@ func run_test() -> void:
 		fail("Broadcast camera must be active by default")
 		return
 
+	var ball := scene.get_node("Arena/Ball")
+	if not ball.has_method("launch"):
+		fail("Ball must expose deterministic launch behavior")
+		return
+	if scene.get_node_or_null("HUD/ChargeLabel") == null:
+		fail("HUD must expose shot charging feedback")
+		return
+	var ball_start: Vector3 = ball.position
+	ball.launch(Vector2.RIGHT, 1.0)
+	await physics_frame
+	await physics_frame
+	if ball.position.x <= ball_start.x or ball.position.y <= ball_start.y:
+		fail("Launched ball must move forward and lift into 3D space; start=%s end=%s" % [ball_start, ball.position])
+		return
+
 	print("Greybox scene contract is valid.")
 	scene.queue_free()
 	quit(0)

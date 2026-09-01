@@ -8,6 +8,7 @@ grep -Fq 'html/canvas_resize_policy=2' export_presets.cfg
 grep -Fq 'progressive_web_app/enabled=true' export_presets.cfg
 grep -Fq 'variant/extensions_support=false' export_presets.cfg
 grep -Fq 'variant/thread_support=false' export_presets.cfg
+grep -Fq 'exclude_filter="build/*, addons/*, tests/*, docs/*, .github/*, vercel.json"' export_presets.cfg
 test -x scripts/export-web
 grep -Fq 'mkdir -p build/web' scripts/export-web
 
