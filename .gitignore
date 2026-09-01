@@ -1,0 +1,10 @@
+.godot/
+.ai-game-dev/
+.claude/
+.codex/
+build/
+addons/godot_mcp/
+*.csproj
+*.csproj.old
+scripts/godot-mono-arm64
+tests/godot_mono_arm64_launcher_test.sh

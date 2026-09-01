@@ -1,0 +1,7 @@
+#!/bin/sh
+set -eu
+
+godot_binary="${GODOT_BIN:-godot}"
+
+mkdir -p build/web
+exec "$godot_binary" --headless --path . --export-release Web build/web/index.html
