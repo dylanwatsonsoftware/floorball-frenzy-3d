@@ -19,7 +19,7 @@ grep -Fq 'actions/cache@v4' .github/workflows/deploy-vercel.yml
 grep -Fq './scripts/export-web' .github/workflows/deploy-vercel.yml
 grep -Fq './scripts/package-vercel-output' .github/workflows/deploy-vercel.yml
 grep -Fq 'actions/upload-artifact@v4' .github/workflows/deploy-vercel.yml
-grep -Fq "secrets.VERCEL_TOKEN != ''" .github/workflows/deploy-vercel.yml
+grep -Fq "env.VERCEL_TOKEN != ''" .github/workflows/deploy-vercel.yml
 grep -Fq 'deploy --prebuilt --prod' .github/workflows/deploy-vercel.yml
 grep -Fq 'VERCEL_TOKEN' .github/workflows/deploy-vercel.yml
 
