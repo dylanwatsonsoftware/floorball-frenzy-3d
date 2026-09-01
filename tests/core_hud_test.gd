@@ -13,6 +13,10 @@ func run_test() -> void:
 		if (scene.get_node(path) as Control).visible:
 			fail("Special-mechanic HUD must stay hidden while the core floorball loop is being tuned: %s" % path)
 			return
+	var camera_label := scene.get_node("HUD/CameraLabel") as Label
+	if "CONTROL FOLLOWS RED POSSESSION" not in camera_label.text:
+		fail("The 3v3 HUD must explain that human control follows the red ball carrier")
+		return
 	print("Core-only match HUD is valid.")
 	scene.queue_free()
 	quit(0)

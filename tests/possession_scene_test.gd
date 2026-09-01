@@ -23,6 +23,10 @@ func run_test() -> void:
 	if opponent.position.distance_to(opponent_start) > 0.05:
 		fail("The AI must hold a neutral opening instead of beating the human to every faceoff")
 		return
+	# Isolate red stick behavior from the five autonomous squad actors.
+	for actor in scene.get_node("Arena").call("get_field_players"):
+		if actor != player:
+			actor.set_physics_process(false)
 	player.position = Vector3(-5.0, 0.75, 0.0)
 	player.velocity = Vector3.ZERO
 	ball.position = player.position + Vector3(0.9, -0.53, 0.75)

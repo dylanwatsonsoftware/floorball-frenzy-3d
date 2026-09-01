@@ -19,10 +19,12 @@ var _score_label: Label
 var _message_label: Label
 var _goal_flash: ColorRect
 var _goal_flash_tween: Tween
+var _arena: Node3D
 
 
 func _ready() -> void:
 	_ball = get_node("../Arena/Ball") as Node3D
+	_arena = get_node("../Arena") as Node3D
 	_player = get_node("../Arena/Player") as CharacterBody3D
 	_opponent = get_node("../Arena/Opponent") as Node3D
 	_score_label = get_node("../HUD/ScoreLabel") as Label
@@ -69,13 +71,16 @@ func _reset_faceoff() -> void:
 			_opponent.call("reset_heat")
 		_update_score_label()
 
-	_player.position = PLAYER_FACEOFF_POSITION
-	_player.velocity = Vector3.ZERO
-	_opponent.position = OPPONENT_FACEOFF_POSITION
-	if _opponent is CharacterBody3D:
-		(_opponent as CharacterBody3D).velocity = Vector3.ZERO
-	if _opponent.has_method("reset_for_faceoff"):
-		_opponent.call("reset_for_faceoff")
+	if _arena.has_method("reset_squads_for_faceoff"):
+		_arena.call("reset_squads_for_faceoff")
+	else:
+		_player.position = PLAYER_FACEOFF_POSITION
+		_player.velocity = Vector3.ZERO
+		_opponent.position = OPPONENT_FACEOFF_POSITION
+		if _opponent is CharacterBody3D:
+			(_opponent as CharacterBody3D).velocity = Vector3.ZERO
+		if _opponent.has_method("reset_for_faceoff"):
+			_opponent.call("reset_for_faceoff")
 	_ball.call("reset_for_faceoff")
 	_message_label.text = ""
 

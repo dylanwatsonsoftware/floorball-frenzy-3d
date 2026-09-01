@@ -30,6 +30,13 @@ static func shot_velocity(aim: Vector2, charge: float, inherited_velocity: Vecto
 	return shot_plan(aim, charge, inherited_velocity, one_touch, bolt).velocity
 
 
+static func pass_velocity(aim: Vector2, inherited_velocity: Vector3 = Vector3.ZERO) -> Vector3:
+	var direction := aim.normalized() if not aim.is_zero_approx() else Vector2.RIGHT
+	var planar := direction * 8.5 + Vector2(inherited_velocity.x, inherited_velocity.z) * 0.2
+	planar = planar.limit_length(9.8)
+	return Vector3(planar.x, 0.18, planar.y)
+
+
 static func shot_plan(aim: Vector2, charge: float, inherited_velocity: Vector3 = Vector3.ZERO, one_touch: bool = false, bolt: bool = false) -> Dictionary:
 	var direction := aim.normalized() if not aim.is_zero_approx() else Vector2.RIGHT
 	var clamped_charge := clampf(charge, 0.0, 1.0)

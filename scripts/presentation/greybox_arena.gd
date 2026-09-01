@@ -12,6 +12,7 @@ var _camera_label: Label
 var _shot_impact: MeshInstance3D
 var _shot_impact_tween: Tween
 var _camera_kick_tween: Tween
+var _field_players: Array[CharacterBody3D] = []
 
 
 func _ready() -> void:
@@ -53,6 +54,10 @@ func _build_world() -> void:
 	_build_ball()
 	_build_shot_impact()
 	_build_opponent()
+	_build_support_player("RedTeammate2", &"red_2", &"red", 1, Vector3(-7.0, 0.75, -4.0), Color("e34b62"))
+	_build_support_player("RedTeammate3", &"red_3", &"red", 2, Vector3(-7.0, 0.75, 4.0), Color("c92749"))
+	_build_support_player("BlueTeammate2", &"blue_2", &"blue", 1, Vector3(7.0, 0.75, -4.0), Color("3d75ed"))
+	_build_support_player("BlueTeammate3", &"blue_3", &"blue", 2, Vector3(7.0, 0.75, 4.0), Color("1f55c8"))
 	_build_lighting()
 	_build_camera()
 
@@ -132,7 +137,12 @@ func _build_player() -> void:
 	player.name = "Player"
 	player.position = Vector3(-5.0, 0.75, 0.0)
 	player.set_script(load("res://scripts/gameplay/player_controller.gd"))
+	player.set_meta("actor_id", &"red_1")
+	player.set_meta("team", &"red")
+	player.set_meta("squad_slot", 0)
+	player.set_meta("faceoff_position", player.position)
 	add_child(player)
+	_field_players.append(player)
 
 	var shape := CollisionShape3D.new()
 	var capsule_shape := CapsuleShape3D.new()
@@ -150,6 +160,7 @@ func _build_player() -> void:
 	body.material_override = _material(Color("dd3155"), 0.42)
 	player.add_child(body)
 	_add_stick(player, Color("202a38"))
+	_add_control_ring(player)
 	_add_dash_streak(player, Color(1.0, 0.32, 0.2, 0.76))
 	_add_fuego_aura(player, Color("ff7a24"))
 
@@ -159,7 +170,12 @@ func _build_opponent() -> void:
 	opponent.name = "Opponent"
 	opponent.position = Vector3(5.0, 0.75, 0.0)
 	opponent.set_script(load("res://scripts/gameplay/opponent_controller.gd"))
+	opponent.set_meta("actor_id", &"blue_1")
+	opponent.set_meta("team", &"blue")
+	opponent.set_meta("squad_slot", 0)
+	opponent.set_meta("faceoff_position", opponent.position)
 	add_child(opponent)
+	_field_players.append(opponent)
 	var shape := CollisionShape3D.new()
 	var capsule_shape := CapsuleShape3D.new()
 	capsule_shape.radius = 0.52
@@ -176,6 +192,68 @@ func _build_opponent() -> void:
 	_add_stick(opponent, Color("202a38"))
 	_add_dash_streak(opponent, Color(0.18, 0.55, 1.0, 0.78))
 	_add_fuego_aura(opponent, Color("ffb52e"))
+
+
+func _build_support_player(node_name: String, actor_id: StringName, team: StringName, slot: int, start_position: Vector3, color: Color) -> void:
+	var actor := CharacterBody3D.new()
+	actor.name = node_name
+	actor.position = start_position
+	actor.set_meta("actor_id", actor_id)
+	actor.set_meta("team", team)
+	actor.set_meta("squad_slot", slot)
+	actor.set_meta("faceoff_position", start_position)
+	actor.set_script(load("res://scripts/gameplay/squad_ai_controller.gd"))
+	add_child(actor)
+	_field_players.append(actor)
+	var shape := CollisionShape3D.new()
+	var capsule_shape := CapsuleShape3D.new()
+	capsule_shape.radius = 0.52
+	capsule_shape.height = 1.5
+	shape.shape = capsule_shape
+	actor.add_child(shape)
+	var body := MeshInstance3D.new()
+	body.name = "Body"
+	var capsule := CapsuleMesh.new()
+	capsule.radius = 0.52
+	capsule.height = 1.5
+	body.mesh = capsule
+	body.material_override = _material(color, 0.42)
+	actor.add_child(body)
+	_add_stick(actor, Color("202a38"))
+	if team == &"red":
+		_add_control_ring(actor)
+
+
+func _add_control_ring(parent: Node3D) -> void:
+	var indicator := MeshInstance3D.new()
+	indicator.name = "ControlRing"
+	var ring := TorusMesh.new()
+	ring.inner_radius = 0.66
+	ring.outer_radius = 0.78
+	ring.rings = 24
+	ring.ring_segments = 8
+	indicator.mesh = ring
+	indicator.position.y = -0.7
+	indicator.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	indicator.material_override = _material(Color(1.0, 0.88, 0.28, 0.88), 0.18, Color("ffd84a"))
+	indicator.visible = false
+	parent.add_child(indicator)
+
+
+func get_field_players() -> Array[CharacterBody3D]:
+	return _field_players.duplicate()
+
+
+func get_team_players(team: StringName) -> Array:
+	return _field_players.filter(func(actor: CharacterBody3D) -> bool: return actor.call("get_team") == team)
+
+
+func reset_squads_for_faceoff() -> void:
+	for actor in _field_players:
+		actor.position = actor.get_meta("faceoff_position", actor.position)
+		actor.velocity = Vector3.ZERO
+		if actor.has_method("reset_for_faceoff"):
+			actor.call("reset_for_faceoff")
 
 
 func _add_stick(parent: Node3D, color: Color) -> void:
@@ -349,7 +427,7 @@ func _apply_camera_preset(index: int) -> void:
 	_camera.fov = preset.fov
 	_camera.look_at(preset.target, Vector3.UP)
 	if _camera_label != null:
-		_camera_label.text = "CAMERA %d · %s\nMOVE + HOLD SHOOT · KEYBOARD: WASD / SPACE · 1–3 CAMERAS" % [index + 1, preset.name.to_upper()]
+		_camera_label.text = "CAMERA %d · %s\nCONTROL FOLLOWS RED POSSESSION · MOVE + HOLD SHOOT" % [index + 1, preset.name.to_upper()]
 
 
 func _add_box(node_name: String, size: Vector3, position: Vector3, color: Color, shadow: bool = true) -> MeshInstance3D:

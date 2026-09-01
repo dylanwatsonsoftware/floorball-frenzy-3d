@@ -114,6 +114,22 @@ func get_facing_direction() -> Vector3:
 	return _facing_direction
 
 
+func get_actor_id() -> StringName:
+	return StringName(get_meta("actor_id", &"blue_1"))
+
+
+func get_team() -> StringName:
+	return StringName(get_meta("team", &"blue"))
+
+
+func get_squad_slot() -> int:
+	return int(get_meta("squad_slot", 0))
+
+
+func is_human_controlled() -> bool:
+	return false
+
+
 func is_ai_controlled() -> bool:
 	return true
 
