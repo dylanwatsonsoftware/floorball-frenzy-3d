@@ -4,6 +4,8 @@ extends RefCounted
 const MAX_SPEED := 9.0
 const ACCELERATION := 32.0
 const DECELERATION := 24.0
+const DASH_SPEED := 15.0
+const DASH_COOLDOWN := 1.1
 
 
 static func combine_inputs(primary: Vector2, secondary: Vector2) -> Vector2:
@@ -16,3 +18,12 @@ static func step_velocity(current: Vector3, input_vector: Vector2, delta: float)
 	var target := Vector3(input_direction.x, 0.0, input_direction.y) * MAX_SPEED
 	var rate := ACCELERATION if not input_direction.is_zero_approx() else DECELERATION
 	return planar.move_toward(target, rate * delta).limit_length(MAX_SPEED)
+
+
+static func start_dash(input_vector: Vector2, cooldown_remaining: float, facing: Vector3 = Vector3.RIGHT) -> Dictionary:
+	if cooldown_remaining > 0.0:
+		return {"started": false, "velocity": Vector3.ZERO, "cooldown": cooldown_remaining}
+	var direction := Vector3(input_vector.x, 0.0, input_vector.y).normalized()
+	if direction.is_zero_approx():
+		direction = Vector3(facing.x, 0.0, facing.z).normalized()
+	return {"started": true, "velocity": direction * DASH_SPEED, "cooldown": DASH_COOLDOWN}

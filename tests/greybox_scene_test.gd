@@ -72,6 +72,9 @@ func run_test() -> void:
 	if scene.get_node_or_null("HUD/MobileControls/ShootButton") == null:
 		fail("Mobile controls must show a shoot button")
 		return
+	if scene.get_node_or_null("HUD/MobileControls/DashButton") == null:
+		fail("Mobile controls must show a dash button")
+		return
 	var ball_start: Vector3 = ball.position
 	ball.launch(Vector2.RIGHT, 1.0)
 	await physics_frame

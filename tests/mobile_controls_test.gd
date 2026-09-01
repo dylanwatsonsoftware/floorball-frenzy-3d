@@ -32,6 +32,11 @@ func _init() -> void:
 		fail("Native touchscreen builds must show mobile controls")
 		return
 
+	var action: StringName = controls.action_at_position(Vector2(926.0, 386.0), Vector2(1000.0, 600.0))
+	if action != &"dash":
+		fail("The upper-right mobile action must trigger dash")
+		return
+
 	var viewport_size := Vector2(844.0, 390.0)
 	if not controls.can_start_floating_stick(Vector2(200.0, 180.0), viewport_size):
 		fail("Touches on the left side must start the floating joystick")

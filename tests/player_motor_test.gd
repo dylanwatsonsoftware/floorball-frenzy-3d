@@ -30,6 +30,19 @@ func _init() -> void:
 		fail("Keyboard and touch movement must combine without exceeding unit length; got %s" % combined)
 		return
 
+	var dash: Dictionary = script.start_dash(Vector2.RIGHT, 0.0)
+	if not dash.started or not is_equal_approx(dash.velocity.length(), script.DASH_SPEED):
+		fail("A ready dash must start at dash speed")
+		return
+	var blocked: Dictionary = script.start_dash(Vector2.RIGHT, 0.2)
+	if blocked.started or not blocked.velocity.is_zero_approx():
+		fail("A dash must not start while its cooldown is active")
+		return
+	var fallback: Dictionary = script.start_dash(Vector2.ZERO, 0.0, Vector3.LEFT)
+	if not fallback.started or fallback.velocity.x >= 0.0:
+		fail("A stationary dash must use the player's facing direction")
+		return
+
 	print("Player motor is valid.")
 	quit(0)
 

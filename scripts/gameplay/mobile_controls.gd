@@ -4,9 +4,11 @@ const STICK_RADIUS := 76.0
 const STICK_DEADZONE := 0.2
 const EDGE_MARGIN := 28.0
 const SHOOT_RADIUS := 58.0
+const DASH_RADIUS := 46.0
 
 var _movement_touch := -1
 var _shoot_touch := -1
+var _dash_touch := -1
 var _movement_vector := Vector2.ZERO
 var _stick_knob_offset := Vector2.ZERO
 var _stick_origin := Vector2.ZERO
@@ -52,6 +54,16 @@ static func calculate_floating_drag(origin: Vector2, current_position: Vector2, 
 	return calculate_stick_vector(current_position - origin, radius, deadzone)
 
 
+static func action_at_position(touch_position: Vector2, viewport_size: Vector2) -> StringName:
+	var shoot_center := Vector2(viewport_size.x - EDGE_MARGIN - SHOOT_RADIUS, viewport_size.y - EDGE_MARGIN - SHOOT_RADIUS)
+	var dash_center := Vector2(viewport_size.x - EDGE_MARGIN - DASH_RADIUS, shoot_center.y - SHOOT_RADIUS - DASH_RADIUS - 24.0)
+	if touch_position.distance_to(dash_center) <= DASH_RADIUS * 1.35:
+		return &"dash"
+	if touch_position.distance_to(shoot_center) <= SHOOT_RADIUS * 1.35:
+		return &"shoot"
+	return &""
+
+
 static func _browser_touch_available() -> bool:
 	if not OS.has_feature("web"):
 		return false
@@ -71,7 +83,13 @@ func _input(event: InputEvent) -> void:
 
 func _handle_touch(event: InputEventScreenTouch) -> void:
 	if event.pressed:
-		if _shoot_touch == -1 and event.position.distance_to(_shoot_center()) <= SHOOT_RADIUS * 1.35:
+		var action := action_at_position(event.position, size)
+		if action == &"dash" and _dash_touch == -1:
+			_dash_touch = event.index
+			Input.action_press("dash")
+			queue_redraw()
+			get_viewport().set_input_as_handled()
+		elif action == &"shoot" and _shoot_touch == -1:
 			_shoot_touch = event.index
 			Input.action_press("shoot")
 			queue_redraw()
@@ -95,6 +113,11 @@ func _handle_touch(event: InputEventScreenTouch) -> void:
 		Input.action_release("shoot")
 		queue_redraw()
 		get_viewport().set_input_as_handled()
+	elif event.index == _dash_touch:
+		_dash_touch = -1
+		Input.action_release("dash")
+		queue_redraw()
+		get_viewport().set_input_as_handled()
 
 
 func _update_stick(touch_position: Vector2) -> void:
@@ -112,6 +135,10 @@ func _shoot_center() -> Vector2:
 	return Vector2(size.x - EDGE_MARGIN - SHOOT_RADIUS, size.y - EDGE_MARGIN - SHOOT_RADIUS)
 
 
+func _dash_center() -> Vector2:
+	return Vector2(size.x - EDGE_MARGIN - DASH_RADIUS, _shoot_center().y - SHOOT_RADIUS - DASH_RADIUS - 24.0)
+
+
 func _draw() -> void:
 	var shoot_center := _shoot_center()
 	if _movement_touch != -1:
@@ -127,8 +154,17 @@ func _draw() -> void:
 	var label := "SHOOT"
 	var label_size := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
 	draw_string(font, shoot_center - label_size * 0.5 + Vector2(0.0, label_size.y), label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color.WHITE)
+	var dash_center := _dash_center()
+	var dash_color := Color(0.22, 0.72, 1.0, 0.92) if _dash_touch != -1 else Color(0.12, 0.48, 0.86, 0.78)
+	draw_circle(dash_center, DASH_RADIUS, dash_color)
+	draw_arc(dash_center, DASH_RADIUS, 0.0, TAU, 48, Color.WHITE, 3.0)
+	var dash_label := "DASH"
+	var dash_size := font.get_string_size(dash_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 17)
+	draw_string(font, dash_center - dash_size * 0.5 + Vector2(0.0, dash_size.y), dash_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 17, Color.WHITE)
 
 
 func _exit_tree() -> void:
 	if _shoot_touch != -1:
 		Input.action_release("shoot")
+	if _dash_touch != -1:
+		Input.action_release("dash")

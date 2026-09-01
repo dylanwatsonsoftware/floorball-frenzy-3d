@@ -6,6 +6,7 @@ const RINK_HALF_WIDTH := 8.6
 
 var _facing_direction := Vector3.RIGHT
 var _mobile_controls: Control
+var _dash_cooldown := 0.0
 
 
 func _ready() -> void:
@@ -18,7 +19,14 @@ func _physics_process(delta: float) -> void:
 	if _mobile_controls != null and _mobile_controls.has_method("get_movement_vector"):
 		touch_input = _mobile_controls.call("get_movement_vector")
 	var input_vector: Vector2 = PlayerMotorScript.combine_inputs(keyboard_input, touch_input)
-	velocity = PlayerMotorScript.step_velocity(velocity, input_vector, delta)
+	_dash_cooldown = maxf(0.0, _dash_cooldown - delta)
+	if Input.is_action_just_pressed("dash"):
+		var dash: Dictionary = PlayerMotorScript.start_dash(input_vector, _dash_cooldown, _facing_direction)
+		if dash.started:
+			velocity = dash.velocity
+			_dash_cooldown = dash.cooldown
+	else:
+		velocity = PlayerMotorScript.step_velocity(velocity, input_vector, delta)
 	move_and_slide()
 	global_position.x = clampf(global_position.x, -RINK_HALF_LENGTH, RINK_HALF_LENGTH)
 	global_position.z = clampf(global_position.z, -RINK_HALF_WIDTH, RINK_HALF_WIDTH)
