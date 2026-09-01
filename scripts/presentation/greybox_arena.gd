@@ -1,6 +1,7 @@
 extends Node3D
 
 const CameraPresetsScript = preload("res://scripts/presentation/camera_presets.gd")
+const ActionCameraScript = preload("res://scripts/presentation/action_camera.gd")
 const RINK_LENGTH := 38.0
 const RINK_WIDTH := 19.0
 const BOARD_HEIGHT := 1.0
@@ -13,6 +14,7 @@ var _shot_impact: MeshInstance3D
 var _shot_impact_tween: Tween
 var _camera_kick_tween: Tween
 var _field_players: Array[CharacterBody3D] = []
+var _follow_action_camera := true
 
 
 func _ready() -> void:
@@ -21,14 +23,48 @@ func _ready() -> void:
 	_apply_camera_preset(0)
 
 
+func _process(delta: float) -> void:
+	if not _follow_action_camera or _camera == null:
+		return
+	var ball := get_node_or_null("Ball") as MeshInstance3D
+	if ball == null:
+		return
+	var action_actor := _action_actor(ball)
+	var actor_position := ball.global_position if action_actor == null else action_actor.global_position
+	var charge_ratio := float(ball.call("get_shot_charge_ratio")) if ball.has_method("get_shot_charge_ratio") else 0.0
+	var frame: Dictionary = ActionCameraScript.frame(ball.global_position, actor_position, charge_ratio > 0.0, charge_ratio)
+	var blend := 1.0 - exp(-delta * 4.8)
+	_camera.global_position = _camera.global_position.lerp(frame.position, blend)
+	_camera.fov = lerpf(_camera.fov, float(frame.fov), blend)
+	var current_forward_target := _camera.global_position + -_camera.global_basis.z * 20.0
+	var smooth_target := current_forward_target.lerp(frame.target, blend)
+	_camera.look_at(smooth_target, Vector3.UP)
+
+
+func _action_actor(ball: MeshInstance3D) -> CharacterBody3D:
+	var owner_id: StringName = ball.call("get_control_owner_actor_id") if ball.has_method("get_control_owner_actor_id") else &""
+	var nearest: CharacterBody3D
+	var nearest_distance := INF
+	for actor in _field_players:
+		if owner_id != &"" and actor.call("get_actor_id") == owner_id:
+			return actor
+		var distance := actor.global_position.distance_squared_to(ball.global_position)
+		if distance < nearest_distance:
+			nearest = actor
+			nearest_distance = distance
+	return nearest
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
 			KEY_1:
 				_apply_camera_preset(0)
 			KEY_2:
+				_follow_action_camera = false
 				_apply_camera_preset(1)
 			KEY_3:
+				_follow_action_camera = false
 				_apply_camera_preset(2)
 
 
@@ -455,6 +491,7 @@ func _apply_camera_preset(index: int) -> void:
 	if _camera == null:
 		return
 	var preset: Dictionary = _camera_presets[index]
+	_follow_action_camera = index == 0
 	_camera.position = preset.position
 	_camera.fov = preset.fov
 	_camera.look_at(preset.target, Vector3.UP)

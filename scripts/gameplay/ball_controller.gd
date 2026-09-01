@@ -341,6 +341,10 @@ func get_control_owner_team() -> StringName:
 	return actor.call("get_team") if actor != null else &""
 
 
+func get_shot_charge_ratio() -> float:
+	return clampf(_charge_seconds / MAX_CHARGE_SECONDS, 0.0, 1.0)
+
+
 func _update_ai_pass(delta: float) -> void:
 	_ai_pass_cooldown = maxf(0.0, _ai_pass_cooldown - delta)
 	var carrier := _actor_for_controller(_control_owner)
