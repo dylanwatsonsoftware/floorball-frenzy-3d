@@ -17,15 +17,18 @@ static func step(ball_position: Vector3, ball_velocity: Vector3, participants: A
 	var next_position := ball_position
 	var next_velocity := ball_velocity
 	if ball_position.y > CONTROL_HEIGHT:
-		return _result(next_position, next_velocity, -1)
+		return _result(next_position, next_velocity, -1, -1)
 
-	for participant in participants:
+	var body_controller := -1
+	for body_index in participants.size():
+		var participant: Dictionary = participants[body_index]
 		var player_position: Vector3 = participant.position
 		var player_velocity: Vector3 = participant.velocity
 		var planar_offset := Vector2(next_position.x - player_position.x, next_position.z - player_position.z)
 		var distance := planar_offset.length()
 		if distance >= BODY_CONTACT_DISTANCE:
 			continue
+		body_controller = body_index
 
 		var fallback := Vector2(participant.facing.x, participant.facing.z).normalized()
 		var normal := planar_offset.normalized() if distance > 0.001 else fallback
@@ -42,7 +45,7 @@ static func step(ball_position: Vector3, ball_velocity: Vector3, participants: A
 
 	var controller := -1
 	if Vector2(next_velocity.x, next_velocity.z).length() > MAX_CONTROL_SPEED:
-		return _result(next_position, next_velocity, controller)
+		return _result(next_position, next_velocity, controller, body_controller)
 	var closest_stick_distance := INF
 	for index in participants.size():
 		var participant: Dictionary = participants[index]
@@ -60,7 +63,7 @@ static func step(ball_position: Vector3, ball_velocity: Vector3, participants: A
 		if owner.get("slap_phase", &"idle") == &"backswing":
 			next_velocity.x = owner.velocity.x
 			next_velocity.z = owner.velocity.z
-			return _result(next_position, next_velocity, controller)
+			return _result(next_position, next_velocity, controller, body_controller)
 		var pocket := blade_pocket(owner)
 		var ball_planar := Vector2(next_position.x, next_position.z)
 		ball_planar = ball_planar.lerp(pocket.target, clampf(delta * POSITION_ASSIST_RATE, 0.0, 1.0))
@@ -72,7 +75,7 @@ static func step(ball_position: Vector3, ball_velocity: Vector3, participants: A
 		next_velocity.x = assisted_velocity.x
 		next_velocity.z = assisted_velocity.y
 
-	return _result(next_position, next_velocity, controller)
+	return _result(next_position, next_velocity, controller, body_controller)
 
 
 static func blade_pocket(participant: Dictionary) -> Dictionary:
@@ -100,9 +103,10 @@ static func is_in_blade_pocket(ball_position: Vector3, participant: Dictionary) 
 	return ball_planar.distance_to(pocket.target) <= STICK_CONTROL_RADIUS
 
 
-static func _result(position: Vector3, velocity: Vector3, controller: int) -> Dictionary:
+static func _result(position: Vector3, velocity: Vector3, controller: int, body_controller: int) -> Dictionary:
 	return {
 		"position": position,
 		"velocity": velocity,
 		"controller": controller,
+		"body_controller": body_controller,
 	}

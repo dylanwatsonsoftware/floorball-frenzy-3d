@@ -113,6 +113,9 @@ func run_test() -> void:
 	if not ball.has_method("begin_slap") or not ball.has_method("get_slap_phase"):
 		fail("Ball gameplay must expose the timed physical slap sequence")
 		return
+	if not ball.has_method("record_touch") or not ball.has_method("is_one_touch_ready"):
+		fail("Ball gameplay must track the original one-touch timing window")
+		return
 	var shot_trail := scene.get_node("Arena/Ball/ShotTrail") as MeshInstance3D
 	if shot_trail.visible:
 		fail("The ball trail must remain hidden at faceoff")
@@ -137,7 +140,15 @@ func run_test() -> void:
 	player.velocity = Vector3.ZERO
 	ball.position = Vector3(-4.1, 0.22, 0.75)
 	ball.ball_velocity = Vector3.ZERO
+	ball.record_touch(&"blue")
+	if not ball.is_one_touch_ready(&"red"):
+		fail("A recent blue touch must arm red's one-touch opportunity")
+		return
 	ball.begin_slap(Vector2.RIGHT, 1.0)
+	var charge_label := scene.get_node("HUD/ChargeLabel") as Label
+	if charge_label.text != "ONE TOUCH!":
+		fail("One-touch release must show unmistakable mobile-readable feedback")
+		return
 	if ball.get_slap_phase() != &"backswing" or not ball.ball_velocity.is_zero_approx():
 		fail("Starting a slap must begin with a neutral-ball backswing")
 		return

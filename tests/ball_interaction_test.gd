@@ -21,6 +21,9 @@ func _init() -> void:
 	if controlled.controller != 0 or controlled.velocity.x <= 0.0:
 		fail("A grounded ball at the stick must follow the moving player; got %s" % controlled)
 		return
+	if controlled.body_controller != -1:
+		fail("Stick control must not count as the body touch used for one-touch timing")
+		return
 
 	var wrong_side: Dictionary = interaction.step(Vector3(0.9, 0.22, -0.75), Vector3.ZERO, [player], 0.1)
 	if wrong_side.controller != -1:
@@ -72,6 +75,9 @@ func _init() -> void:
 	)
 	if body_contact.position.x < interaction.BODY_CONTACT_DISTANCE - 0.001:
 		fail("Player body contact must separate the ball; got %s" % body_contact.position)
+		return
+	if body_contact.body_controller != 0:
+		fail("Body collision must identify the player who last touched the ball")
 		return
 
 	print("Ball contact and dribbling are valid.")

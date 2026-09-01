@@ -4,6 +4,7 @@ const BallSimulationScript = preload("res://scripts/simulation/ball_simulation.g
 const MatchSimulationScript = preload("res://scripts/simulation/match_simulation.gd")
 const BallInteractionScript = preload("res://scripts/simulation/ball_interaction.gd")
 const StickSlapScript = preload("res://scripts/simulation/stick_slap.gd")
+const OneTouchScript = preload("res://scripts/simulation/one_touch.gd")
 const ShotChargeFeedbackScript = preload("res://scripts/presentation/shot_charge_feedback.gd")
 const ShotImpactFeedbackScript = preload("res://scripts/presentation/shot_impact_feedback.gd")
 const MAX_CHARGE_SECONDS := 0.8
@@ -21,6 +22,9 @@ var _shot_trail: MeshInstance3D
 var _slap_elapsed := -1.0
 var _pending_slap_charge := 0.0
 var _pending_slap_direction := Vector2.RIGHT
+var _pending_one_touch := false
+var _last_touch_actor: StringName = &""
+var _last_touch_age := INF
 
 signal goal_scored(scorer: StringName)
 
@@ -32,6 +36,7 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	_last_touch_age += delta
 	_advance_slap(delta)
 	var previous_position := position
 	var next_state := BallSimulationScript.step(position, ball_velocity, delta)
@@ -51,10 +56,13 @@ func _physics_process(delta: float) -> void:
 	_update_spin(delta)
 	_update_shot_trail()
 	_update_shot_charge(delta)
+	_record_body_touch(interaction_state.body_controller)
 
 
-func launch(planar_direction: Vector2, charge: float, inherited_velocity: Vector3 = Vector3.ZERO) -> void:
-	ball_velocity = BallSimulationScript.shot_velocity(planar_direction, charge, inherited_velocity)
+func launch(planar_direction: Vector2, charge: float, inherited_velocity: Vector3 = Vector3.ZERO, one_touch: bool = false, shooter: StringName = &"") -> void:
+	ball_velocity = BallSimulationScript.shot_velocity(planar_direction, charge, inherited_velocity, one_touch)
+	if shooter != &"":
+		record_touch(shooter)
 
 
 func reset_for_faceoff() -> void:
@@ -62,6 +70,8 @@ func reset_for_faceoff() -> void:
 	ball_velocity = Vector3.ZERO
 	_charge_seconds = 0.0
 	_cancel_slap()
+	_last_touch_actor = &""
+	_last_touch_age = INF
 	_clear_charge_feedback()
 	_set_trail_visible(false)
 	set_physics_process(true)
@@ -126,7 +136,10 @@ func _configure_slap(direction: Vector2, charge: float, start_elapsed: float) ->
 	_slap_elapsed = start_elapsed
 	_pending_slap_direction = direction.normalized() if not direction.is_zero_approx() else Vector2.RIGHT
 	_pending_slap_charge = clampf(charge, 0.0, 2.0)
-	_charge_label.text = "SLAP!"
+	_pending_one_touch = is_one_touch_ready(&"red")
+	_charge_label.text = "ONE TOUCH!" if _pending_one_touch else "SLAP!"
+	if _pending_one_touch:
+		_charge_label.add_theme_color_override("font_color", Color("70f7ff"))
 
 
 func get_slap_phase() -> StringName:
@@ -140,7 +153,7 @@ func _advance_slap(delta: float) -> void:
 	_slap_elapsed += delta
 	_player.call("set_stick_slap_angle", StickSlapScript.angle_at(_slap_elapsed))
 	if StickSlapScript.crossed_contact(previous_elapsed, _slap_elapsed) and _ball_in_player_blade():
-		launch(_pending_slap_direction, _pending_slap_charge, _player.velocity)
+		launch(_pending_slap_direction, _pending_slap_charge, _player.velocity, _pending_one_touch, &"red")
 		_play_contact_feedback(_pending_slap_charge)
 	if _slap_elapsed >= StickSlapScript.TOTAL_SECONDS:
 		_cancel_slap()
@@ -149,9 +162,10 @@ func _advance_slap(delta: float) -> void:
 func _cancel_slap() -> void:
 	_slap_elapsed = -1.0
 	_pending_slap_charge = 0.0
+	_pending_one_touch = false
 	if _player != null:
 		_player.call("set_stick_slap_angle", 0.0)
-	if _charge_label != null and _charge_label.text == "SLAP!":
+	if _charge_label != null and (_charge_label.text == "SLAP!" or _charge_label.text == "ONE TOUCH!"):
 		_clear_charge_feedback()
 
 
@@ -176,6 +190,21 @@ func _play_contact_feedback(charge: float) -> void:
 	var arena := get_parent()
 	if arena.has_method("play_shot_impact"):
 		arena.call("play_shot_impact", global_position, ShotImpactFeedbackScript.for_charge(charge))
+
+
+func record_touch(actor: StringName) -> void:
+	_last_touch_actor = actor
+	_last_touch_age = 0.0
+
+
+func is_one_touch_ready(shooter: StringName = &"red") -> bool:
+	return OneTouchScript.is_eligible(_last_touch_actor, _last_touch_age, shooter)
+
+
+func _record_body_touch(controller: int) -> void:
+	var actor := OneTouchScript.actor_for_controller(controller)
+	if actor != &"":
+		record_touch(actor)
 
 
 func _update_spin(delta: float) -> void:

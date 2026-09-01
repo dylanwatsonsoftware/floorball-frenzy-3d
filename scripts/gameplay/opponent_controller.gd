@@ -45,7 +45,7 @@ func _update_shot(decision: Dictionary, delta: float) -> void:
 	if decision.wants_shot and _shot_cooldown <= 0.0:
 		_shot_charge += delta
 		if _shot_charge >= SHOT_CHARGE_SECONDS:
-			_ball.call("launch", decision.shot_direction, 0.72)
+			_ball.call("launch", decision.shot_direction, 0.72, Vector3.ZERO, false, &"blue")
 			_shot_charge = 0.0
 			_shot_cooldown = SHOT_COOLDOWN_SECONDS
 	else:
