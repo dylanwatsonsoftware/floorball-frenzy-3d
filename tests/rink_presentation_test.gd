@@ -78,7 +78,7 @@ func run_test() -> void:
 			fail("Every mascot player needs a distinct visual variant signature")
 			return
 		if team == &"red":
-			for mascot_part in ["LambWool", "LeftLambEar", "RightLambEar", "Muzzle"]:
+			for mascot_part in ["LambWool", "LambWoolCollar", "LambFace", "LeftLambEar", "RightLambEar", "Muzzle"]:
 				if rig.get_node_or_null(mascot_part) == null:
 					fail("The Lambs must read as anthropomorphic lambs; missing %s" % mascot_part)
 					return
@@ -88,9 +88,9 @@ func run_test() -> void:
 				fail("The Lambs must wear recognisable green, white and black")
 				return
 		else:
-			for mascot_part in ["PirateBandana", "PirateEyePatch", "LeftPirateEar", "RightPirateEar", "Muzzle"]:
+			for mascot_part in ["PirateBandana", "PirateTricorne", "PirateEyePatch", "PirateNose", "PirateBeard", "LeftHumanEar", "RightHumanEar"]:
 				if rig.get_node_or_null(mascot_part) == null:
-					fail("The Pirates must read as distinct anthropomorphic pirate animals; missing %s" % mascot_part)
+					fail("The Pirates must read as distinct human pirate mascots; missing %s" % mascot_part)
 					return
 			pirate_variants[signature] = true
 		var left_leg := rig.get_node("LeftLeg") as Node3D
@@ -115,13 +115,16 @@ func run_test() -> void:
 	for actor in arena.call("get_field_players"):
 		actor.set_physics_process(false)
 	red_two.position = Vector3(-2.0, 0.75, 0.0)
-	ball.position = red_two.position + Vector3(0.9, -0.53, 0.75)
+	red_two.velocity = Vector3.ZERO
+	var facing: Vector3 = red_two.call("get_facing_direction")
+	var right := Vector3(-facing.z, 0.0, facing.x)
+	ball.position = red_two.position + facing * 0.9 + right * 0.75 + Vector3(0.0, -0.53, 0.0)
 	ball.ball_velocity = Vector3.ZERO
 	await physics_frame
 	await physics_frame
 	await process_frame
 	if not red_two.get_node("PlayerMarker").visible or _visible_marker_count(red_players) != 1:
-		fail("The floating arrow must follow possession-based control handoffs to red_2")
+		fail("The floating arrow must follow possession-based control handoffs to red_2; owner=%s human=%s visible=%d" % [ball.call("get_control_owner_actor_id"), ball.call("get_human_control_actor_id"), _visible_marker_count(red_players)])
 		return
 
 	print("Official wood rink presentation and controlled-player marker are valid.")

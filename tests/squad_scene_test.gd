@@ -35,7 +35,7 @@ func run_test() -> void:
 		if actor.has_method("is_human_controlled") and actor.call("is_human_controlled"):
 			initial_humans.append(actor.call("get_actor_id"))
 	if initial_humans.size() != 1 or initial_humans[0] != &"red_1":
-		fail("Loose-ball play must assign the nearest red player instead of controlling nobody; humans=%s" % initial_humans)
+		fail("A new match must begin with exactly the Lambs captain under player control; humans=%s" % initial_humans)
 		return
 
 	var ball := scene.get_node("Arena/Ball")

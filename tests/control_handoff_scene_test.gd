@@ -17,17 +17,23 @@ func run_test() -> void:
 		if actor != red_two:
 			actor.set_physics_process(false)
 
-	# A loose ball must still assign one red player so input never controls nobody.
+	# Loose-ball movement must never silently transfer control to whoever happens
+	# to be closest. Control is sticky until SWITCH or a teammate takes possession.
+	var initial_actor: StringName = ball.call("get_human_control_actor_id")
 	red_two.position = Vector3.ZERO + Vector3(0.0, 0.75, 0.0)
 	ball.position = Vector3(0.2, 0.22, 0.0)
 	ball.ball_velocity = Vector3(12.0, 0.0, 0.0)
 	await physics_frame
-	if _human_count(players) != 1 or not red_two.call("is_human_controlled"):
-		fail("Loose-ball play must assign exactly one nearby red player; count=%d red_2=%s" % [_human_count(players), red_two.call("is_human_controlled")])
+	if _human_count(players) != 1 or ball.call("get_human_control_actor_id") != initial_actor:
+		fail("A loose ball must preserve the current player; initial=%s current=%s count=%d" % [initial_actor, ball.call("get_human_control_actor_id"), _human_count(players)])
 		return
 	var switched_actor: StringName = ball.call("switch_human_player")
-	if switched_actor != &"red_1" or _human_count(players) != 1:
-		fail("Manual switching must advance from the current closest player to the next distance-ranked teammate; actor=%s count=%d" % [switched_actor, _human_count(players)])
+	if switched_actor == initial_actor or _human_count(players) != 1:
+		fail("Manual switching must be the only loose-ball transfer; initial=%s actor=%s count=%d" % [initial_actor, switched_actor, _human_count(players)])
+		return
+	ball.call("reset_for_faceoff")
+	if ball.call("get_human_control_actor_id") != switched_actor:
+		fail("A faceoff reset must preserve the player's explicit selection; switched=%s current=%s" % [switched_actor, ball.call("get_human_control_actor_id")])
 		return
 	# Capture and charge while changing direction. Charging must not freeze facing.
 	ball.ball_velocity = Vector3.ZERO

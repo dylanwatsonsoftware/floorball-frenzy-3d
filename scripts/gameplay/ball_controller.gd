@@ -53,8 +53,7 @@ var _pass_index := 0
 var _ai_pass_cooldown := 0.0
 var _aim_arrow_actor: CharacterBody3D
 var _charge_cancelled_until_release := false
-var _manual_human_actor_id: StringName = &""
-var _manual_owner_snapshot: StringName = &""
+var _human_control_actor_id: StringName = &"red_1"
 
 signal goal_scored(scorer: StringName)
 
@@ -75,10 +74,12 @@ func _physics_process(delta: float) -> void:
 	_advance_slap(delta)
 	var previous_position := position
 	var next_state := BallSimulationScript.step(position, ball_velocity, delta)
+	var previous_control_owner := _control_owner
 	var interaction_state := BallInteractionScript.step(next_state.position, next_state.velocity, _interaction_participants(), delta, _control_owner)
 	position = interaction_state.position
 	ball_velocity = interaction_state.velocity
 	_control_owner = interaction_state.controller
+	_update_human_control_from_possession(previous_control_owner)
 	_update_ai_pass(delta)
 	_update_dash_steal_latches()
 	if not _apply_parry(interaction_state.body_controller):
@@ -100,6 +101,8 @@ func _physics_process(delta: float) -> void:
 
 
 func launch(planar_direction: Vector2, charge: float, inherited_velocity: Vector3 = Vector3.ZERO, one_touch: bool = false, shooter: StringName = &"", bolt: bool = false) -> void:
+	if _charge_seconds > 0.0:
+		_cancel_active_charge(true)
 	_control_owner = -1
 	_ai_possession_seconds = 0.0
 	var plan: Dictionary = BallSimulationScript.shot_plan(planar_direction, charge, inherited_velocity, one_touch, bolt)
@@ -129,8 +132,6 @@ func reset_for_faceoff() -> void:
 	_ai_possession_seconds = 0.0
 	_ai_pass_cooldown = 0.0
 	_charge_cancelled_until_release = false
-	_manual_human_actor_id = &""
-	_manual_owner_snapshot = &""
 	_clear_charge_feedback()
 	_set_trail_visible(false)
 	_set_shot_trail_style(false, false, false)
@@ -374,29 +375,26 @@ func get_control_owner_team() -> StringName:
 
 
 func get_human_control_actor_id() -> StringName:
-	var owner := _actor_for_controller(_control_owner)
 	_refresh_field_players()
-	if _manual_human_actor_id != &"":
-		var owner_id: StringName = owner.call("get_actor_id") if owner != null else &""
-		if owner_id == _manual_owner_snapshot:
-			for actor in _field_players:
-				if actor.call("get_actor_id") == _manual_human_actor_id and actor.call("get_team") == &"red":
-					return _manual_human_actor_id
-		_manual_human_actor_id = &""
-		_manual_owner_snapshot = &""
-	if owner != null and owner.call("get_team") == &"red":
-		return owner.call("get_actor_id")
-	var nearest_id: StringName = &""
-	var nearest_distance := INF
 	for actor in _field_players:
-		if actor.call("get_team") != &"red":
-			continue
-		var offset := actor.global_position - global_position
-		var distance := Vector2(offset.x, offset.z).length_squared()
-		if distance < nearest_distance:
-			nearest_distance = distance
-			nearest_id = actor.call("get_actor_id")
-	return nearest_id
+		if actor.call("get_actor_id") == _human_control_actor_id and actor.call("get_team") == &"red":
+			return _human_control_actor_id
+	_human_control_actor_id = &"red_1"
+	return _human_control_actor_id
+
+
+func _update_human_control_from_possession(previous_controller: int) -> void:
+	if _control_owner == previous_controller:
+		return
+	var new_owner := _actor_for_controller(_control_owner)
+	if new_owner == null or new_owner.call("get_team") != &"red":
+		return
+	var new_actor_id: StringName = new_owner.call("get_actor_id")
+	if new_actor_id == _human_control_actor_id:
+		return
+	_human_control_actor_id = new_actor_id
+	if _charge_seconds > 0.0:
+		_cancel_active_charge(true)
 
 
 func switch_human_player() -> StringName:
@@ -409,8 +407,7 @@ func switch_human_player() -> StringName:
 	var next_actor: StringName = SquadLogicScript.next_human_actor_id(current, red_players, global_position)
 	if next_actor == &"":
 		return current
-	_manual_human_actor_id = next_actor
-	_manual_owner_snapshot = get_control_owner_actor_id()
+	_human_control_actor_id = next_actor
 	if _charge_seconds > 0.0:
 		_cancel_active_charge(true)
 	return get_human_control_actor_id()

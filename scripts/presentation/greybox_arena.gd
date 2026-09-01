@@ -344,23 +344,33 @@ func _add_humanoid(parent: Node3D, team: StringName, slot: int) -> void:
 func _add_lamb_head(rig: Node3D, slot: int) -> void:
 	var wool_colors := [Color("fafaf2"), Color("e8e5da"), Color("d2d5cf")]
 	var wool: Color = wool_colors[slot]
-	_add_sphere_part(rig, "Head", Vector3(0.0, 0.74, 0.0), 0.27, wool)
+	var face_colors := [Color("d8c8b5"), Color("c8b49f"), Color("aaa59b")]
+	var face_color: Color = face_colors[slot]
+	_add_sphere_part(rig, "Head", Vector3(0.0, 0.79, -0.035), 0.29, wool)
 	var wool_root := Node3D.new()
 	wool_root.name = "LambWool"
 	rig.add_child(wool_root)
-	for index in 5:
-		var angle := TAU * float(index) / 5.0
-		_add_sphere_part(wool_root, "Curl%d" % index, Vector3(cos(angle) * 0.18, 0.87 + sin(angle) * 0.09, -0.03), 0.13, wool)
-	var left_ear := _add_sphere_part(rig, "LeftLambEar", Vector3(-0.31, 0.78, 0.0), 0.15, wool.darkened(0.08))
-	left_ear.scale = Vector3(1.65, 0.55, 0.7)
-	left_ear.rotation_degrees.z = -18.0
-	var right_ear := _add_sphere_part(rig, "RightLambEar", Vector3(0.31, 0.78, 0.0), 0.15, wool.darkened(0.08))
-	right_ear.scale = Vector3(1.65, 0.55, 0.7)
-	right_ear.rotation_degrees.z = 18.0
-	var muzzle := _add_sphere_part(rig, "Muzzle", Vector3(0.0, 0.68, 0.235), 0.15, Color("ded9ce"))
-	muzzle.scale = Vector3(0.85, 0.7, 0.65)
-	_add_mascot_eyes(rig, 0.77, Color("15191c"))
-	_add_sphere_part(rig, "LambNose", Vector3(0.0, 0.69, 0.33), 0.045, Color("25292c"))
+	for index in 7:
+		var angle := TAU * float(index) / 7.0
+		_add_sphere_part(wool_root, "Curl%d" % index, Vector3(cos(angle) * 0.2, 0.91 + sin(angle) * 0.1, -0.045), 0.135, wool)
+	var collar := Node3D.new()
+	collar.name = "LambWoolCollar"
+	rig.add_child(collar)
+	for index in 7:
+		var angle := TAU * float(index) / 7.0
+		_add_sphere_part(collar, "Tuft%d" % index, Vector3(cos(angle) * 0.27, 0.51, sin(angle) * 0.16), 0.115, wool.darkened(0.035))
+	var face := _add_sphere_part(rig, "LambFace", Vector3(0.0, 0.76, 0.18), 0.21, face_color)
+	face.scale = Vector3(0.72, 1.18, 0.72)
+	var left_ear := _add_sphere_part(rig, "LeftLambEar", Vector3(-0.32, 0.83, 0.01), 0.14, face_color.darkened(0.08))
+	left_ear.scale = Vector3(1.7, 0.5, 0.7)
+	left_ear.rotation_degrees.z = -15.0
+	var right_ear := _add_sphere_part(rig, "RightLambEar", Vector3(0.32, 0.83, 0.01), 0.14, face_color.darkened(0.08))
+	right_ear.scale = Vector3(1.7, 0.5, 0.7)
+	right_ear.rotation_degrees.z = 15.0
+	var muzzle := _add_sphere_part(rig, "Muzzle", Vector3(0.0, 0.66, 0.31), 0.13, face_color.lightened(0.08))
+	muzzle.scale = Vector3(0.72, 0.62, 0.58)
+	_add_mascot_eyes(rig, 0.80, Color("15191c"))
+	_add_sphere_part(rig, "LambNose", Vector3(0.0, 0.68, 0.385), 0.04, Color("292528"))
 	if slot == 0:
 		_add_torus_part(rig, "LambVariant0", Vector3(-0.24, 0.88, -0.04), 0.09, 0.14, Color("bca77b"), Vector3(90.0, 0.0, 0.0))
 	elif slot == 1:
@@ -371,20 +381,41 @@ func _add_lamb_head(rig: Node3D, slot: int) -> void:
 
 
 func _add_pirate_head(rig: Node3D, slot: int) -> void:
-	var fur_colors := [Color("4d5966"), Color("8b9298"), Color("303844")]
-	var fur: Color = fur_colors[slot]
-	_add_sphere_part(rig, "Head", Vector3(0.0, 0.74, 0.0), 0.27, fur)
-	_add_cone_part(rig, "LeftPirateEar", Vector3(-0.17, 0.98, -0.01), 0.12, 0.28, fur)
-	_add_cone_part(rig, "RightPirateEar", Vector3(0.17, 0.98, -0.01), 0.12, 0.28, fur)
-	var muzzle := _add_sphere_part(rig, "Muzzle", Vector3(0.0, 0.67, 0.235), 0.16, Color("dfe4e5"))
-	muzzle.scale = Vector3(0.95, 0.68, 0.65)
-	_add_mascot_eyes(rig, 0.78, Color("eef5f6"))
-	_add_sphere_part(rig, "PirateNose", Vector3(0.0, 0.70, 0.34), 0.052, Color("101318"))
-	_add_box_part(rig, "PirateBandana", Vector3(0.0, 0.89, 0.12), Vector3(0.52, 0.11, 0.16), Color("72d2eb"))
-	var patch := _add_sphere_part(rig, "PirateEyePatch", Vector3(-0.095, 0.78, 0.252), 0.085, Color("080a0d"))
+	var skin_colors := [Color("bd8567"), Color("e0b28d"), Color("8f5f49")]
+	var hair_colors := [Color("281a16"), Color("774328"), Color("17191d")]
+	var skin: Color = skin_colors[slot]
+	var hair: Color = hair_colors[slot]
+	var head := _add_sphere_part(rig, "Head", Vector3(0.0, 0.76, 0.0), 0.27, skin)
+	head.scale = Vector3(0.88, 1.08, 0.9)
+	var left_ear := _add_sphere_part(rig, "LeftHumanEar", Vector3(-0.25, 0.76, 0.01), 0.075, skin.darkened(0.05))
+	left_ear.scale = Vector3(0.55, 1.0, 0.55)
+	var right_ear := _add_sphere_part(rig, "RightHumanEar", Vector3(0.25, 0.76, 0.01), 0.075, skin.darkened(0.05))
+	right_ear.scale = Vector3(0.55, 1.0, 0.55)
+	_add_mascot_eyes(rig, 0.79, Color("f5f2e8"))
+	var nose := _add_sphere_part(rig, "PirateNose", Vector3(0.0, 0.72, 0.285), 0.075, skin.darkened(0.08))
+	nose.scale = Vector3(0.58, 0.9, 0.72)
+	_add_box_part(rig, "PirateBandana", Vector3(0.0, 0.91, 0.06), Vector3(0.54, 0.09, 0.30), Color("72d2eb"))
+	var hat := Node3D.new()
+	hat.name = "PirateTricorne"
+	rig.add_child(hat)
+	var brim := _add_sphere_part(hat, "Brim", Vector3(0.0, 1.015, -0.01), 0.34, Color("121820"))
+	brim.scale = Vector3(1.25, 0.18, 0.82)
+	var crown := _add_box_part(hat, "Crown", Vector3(0.0, 1.105, -0.025), Vector3(0.43, 0.18, 0.30), Color("1b222c"))
+	crown.rotation_degrees.z = -4.0 if slot == 1 else 4.0 if slot == 2 else 0.0
+	_add_box_part(hat, "HatBand", Vector3(0.0, 1.055, 0.135), Vector3(0.42, 0.045, 0.025), Color("75d4ed"))
+	var patch := _add_sphere_part(rig, "PirateEyePatch", Vector3(-0.095, 0.79, 0.252), 0.078, Color("080a0d"))
 	patch.scale = Vector3(1.0, 0.75, 0.28)
 	var strap := _add_box_part(rig, "EyePatchStrap", Vector3(0.0, 0.82, 0.25), Vector3(0.49, 0.035, 0.025), Color("080a0d"))
 	strap.rotation_degrees.z = -10.0
+	var beard := Node3D.new()
+	beard.name = "PirateBeard"
+	rig.add_child(beard)
+	var chin := _add_sphere_part(beard, "Chin", Vector3(0.0, 0.57, 0.18), 0.17, hair)
+	chin.scale = Vector3(0.95, 1.25, 0.55)
+	var left_moustache := _add_capsule_part(beard, "LeftMoustache", Vector3(-0.075, 0.67, 0.27), 0.035, 0.18, hair)
+	left_moustache.rotation_degrees.z = 72.0
+	var right_moustache := _add_capsule_part(beard, "RightMoustache", Vector3(0.075, 0.67, 0.27), 0.035, 0.18, hair)
+	right_moustache.rotation_degrees.z = -72.0
 	if slot == 0:
 		var bandana_tail := _add_box_part(rig, "PirateVariant0", Vector3(0.26, 0.91, -0.02), Vector3(0.10, 0.31, 0.08), Color("72d2eb"))
 		bandana_tail.rotation_degrees.z = -25.0
