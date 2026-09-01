@@ -25,6 +25,7 @@ func run_test() -> void:
 		"Arena/Opponent/StickRig/Shaft",
 		"Arena/Opponent/StickRig/Blade",
 		"Arena/Ball",
+		"Arena/Ball/ShotTrail",
 		"Arena/LeftGoal",
 		"Arena/RightGoal",
 		"Arena/LeftGoal/TopSideNet",
@@ -87,6 +88,10 @@ func run_test() -> void:
 	if not ball.has_method("reset_for_faceoff") or not ball.has_signal("goal_scored"):
 		fail("Ball must integrate with scoring and faceoff flow")
 		return
+	var shot_trail := scene.get_node("Arena/Ball/ShotTrail") as MeshInstance3D
+	if shot_trail.visible:
+		fail("The ball trail must remain hidden at faceoff")
+		return
 	if scene.get_node_or_null("HUD/ChargeLabel") == null:
 		fail("HUD must expose shot charging feedback")
 		return
@@ -109,6 +114,9 @@ func run_test() -> void:
 	await physics_frame
 	if ball.position.x <= ball_start.x or ball.position.y <= ball_start.y:
 		fail("Launched ball must move forward and lift into 3D space; start=%s end=%s" % [ball_start, ball.position])
+		return
+	if not shot_trail.visible:
+		fail("A fast charged shot must reveal the ball trail")
 		return
 
 	print("Greybox scene contract is valid.")

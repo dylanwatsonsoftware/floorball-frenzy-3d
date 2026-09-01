@@ -5,12 +5,16 @@ const MatchSimulationScript = preload("res://scripts/simulation/match_simulation
 const BallInteractionScript = preload("res://scripts/simulation/ball_interaction.gd")
 const MAX_CHARGE_SECONDS := 0.8
 const SHOOT_RANGE := 2.35
+const TRAIL_SPEED_THRESHOLD := 10.0
+const TRAIL_MIN_LENGTH := 0.55
+const TRAIL_MAX_LENGTH := 1.75
 
 var ball_velocity := Vector3.ZERO
 var _charge_seconds := 0.0
 var _player: CharacterBody3D
 var _opponent: CharacterBody3D
 var _charge_label: Label
+var _shot_trail: MeshInstance3D
 
 signal goal_scored(scorer: StringName)
 
@@ -18,6 +22,7 @@ signal goal_scored(scorer: StringName)
 func _ready() -> void:
 	_player = get_parent().get_node("Player") as CharacterBody3D
 	_charge_label = get_node("../../HUD/ChargeLabel") as Label
+	_shot_trail = get_node_or_null("ShotTrail") as MeshInstance3D
 
 
 func _physics_process(delta: float) -> void:
@@ -31,10 +36,12 @@ func _physics_process(delta: float) -> void:
 		ball_velocity = Vector3.ZERO
 		_charge_seconds = 0.0
 		_charge_label.text = ""
+		_set_trail_visible(false)
 		set_physics_process(false)
 		goal_scored.emit(scorer)
 		return
 	_update_spin(delta)
+	_update_shot_trail()
 	_update_shot_charge(delta)
 
 
@@ -47,6 +54,7 @@ func reset_for_faceoff() -> void:
 	ball_velocity = Vector3.ZERO
 	_charge_seconds = 0.0
 	_charge_label.text = ""
+	_set_trail_visible(false)
 	set_physics_process(true)
 
 
@@ -92,3 +100,29 @@ func _update_spin(delta: float) -> void:
 	var planar_speed := Vector2(ball_velocity.x, ball_velocity.z).length()
 	if planar_speed > 0.05:
 		rotate_x(planar_speed * delta / BallSimulationScript.BALL_RADIUS)
+
+
+func _update_shot_trail() -> void:
+	if _shot_trail == null:
+		_shot_trail = get_node_or_null("ShotTrail") as MeshInstance3D
+	if _shot_trail == null:
+		return
+	var speed := ball_velocity.length()
+	if speed < TRAIL_SPEED_THRESHOLD:
+		_shot_trail.visible = false
+		return
+	var direction := ball_velocity.normalized()
+	var trail_length := clampf(speed * 0.065, TRAIL_MIN_LENGTH, TRAIL_MAX_LENGTH)
+	var trail_mesh := _shot_trail.mesh as BoxMesh
+	trail_mesh.size.z = trail_length
+	_shot_trail.global_position = global_position - direction * trail_length * 0.5
+	var up := Vector3.FORWARD if absf(direction.dot(Vector3.UP)) > 0.94 else Vector3.UP
+	_shot_trail.global_basis = Basis.looking_at(-direction, up)
+	_shot_trail.visible = true
+
+
+func _set_trail_visible(value: bool) -> void:
+	if _shot_trail == null:
+		_shot_trail = get_node_or_null("ShotTrail") as MeshInstance3D
+	if _shot_trail != null:
+		_shot_trail.visible = value

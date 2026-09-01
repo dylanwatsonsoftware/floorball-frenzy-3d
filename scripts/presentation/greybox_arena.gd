@@ -211,6 +211,16 @@ func _build_ball() -> void:
 	ball.position = Vector3(0.0, 0.22, 0.0)
 	ball.material_override = _material(Color("ff8a1f"), 0.38, Color("ff5a00"))
 	ball.set_script(load("res://scripts/gameplay/ball_controller.gd"))
+	var trail := MeshInstance3D.new()
+	trail.name = "ShotTrail"
+	var trail_mesh := BoxMesh.new()
+	trail_mesh.size = Vector3(0.11, 0.11, 1.0)
+	trail.mesh = trail_mesh
+	trail.material_override = _material(Color(1.0, 0.3, 0.04, 0.58), 0.2, Color("ff5a00"))
+	trail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	trail.visible = false
+	trail.top_level = true
+	ball.add_child(trail)
 	add_child(ball)
 
 
