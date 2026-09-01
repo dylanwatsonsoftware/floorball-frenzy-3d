@@ -19,16 +19,12 @@ func _init() -> void:
 		fail("Charged shot must have more lift")
 		return
 	var overcharged_shot: Vector3 = script.shot_velocity(Vector2.RIGHT, 2.0)
-	if overcharged_shot.length() >= charged_shot.length() or not is_equal_approx(overcharged_shot.x, low_shot.x):
-		fail("Holding beyond the sweet spot must reduce shot power back toward base")
+	if not overcharged_shot.is_equal_approx(charged_shot):
+		fail("A fully charged shot must stay at full power instead of becoming weak because the button was held too long")
 		return
-	if not script.is_perfect_charge(1.0) or script.is_perfect_charge(0.7) or script.is_perfect_charge(1.3):
-		fail("Perfect shots must use a narrow timing window around full charge")
-		return
-	var near_perfect: Vector3 = script.shot_velocity(Vector2.RIGHT, 0.95)
-	var ordinary: Vector3 = script.shot_velocity(Vector2.RIGHT, 0.8)
-	if near_perfect.length() <= ordinary.length():
-		fail("The perfect timing window must award a real power bonus")
+	var almost_full: Vector3 = script.shot_velocity(Vector2.RIGHT, 0.95)
+	if charged_shot.x <= almost_full.x or charged_shot.x - almost_full.x > script.SHOT_SPEED_SCALE * 0.06:
+		fail("Shot power must ramp smoothly into full charge without a narrow timing spike")
 		return
 	var moving_shot: Vector3 = script.shot_velocity(Vector2.RIGHT, 0.5, Vector3(4.0, 0.0, 2.0))
 	var static_shot: Vector3 = script.shot_velocity(Vector2.RIGHT, 0.5)

@@ -4,6 +4,7 @@ const SimpleAIScript = preload("res://scripts/simulation/simple_ai.gd")
 const PlayerMotorScript = preload("res://scripts/gameplay/player_motor.gd")
 const RinkCollisionScript = preload("res://scripts/simulation/rink_collision.gd")
 const HeatSystemScript = preload("res://scripts/simulation/heat_system.gd")
+const PlayerContactScript = preload("res://scripts/simulation/player_contact.gd")
 const RINK_HALF_LENGTH := 18.1
 const RINK_HALF_WIDTH := 8.6
 const SHOT_CHARGE_SECONDS := 0.55
@@ -75,6 +76,7 @@ func _physics_process(delta: float) -> void:
 	var boundary := RinkCollisionScript.constrain_body(global_position, velocity, RINK_HALF_LENGTH, RINK_HALF_WIDTH, 1.8)
 	global_position = boundary.position
 	velocity = boundary.velocity
+	_resolve_player_contact()
 
 	var facing_planar: Vector2 = decision.shot_direction if decision.wants_shot else decision.movement
 	if not facing_planar.is_zero_approx():
@@ -93,6 +95,19 @@ func _update_shot(decision: Dictionary, delta: float) -> void:
 			_shot_cooldown = SHOT_COOLDOWN_SECONDS
 	else:
 		_shot_charge = 0.0
+
+
+func _resolve_player_contact() -> void:
+	var contact: Dictionary = PlayerContactScript.resolve(
+		_player.global_position,
+		_player.velocity,
+		global_position,
+		velocity
+	)
+	_player.global_position = contact.position_a
+	_player.velocity = contact.velocity_a
+	global_position = contact.position_b
+	velocity = contact.velocity_b
 
 
 func get_facing_direction() -> Vector3:

@@ -11,12 +11,12 @@ func _init() -> void:
 		fail("Normal charge must show readable progress")
 		return
 	var perfect: Dictionary = feedback.for_charge(1.0)
-	if perfect.label != "PERFECT!" or perfect.state != &"perfect":
-		fail("The sweet spot must have unmistakable perfect-shot feedback")
+	if perfect.label != "SHOT 100%" or perfect.state != &"ready":
+		fail("Full charge feedback must describe a reliable ready shot without a timing minigame")
 		return
 	var overcharged: Dictionary = feedback.for_charge(1.5)
-	if overcharged.label != "OVERCHARGE 50%" or overcharged.state != &"overcharged":
-		fail("Overcharge feedback must show the remaining power")
+	if overcharged.label != "SHOT 100%" or overcharged.state != &"ready":
+		fail("Holding after full charge must remain clearly ready instead of implying a weaker shot")
 		return
 	print("Shot charge feedback is valid.")
 	quit(0)

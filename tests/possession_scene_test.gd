@@ -47,6 +47,31 @@ func run_test() -> void:
 	if ball.call("get_slap_phase") == &"idle":
 		fail("Releasing Shoot without the ball must still play the forward slap and recovery")
 		return
+	for frame in 30:
+		await physics_frame
+
+	# A carried ball can lag behind the exact visual blade point during a turn or run.
+	# The forward slap must still connect while it remains in the retained stick zone.
+	player.position = Vector3.ZERO + Vector3(0.0, 0.75, 0.0)
+	player.velocity = Vector3.ZERO
+	ball.position = player.position + Vector3(0.9, -0.53, 0.75)
+	ball.ball_velocity = Vector3.ZERO
+	await physics_frame
+	await physics_frame
+	if not ball.call("is_controlled_by", &"red"):
+		fail("Reliable-shot setup must begin with real red possession")
+		return
+	ball.call("begin_slap", Vector2.RIGHT, 0.7)
+	ball.position = player.position + Vector3(2.3, -0.53, 0.75)
+	await physics_frame
+	if not ball.call("is_controlled_by", &"red"):
+		fail("A ball inside the retained carry zone must remain possessed during backswing")
+		return
+	for frame in 20:
+		await physics_frame
+	if ball.ball_velocity.x < 12.0:
+		fail("A forward slap must reliably hit a retained ball even when it is not on one exact blade pixel; velocity=%s" % ball.ball_velocity)
+		return
 
 	print("Possession and empty-slap scene behavior is valid.")
 	scene.queue_free()

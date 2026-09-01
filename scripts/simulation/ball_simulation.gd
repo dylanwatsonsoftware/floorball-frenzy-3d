@@ -32,11 +32,9 @@ static func shot_velocity(aim: Vector2, charge: float, inherited_velocity: Vecto
 
 static func shot_plan(aim: Vector2, charge: float, inherited_velocity: Vector3 = Vector3.ZERO, one_touch: bool = false, bolt: bool = false) -> Dictionary:
 	var direction := aim.normalized() if not aim.is_zero_approx() else Vector2.RIGHT
-	var clamped_charge := clampf(charge, 0.0, 2.0)
-	var power_fraction := clamped_charge if clamped_charge <= 1.0 else 2.0 - clamped_charge
+	var clamped_charge := clampf(charge, 0.0, 1.0)
+	var power_fraction := clamped_charge
 	var speed := SHOT_BASE_SPEED + SHOT_SPEED_SCALE * power_fraction
-	if is_perfect_charge(clamped_charge):
-		speed *= PERFECT_SHOT_MULTIPLIER
 	if one_touch:
 		speed *= ONE_TOUCH_MULTIPLIER
 	if bolt:

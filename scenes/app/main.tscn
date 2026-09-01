@@ -71,6 +71,7 @@ text = "RED  0  —  0  BLUE"
 horizontal_alignment = 1
 
 [node name="RedHeatBar" type="ProgressBar" parent="HUD"]
+visible = false
 offset_left = 24.0
 offset_top = 92.0
 offset_right = 244.0
@@ -83,6 +84,7 @@ value = 0.0
 show_percentage = true
 
 [node name="RedHeatLabel" type="Label" parent="HUD"]
+visible = false
 offset_left = 24.0
 offset_top = 72.0
 offset_right = 154.0
@@ -94,6 +96,7 @@ theme_override_font_sizes/font_size = 14
 text = "RED HEAT"
 
 [node name="BlueHeatBar" type="ProgressBar" parent="HUD"]
+visible = false
 layout_mode = 0
 anchor_left = 1.0
 anchor_right = 1.0
@@ -110,6 +113,7 @@ value = 0.0
 show_percentage = true
 
 [node name="BlueHeatLabel" type="Label" parent="HUD"]
+visible = false
 layout_mode = 0
 anchor_left = 1.0
 anchor_right = 1.0

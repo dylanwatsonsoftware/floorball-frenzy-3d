@@ -66,9 +66,6 @@ static func calculate_floating_drag(origin: Vector2, current_position: Vector2, 
 
 static func action_at_position(touch_position: Vector2, viewport_size: Vector2) -> StringName:
 	var shoot_center := Vector2(viewport_size.x - EDGE_MARGIN - SHOOT_RADIUS, viewport_size.y - EDGE_MARGIN - SHOOT_RADIUS)
-	var dash_center := Vector2(viewport_size.x - EDGE_MARGIN - DASH_RADIUS, shoot_center.y - SHOOT_RADIUS - DASH_RADIUS - 24.0)
-	if touch_position.distance_to(dash_center) <= DASH_RADIUS * 1.35:
-		return &"dash"
 	if touch_position.distance_to(shoot_center) <= SHOOT_RADIUS * 1.35:
 		return &"shoot"
 	return &""
@@ -94,12 +91,7 @@ func _input(event: InputEvent) -> void:
 func _handle_touch(event: InputEventScreenTouch) -> void:
 	if event.pressed:
 		var action := action_at_position(event.position, size)
-		if action == &"dash" and _dash_touch == -1:
-			_dash_touch = event.index
-			Input.action_press("dash")
-			queue_redraw()
-			get_viewport().set_input_as_handled()
-		elif action == &"shoot" and _shoot_touch == -1:
+		if action == &"shoot" and _shoot_touch == -1:
 			_shoot_touch = event.index
 			Input.action_press("shoot")
 			queue_redraw()
@@ -121,11 +113,6 @@ func _handle_touch(event: InputEventScreenTouch) -> void:
 	elif event.index == _shoot_touch:
 		_shoot_touch = -1
 		Input.action_release("shoot")
-		queue_redraw()
-		get_viewport().set_input_as_handled()
-	elif event.index == _dash_touch:
-		_dash_touch = -1
-		Input.action_release("dash")
 		queue_redraw()
 		get_viewport().set_input_as_handled()
 
@@ -164,20 +151,8 @@ func _draw() -> void:
 	var label := "SHOOT"
 	var label_size := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
 	draw_string(font, shoot_center - label_size * 0.5 + Vector2(0.0, label_size.y), label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color.WHITE)
-	var dash_center := _dash_center()
-	var dash_ready := _dash_cooldown_ratio <= 0.001
-	var dash_color := Color(0.22, 0.72, 1.0, 0.92) if _dash_touch != -1 and dash_ready else Color(0.12, 0.48, 0.86, 0.78) if dash_ready else Color(0.14, 0.2, 0.3, 0.72)
-	draw_circle(dash_center, DASH_RADIUS, dash_color)
-	draw_arc(dash_center, DASH_RADIUS, 0.0, TAU, 48, Color.WHITE, 3.0)
-	if not dash_ready:
-		draw_arc(dash_center, DASH_RADIUS - 6.0, -PI * 0.5, -PI * 0.5 + TAU * _dash_cooldown_ratio, 40, Color(0.35, 0.82, 1.0, 0.95), 6.0)
-	var dash_label := "DASH"
-	var dash_size := font.get_string_size(dash_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 17)
-	draw_string(font, dash_center - dash_size * 0.5 + Vector2(0.0, dash_size.y), dash_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 17, Color.WHITE)
 
 
 func _exit_tree() -> void:
 	if _shoot_touch != -1:
 		Input.action_release("shoot")
-	if _dash_touch != -1:
-		Input.action_release("dash")

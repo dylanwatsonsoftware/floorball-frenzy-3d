@@ -33,7 +33,7 @@ static func decide(ai_position: Vector3, ball_position: Vector3, opponent_positi
 
 	var planar_ball_speed := Vector2(ball_velocity.x, ball_velocity.z).length()
 	var wants_shot := has_possession and to_goal.length() <= SHOOT_DISTANCE_TO_GOAL and ball_position.y <= STRIKE_HEIGHT and planar_ball_speed <= MAX_STRIKE_BALL_SPEED
-	var wants_dash := not has_possession and dash_ready and distance_to_ball > DASH_RANGE and not movement.is_zero_approx()
+	var wants_dash := false
 
 	return {
 		"movement": movement,

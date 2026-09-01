@@ -30,8 +30,8 @@ func _init() -> void:
 		Vector3.ZERO,
 		true
 	)
-	if not far_chase.wants_dash:
-		fail("Blue AI must use a ready dash when the loose ball is over the original range threshold")
+	if far_chase.wants_dash:
+		fail("Blue AI must run for a loose ball instead of injecting a special dash into the core match")
 		return
 	var cooling_down: Dictionary = ai.decide(Vector3(12.0, 0.75, 0.0), Vector3.ZERO, Vector3(-5.0, 0.75, 0.0), Vector3.ZERO, false)
 	if cooling_down.wants_dash:
