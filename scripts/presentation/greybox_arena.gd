@@ -490,27 +490,29 @@ func _add_player_marker(parent: Node3D) -> void:
 	marker.name = "PlayerMarker"
 	marker.set_script(load("res://scripts/presentation/active_player_marker.gd"))
 	parent.add_child(marker)
-	var pointer := MeshInstance3D.new()
-	pointer.name = "Pointer"
-	var cone := CylinderMesh.new()
-	cone.top_radius = 0.28
-	cone.bottom_radius = 0.0
-	cone.height = 0.58
-	cone.radial_segments = 14
-	pointer.mesh = cone
-	pointer.material_override = _material(Color("ffe24f"), 0.25, Color("ffd83d"))
-	marker.add_child(pointer)
-	var halo := MeshInstance3D.new()
-	halo.name = "Halo"
-	var ring := TorusMesh.new()
-	ring.inner_radius = 0.3
-	ring.outer_radius = 0.38
-	ring.rings = 20
-	ring.ring_segments = 8
-	halo.mesh = ring
-	halo.position.y = 0.36
-	halo.material_override = _material(Color(1.0, 0.9, 0.3, 0.82), 0.2, Color("ffd83d"))
-	marker.add_child(halo)
+	var arrow := Sprite3D.new()
+	arrow.name = "Arrow2D"
+	arrow.texture = _make_player_arrow_texture()
+	arrow.pixel_size = 0.009
+	arrow.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	arrow.no_depth_test = true
+	arrow.render_priority = 10
+	marker.add_child(arrow)
+
+
+func _make_player_arrow_texture() -> ImageTexture:
+	var image := Image.create(96, 96, false, Image.FORMAT_RGBA8)
+	var outline := Color("172238")
+	var fill := Color("ffe24f")
+	for y in 96:
+		for x in 96:
+			var outer_body := x >= 27 and x <= 68 and y >= 5 and y <= 47
+			var outer_head := y >= 38 and y <= 89 and absf(float(x - 48)) <= float(89 - y) * 0.78
+			var inner_body := x >= 35 and x <= 60 and y >= 13 and y <= 48
+			var inner_head := y >= 45 and y <= 79 and absf(float(x - 48)) <= float(80 - y) * 0.62
+			if outer_body or outer_head:
+				image.set_pixel(x, y, fill if inner_body or inner_head else outline)
+	return ImageTexture.create_from_image(image)
 
 
 func _add_control_ring(parent: Node3D) -> void:

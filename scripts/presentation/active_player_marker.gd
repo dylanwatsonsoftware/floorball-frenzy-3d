@@ -16,4 +16,3 @@ func _process(_delta: float) -> void:
 	visible = actor.has_method("is_human_controlled") and bool(actor.call("is_human_controlled"))
 	if visible:
 		position.y = BASE_HEIGHT + sin(Time.get_ticks_msec() * 0.001 * BOB_SPEED + _phase) * BOB_DISTANCE
-		rotation.y = Time.get_ticks_msec() * 0.0007
