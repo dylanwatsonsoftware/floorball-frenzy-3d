@@ -24,11 +24,17 @@ func run_test() -> void:
 		"Arena/BroadcastCamera",
 		"HUD/CameraLabel",
 		"HUD/MobileControls",
+		"HUD/WebDisplayControls/FullscreenButton",
+		"HUD/WebDisplayControls/OrientationHint",
 	]
 	for path in required_nodes:
 		if scene.get_node_or_null(path) == null:
 			fail("Missing greybox node: %s" % path)
 			return
+	var fullscreen_button := scene.get_node("HUD/WebDisplayControls/FullscreenButton") as Button
+	if fullscreen_button.text != "FULLSCREEN":
+		fail("Fullscreen label must use portable web-font characters")
+		return
 
 	var camera := scene.get_node("Arena/BroadcastCamera") as Camera3D
 	if not camera.current:

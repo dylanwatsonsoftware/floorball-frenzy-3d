@@ -1,8 +1,9 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/app/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/presentation/greybox_arena.gd" id="2_arena"]
 [ext_resource type="Script" path="res://scripts/gameplay/mobile_controls.gd" id="3_mobile"]
+[ext_resource type="Script" path="res://scripts/presentation/web_display_controls.gd" id="4_display"]
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_main")
@@ -59,3 +60,53 @@ layout_mode = 0
 
 [node name="ShootButton" type="Control" parent="HUD/MobileControls"]
 layout_mode = 0
+
+[node name="WebDisplayControls" type="Control" parent="HUD"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("4_display")
+
+[node name="FullscreenButton" type="Button" parent="HUD/WebDisplayControls"]
+layout_mode = 0
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -194.0
+offset_top = 18.0
+offset_right = -18.0
+offset_bottom = 66.0
+grow_horizontal = 0
+mouse_default_cursor_shape = 2
+theme_override_colors/font_color = Color(0.95, 0.98, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 0.75, 0.35, 1)
+theme_override_font_sizes/font_size = 18
+text = "FULLSCREEN"
+
+[node name="OrientationHint" type="Label" parent="HUD/WebDisplayControls"]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -190.0
+offset_top = -60.0
+offset_right = 190.0
+offset_bottom = 60.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 0.82, 0.38, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.9)
+theme_override_constants/shadow_offset_x = 3
+theme_override_constants/shadow_offset_y = 3
+theme_override_font_sizes/font_size = 28
+text = "ROTATE YOUR DEVICE\nFOR THE FULL RINK"
+horizontal_alignment = 1
+vertical_alignment = 1
