@@ -18,6 +18,11 @@ func _init() -> void:
 	if charged_shot.y <= low_shot.y:
 		fail("Charged shot must have more lift")
 		return
+	var moving_shot: Vector3 = script.shot_velocity(Vector2.RIGHT, 0.5, Vector3(4.0, 0.0, 2.0))
+	var static_shot: Vector3 = script.shot_velocity(Vector2.RIGHT, 0.5)
+	if not is_equal_approx(moving_shot.x, static_shot.x + 4.0) or not is_equal_approx(moving_shot.z, static_shot.z + 2.0):
+		fail("Slap shots must inherit planar player momentum")
+		return
 
 	var airborne: Dictionary = script.step(Vector3(0.0, 3.0, 0.0), Vector3.ZERO, 0.1)
 	if airborne.velocity.y >= 0.0:

@@ -153,8 +153,8 @@ func _build_opponent() -> void:
 func _add_stick(parent: Node3D, color: Color) -> void:
 	var rig := Node3D.new()
 	rig.name = "StickRig"
-	rig.position = Vector3(0.18, -0.18, 0.0)
-	rig.rotation_degrees = Vector3(12.0, 28.0, -5.0)
+	rig.position = Vector3(-0.18, -0.18, 0.0)
+	rig.rotation_degrees = Vector3(25.0, -28.0, 5.0)
 	parent.add_child(rig)
 
 	var shaft := MeshInstance3D.new()
@@ -171,10 +171,20 @@ func _add_stick(parent: Node3D, color: Color) -> void:
 	var blade_mesh := BoxMesh.new()
 	blade_mesh.size = Vector3(0.48, 0.11, 0.13)
 	blade.mesh = blade_mesh
-	blade.position = Vector3(0.18, 0.0, 1.08)
-	blade.rotation_degrees.y = -12.0
+	blade.position = Vector3(-0.18, 0.0, 1.08)
+	blade.rotation_degrees.y = 12.0
 	blade.material_override = _material(color, 0.58)
 	rig.add_child(blade)
+
+	var blade_toe := MeshInstance3D.new()
+	blade_toe.name = "BladeToe"
+	var toe_mesh := BoxMesh.new()
+	toe_mesh.size = Vector3(0.22, 0.11, 0.13)
+	blade_toe.mesh = toe_mesh
+	blade_toe.position = Vector3(-0.47, 0.0, 1.0)
+	blade_toe.rotation_degrees.y = -34.0
+	blade_toe.material_override = _material(color, 0.58)
+	rig.add_child(blade_toe)
 
 
 func _add_dash_streak(parent: Node3D) -> void:

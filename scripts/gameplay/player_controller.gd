@@ -4,6 +4,7 @@ const PlayerMotorScript = preload("res://scripts/gameplay/player_motor.gd")
 const RINK_HALF_LENGTH := 18.1
 const RINK_HALF_WIDTH := 8.6
 const DASH_STREAK_SECONDS := 0.18
+const STICK_BASE_Y_ANGLE := -28.0
 
 var _facing_direction := Vector3.RIGHT
 var _mobile_controls: Control
@@ -62,3 +63,9 @@ func try_dash(input_vector: Vector2 = Vector2.ZERO) -> bool:
 	if _dash_streak != null:
 		_dash_streak.visible = true
 	return true
+
+
+func set_stick_slap_angle(angle_degrees: float) -> void:
+	var stick_rig := get_node_or_null("StickRig") as Node3D
+	if stick_rig != null:
+		stick_rig.rotation_degrees.y = STICK_BASE_Y_ANGLE + angle_degrees

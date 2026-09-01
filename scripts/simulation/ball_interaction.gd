@@ -2,13 +2,15 @@ class_name BallInteraction
 extends RefCounted
 
 const BODY_CONTACT_DISTANCE := 0.74
-const STICK_REACH := 1.3
+const BLADE_FORWARD_OFFSET := 0.9
+const BLADE_RIGHT_OFFSET := 0.75
 const STICK_CONTROL_RADIUS := 0.78
 const CONTROL_HEIGHT := 0.68
 const DRIBBLE_LEAD_SPEED := 2.2
 const VELOCITY_TRANSFER := 0.72
 const ASSIST_RATE := 8.0
 const MAX_CONTROL_SPEED := 10.0
+const POSITION_ASSIST_RATE := 7.0
 
 
 static func step(ball_position: Vector3, ball_velocity: Vector3, participants: Array, delta: float) -> Dictionary:
@@ -44,13 +46,10 @@ static func step(ball_position: Vector3, ball_velocity: Vector3, participants: A
 	var closest_stick_distance := INF
 	for index in participants.size():
 		var participant: Dictionary = participants[index]
-		var facing := Vector2(participant.facing.x, participant.facing.z).normalized()
-		if facing.is_zero_approx():
+		var pocket := blade_pocket(participant)
+		if pocket.is_empty() or not is_in_blade_pocket(next_position, participant):
 			continue
-		var player_planar := Vector2(participant.position.x, participant.position.z)
-		var stick_target := player_planar + facing * STICK_REACH
-		var ball_planar := Vector2(next_position.x, next_position.z)
-		var stick_distance := ball_planar.distance_to(stick_target)
+		var stick_distance: float = Vector2(next_position.x, next_position.z).distance_to(pocket.target)
 		if stick_distance <= STICK_CONTROL_RADIUS and stick_distance < closest_stick_distance:
 			controller = index
 			closest_stick_distance = stick_distance
@@ -58,6 +57,15 @@ static func step(ball_position: Vector3, ball_velocity: Vector3, participants: A
 	if controller >= 0:
 		var owner: Dictionary = participants[controller]
 		var owner_facing := Vector2(owner.facing.x, owner.facing.z).normalized()
+		if owner.get("slap_phase", &"idle") == &"backswing":
+			next_velocity.x = owner.velocity.x
+			next_velocity.z = owner.velocity.z
+			return _result(next_position, next_velocity, controller)
+		var pocket := blade_pocket(owner)
+		var ball_planar := Vector2(next_position.x, next_position.z)
+		ball_planar = ball_planar.lerp(pocket.target, clampf(delta * POSITION_ASSIST_RATE, 0.0, 1.0))
+		next_position.x = ball_planar.x
+		next_position.z = ball_planar.y
 		var target_velocity := Vector2(owner.velocity.x, owner.velocity.z) + owner_facing * DRIBBLE_LEAD_SPEED
 		var current_velocity := Vector2(next_velocity.x, next_velocity.z)
 		var assisted_velocity := current_velocity.lerp(target_velocity, clampf(delta * ASSIST_RATE, 0.0, 1.0))
@@ -65,6 +73,31 @@ static func step(ball_position: Vector3, ball_velocity: Vector3, participants: A
 		next_velocity.z = assisted_velocity.y
 
 	return _result(next_position, next_velocity, controller)
+
+
+static func blade_pocket(participant: Dictionary) -> Dictionary:
+	var facing := Vector2(participant.facing.x, participant.facing.z).normalized()
+	if facing.is_zero_approx():
+		return {}
+	var right := Vector2(-facing.y, facing.x)
+	var player_planar := Vector2(participant.position.x, participant.position.z)
+	return {
+		"facing": facing,
+		"right": right,
+		"target": player_planar + facing * BLADE_FORWARD_OFFSET + right * BLADE_RIGHT_OFFSET,
+		"player": player_planar,
+	}
+
+
+static func is_in_blade_pocket(ball_position: Vector3, participant: Dictionary) -> bool:
+	var pocket := blade_pocket(participant)
+	if pocket.is_empty() or ball_position.y > CONTROL_HEIGHT:
+		return false
+	var ball_planar := Vector2(ball_position.x, ball_position.z)
+	var relative: Vector2 = ball_planar - pocket.player
+	if relative.dot(pocket.facing) <= 0.18 or relative.dot(pocket.right) <= 0.08:
+		return false
+	return ball_planar.distance_to(pocket.target) <= STICK_CONTROL_RADIUS
 
 
 static func _result(position: Vector3, velocity: Vector3, controller: int) -> Dictionary:

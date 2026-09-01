@@ -13,13 +13,25 @@ func _init() -> void:
 		"facing": Vector3.RIGHT,
 	}
 	var controlled: Dictionary = interaction.step(
-		Vector3(1.3, 0.22, 0.0),
+		Vector3(0.9, 0.22, 0.75),
 		Vector3.ZERO,
 		[player],
 		0.1
 	)
 	if controlled.controller != 0 or controlled.velocity.x <= 0.0:
 		fail("A grounded ball at the stick must follow the moving player; got %s" % controlled)
+		return
+
+	var wrong_side: Dictionary = interaction.step(Vector3(0.9, 0.22, -0.75), Vector3.ZERO, [player], 0.1)
+	if wrong_side.controller != -1:
+		fail("The back of the curved blade must not magnetically capture the ball")
+		return
+
+	var backswing_player := player.duplicate()
+	backswing_player.slap_phase = &"backswing"
+	var neutral: Dictionary = interaction.step(Vector3(0.9, 0.22, 0.75), Vector3.ZERO, [backswing_player], 0.1)
+	if neutral.controller != 0 or not is_equal_approx(neutral.velocity.x, player.velocity.x) or not is_equal_approx(neutral.velocity.z, player.velocity.z):
+		fail("During backswing the ball must inherit player motion without a stick impulse; got %s" % neutral)
 		return
 
 	var distant: Dictionary = interaction.step(
@@ -33,7 +45,7 @@ func _init() -> void:
 		return
 
 	var airborne: Dictionary = interaction.step(
-		Vector3(1.3, 1.2, 0.0),
+		Vector3(0.9, 1.2, 0.75),
 		Vector3(2.0, -1.0, 0.0),
 		[player],
 		0.1
@@ -43,7 +55,7 @@ func _init() -> void:
 		return
 
 	var fast_shot: Dictionary = interaction.step(
-		Vector3(1.3, 0.22, 0.0),
+		Vector3(0.9, 0.22, 0.75),
 		Vector3(14.0, 1.0, 0.0),
 		[player],
 		0.1

@@ -20,10 +20,12 @@ func run_test() -> void:
 		"Arena/Player",
 		"Arena/Player/StickRig/Shaft",
 		"Arena/Player/StickRig/Blade",
+		"Arena/Player/StickRig/BladeToe",
 		"Arena/Player/DashStreak",
 		"Arena/Player/DashStreak/CenterTrail",
 		"Arena/Opponent/StickRig/Shaft",
 		"Arena/Opponent/StickRig/Blade",
+		"Arena/Opponent/StickRig/BladeToe",
 		"Arena/Ball",
 		"Arena/Ball/ShotTrail",
 		"Arena/LeftGoal",
@@ -59,7 +61,7 @@ func run_test() -> void:
 		fail("Blue opponent must be controlled by the local-match AI")
 		return
 	var player_stick := scene.get_node("Arena/Player/StickRig") as Node3D
-	if player_stick.position.x <= 0.0 or player_stick.rotation.y <= 0.2:
+	if player_stick.position.x >= 0.0 or player_stick.rotation.y >= -0.2:
 		fail("The stick must angle across the body toward the player's right")
 		return
 	var dash_streak := scene.get_node("Arena/Player/DashStreak") as Node3D
@@ -77,8 +79,11 @@ func run_test() -> void:
 		fail("Starting a dash must reveal its streak and cooldown feedback; visible=%s cooldown=%s" % [dash_streak.visible, player.call("get_dash_cooldown_ratio")])
 		return
 	var player_blade := scene.get_node("Arena/Player/StickRig/Blade") as MeshInstance3D
-	if player_blade.position.z <= 0.5 or player_blade.position.x <= 0.0:
-		fail("The stick blade must finish forward and to the player's right")
+	if player_blade.position.z <= 0.5 or player_blade.position.x >= 0.0 or player_blade.global_position.y > 0.3:
+		fail("The stick blade must finish grounded, forward, and to the player's right")
+		return
+	if not player.has_method("set_stick_slap_angle"):
+		fail("The player must expose physical slap-stick animation")
 		return
 
 	var ball := scene.get_node("Arena/Ball")
@@ -87,6 +92,9 @@ func run_test() -> void:
 		return
 	if not ball.has_method("reset_for_faceoff") or not ball.has_signal("goal_scored"):
 		fail("Ball must integrate with scoring and faceoff flow")
+		return
+	if not ball.has_method("begin_slap") or not ball.has_method("get_slap_phase"):
+		fail("Ball gameplay must expose the timed physical slap sequence")
 		return
 	var shot_trail := scene.get_node("Arena/Ball/ShotTrail") as MeshInstance3D
 	if shot_trail.visible:
@@ -108,12 +116,23 @@ func run_test() -> void:
 	if scene.get_node_or_null("HUD/MobileControls/DashButton") == null:
 		fail("Mobile controls must show a dash button")
 		return
-	var ball_start: Vector3 = ball.position
-	ball.launch(Vector2.RIGHT, 1.0)
-	await physics_frame
-	await physics_frame
-	if ball.position.x <= ball_start.x or ball.position.y <= ball_start.y:
-		fail("Launched ball must move forward and lift into 3D space; start=%s end=%s" % [ball_start, ball.position])
+	player.position = Vector3(-5.0, 0.75, 0.0)
+	player.velocity = Vector3.ZERO
+	ball.position = Vector3(-4.1, 0.22, 0.75)
+	ball.ball_velocity = Vector3.ZERO
+	ball.begin_slap(Vector2.RIGHT, 1.0)
+	if ball.get_slap_phase() != &"backswing" or not ball.ball_velocity.is_zero_approx():
+		fail("Starting a slap must begin with a neutral-ball backswing")
+		return
+	for frame in 5:
+		await physics_frame
+	if ball.ball_velocity.length() >= 10.0:
+		fail("The ball must not receive its shot impulse during backswing")
+		return
+	for frame in 12:
+		await physics_frame
+	if ball.ball_velocity.x <= 10.0 or ball.position.y <= 0.22:
+		fail("Forward blade contact must launch the ball with lift; velocity=%s position=%s" % [ball.ball_velocity, ball.position])
 		return
 	if not shot_trail.visible:
 		fail("A fast charged shot must reveal the ball trail")
