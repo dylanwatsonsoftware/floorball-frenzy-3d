@@ -2,12 +2,14 @@ extends MeshInstance3D
 
 const BallSimulationScript = preload("res://scripts/simulation/ball_simulation.gd")
 const MatchSimulationScript = preload("res://scripts/simulation/match_simulation.gd")
+const BallInteractionScript = preload("res://scripts/simulation/ball_interaction.gd")
 const MAX_CHARGE_SECONDS := 0.8
 const SHOOT_RANGE := 2.35
 
 var ball_velocity := Vector3.ZERO
 var _charge_seconds := 0.0
 var _player: CharacterBody3D
+var _opponent: CharacterBody3D
 var _charge_label: Label
 
 signal goal_scored(scorer: StringName)
@@ -21,8 +23,9 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	var previous_position := position
 	var next_state := BallSimulationScript.step(position, ball_velocity, delta)
-	position = next_state.position
-	ball_velocity = next_state.velocity
+	var interaction_state := BallInteractionScript.step(next_state.position, next_state.velocity, _interaction_participants(), delta)
+	position = interaction_state.position
+	ball_velocity = interaction_state.velocity
 	var scorer := MatchSimulationScript.detect_goal(previous_position, position, ball_velocity)
 	if scorer != &"":
 		ball_velocity = Vector3.ZERO
@@ -66,6 +69,23 @@ func _update_shot_charge(delta: float) -> void:
 func _planar_distance_to_player() -> float:
 	var offset := global_position - _player.global_position
 	return Vector2(offset.x, offset.z).length()
+
+
+func _interaction_participants() -> Array:
+	if _opponent == null:
+		_opponent = get_parent().get_node_or_null("Opponent") as CharacterBody3D
+	var participants := [{
+		"position": _player.global_position,
+		"velocity": _player.velocity,
+		"facing": _player.call("get_facing_direction"),
+	}]
+	if _opponent != null:
+		participants.append({
+			"position": _opponent.global_position,
+			"velocity": _opponent.velocity,
+			"facing": _opponent.call("get_facing_direction"),
+		})
+	return participants
 
 
 func _update_spin(delta: float) -> void:
