@@ -44,11 +44,34 @@ func _init() -> void:
 		Vector3(-5.0, 0.75, 0.0),
 		Vector3.ZERO
 	)
-	if not in_range.wants_shot:
-		fail("Blue AI must prepare a shot when the grounded ball is in range")
+	if in_range.wants_shot:
+		fail("Blue AI must not remotely shoot merely because the ball is near its body")
 		return
-	if in_range.shot_direction.x >= 0.0:
+	var possessed: Dictionary = ai.decide(
+		Vector3(-2.0, 0.75, 0.0),
+		Vector3(-3.0, 0.22, 0.0),
+		Vector3(-5.0, 0.75, 0.0),
+		Vector3.ZERO,
+		true,
+		true
+	)
+	if not possessed.wants_shot:
+		fail("Blue AI may prepare a shot only after the ball is actually controlled at its stick")
+		return
+	if possessed.shot_direction.x >= 0.0:
 		fail("Blue AI must aim shots toward the left goal")
+		return
+	var opening_grace: Dictionary = ai.decide(
+		Vector3(5.0, 0.75, 0.0),
+		Vector3.ZERO,
+		Vector3(-5.0, 0.75, 0.0),
+		Vector3.ZERO,
+		true,
+		false,
+		true
+	)
+	if not opening_grace.movement.is_zero_approx() or opening_grace.wants_dash or opening_grace.wants_shot:
+		fail("Blue AI must give the human a brief neutral opening instead of attacking immediately")
 		return
 
 	var airborne: Dictionary = ai.decide(

@@ -25,6 +25,58 @@ func _init() -> void:
 		fail("Stick control must not count as the body touch used for one-touch timing")
 		return
 
+	var direct_pickup: Dictionary = interaction.step(
+		Vector3(1.15, 0.22, 0.0),
+		Vector3.ZERO,
+		[player],
+		0.1
+	)
+	if direct_pickup.controller != 0:
+		fail("Approaching a loose ball directly in front must feed it into the curved stick pocket")
+		return
+
+	var turned_player := player.duplicate()
+	turned_player.facing = Vector3.FORWARD
+	turned_player.velocity = Vector3.ZERO
+	var retained: Dictionary = interaction.step(
+		Vector3(0.9, 0.22, 0.75),
+		Vector3.ZERO,
+		[turned_player],
+		0.1,
+		0
+	)
+	if retained.controller != 0:
+		fail("A controlled ball must remain attached through an ordinary sharp direction change")
+		return
+	var running_player := player.duplicate()
+	running_player.velocity = Vector3(12.0, 0.0, 0.0)
+	var running_control: Dictionary = interaction.step(
+		Vector3(0.9, 0.22, 0.75),
+		Vector3(14.0, 0.0, 0.0),
+		[running_player],
+		0.1,
+		0
+	)
+	if running_control.controller != 0:
+		fail("Possession must not drop merely because the player and carried ball are moving at full speed")
+		return
+
+	var challenger := {
+		"position": Vector3(0.9, 0.75, 0.75),
+		"velocity": Vector3(-5.0, 0.0, 0.0),
+		"facing": Vector3.LEFT,
+	}
+	var bumped: Dictionary = interaction.step(
+		Vector3(0.9, 0.22, 0.75),
+		Vector3.ZERO,
+		[player, challenger],
+		0.1,
+		0
+	)
+	if bumped.controller == 0:
+		fail("Opponent body contact must still knock the ball out of retained stick possession")
+		return
+
 	var wrong_side: Dictionary = interaction.step(Vector3(0.9, 0.22, -0.75), Vector3.ZERO, [player], 0.1)
 	if wrong_side.controller != -1:
 		fail("The back of the curved blade must not magnetically capture the ball")

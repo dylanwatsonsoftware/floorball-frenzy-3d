@@ -43,6 +43,7 @@ var _last_touch_actor: StringName = &""
 var _last_touch_age := INF
 var _dash_steal_consumed := {0: false, 1: false}
 var _steal_feedback_remaining := 0.0
+var _control_owner := -1
 
 signal goal_scored(scorer: StringName)
 
@@ -60,9 +61,10 @@ func _physics_process(delta: float) -> void:
 	_advance_slap(delta)
 	var previous_position := position
 	var next_state := BallSimulationScript.step(position, ball_velocity, delta)
-	var interaction_state := BallInteractionScript.step(next_state.position, next_state.velocity, _interaction_participants(), delta)
+	var interaction_state := BallInteractionScript.step(next_state.position, next_state.velocity, _interaction_participants(), delta, _control_owner)
 	position = interaction_state.position
 	ball_velocity = interaction_state.velocity
+	_control_owner = interaction_state.controller
 	_update_dash_steal_latches()
 	if not _apply_parry(interaction_state.body_controller):
 		_apply_dash_steal(interaction_state.body_controller)
@@ -83,6 +85,7 @@ func _physics_process(delta: float) -> void:
 
 
 func launch(planar_direction: Vector2, charge: float, inherited_velocity: Vector3 = Vector3.ZERO, one_touch: bool = false, shooter: StringName = &"", bolt: bool = false) -> void:
+	_control_owner = -1
 	var plan: Dictionary = BallSimulationScript.shot_plan(planar_direction, charge, inherited_velocity, one_touch, bolt)
 	ball_velocity = plan.velocity
 	_scoop_remaining = SCOOP_FEEDBACK_SECONDS if plan.is_scoop else 0.0
@@ -106,6 +109,7 @@ func reset_for_faceoff() -> void:
 	_dash_steal_consumed = {0: false, 1: false}
 	_steal_feedback_remaining = 0.0
 	_scoop_remaining = 0.0
+	_control_owner = -1
 	_clear_charge_feedback()
 	_set_trail_visible(false)
 	_set_shot_trail_style(false, false, false)
@@ -115,8 +119,7 @@ func reset_for_faceoff() -> void:
 func _update_shot_charge(delta: float) -> void:
 	if _slap_elapsed >= 0.0:
 		return
-	var in_range := _planar_distance_to_player() <= SHOOT_RANGE
-	if Input.is_action_pressed("shoot") and in_range:
+	if Input.is_action_pressed("shoot"):
 		if _charge_seconds <= 0.0:
 			_player.call("set_shot_aim_locked", true)
 		_charge_seconds = minf(MAX_CHARGE_SECONDS * 2.0, _charge_seconds + delta)
@@ -125,7 +128,7 @@ func _update_shot_charge(delta: float) -> void:
 		_player.call("set_stick_slap_angle", lerpf(-2.0, StickSlapScript.BACKSWING_ANGLE, backswing_ratio * backswing_ratio))
 		_apply_charge_feedback(charge_ratio)
 	elif Input.is_action_just_released("shoot"):
-		if _charge_seconds > 0.0 and in_range:
+		if _charge_seconds > 0.0:
 			var facing: Vector3 = _player.call("get_facing_direction")
 			_release_charged_slap(Vector2(facing.x, facing.z), _charge_seconds / MAX_CHARGE_SECONDS)
 		_charge_seconds = 0.0
@@ -254,6 +257,10 @@ func is_scoop_active() -> bool:
 	return _scoop_remaining > 0.0
 
 
+func is_controlled_by(team: StringName) -> bool:
+	return _control_owner == 0 if team == &"red" else _control_owner == 1 if team == &"blue" else false
+
+
 func _record_body_touch(controller: int) -> void:
 	var actor := OneTouchScript.actor_for_controller(controller)
 	if actor != &"":
@@ -269,6 +276,7 @@ func _apply_dash_steal(body_controller: int) -> void:
 	var actor := _player if body_controller == 0 else _opponent
 	var team: StringName = &"red" if body_controller == 0 else &"blue"
 	ball_velocity = DashStealScript.poke_velocity(actor.velocity)
+	_control_owner = -1
 	_dash_steal_consumed[body_controller] = true
 	record_touch(team)
 	_award_heat(team, 20.0)
@@ -294,6 +302,7 @@ func _apply_parry(body_controller: int) -> bool:
 		return false
 	var team: StringName = &"red" if body_controller == 0 else &"blue"
 	ball_velocity = ParryScript.reflected_velocity(ball_velocity)
+	_control_owner = -1
 	_dash_steal_consumed[body_controller] = true
 	record_touch(team)
 	if actor.has_method("activate_en_fuego"):

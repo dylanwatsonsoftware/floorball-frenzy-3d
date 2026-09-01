@@ -10,6 +10,8 @@ const SHOT_CHARGE_SECONDS := 0.55
 const SHOT_COOLDOWN_SECONDS := 0.8
 const DASH_STREAK_SECONDS := 0.18
 const PARRY_WINDOW_SECONDS := 0.15
+const OPENING_GRACE_SECONDS := 2.0
+const ACTIVE_PLAYER_GRACE_SECONDS := 0.5
 
 var _facing_direction := Vector3.LEFT
 var _shot_charge := 0.0
@@ -25,6 +27,7 @@ var _heat := 0.0
 var _fuego_remaining := 0.0
 var _fuego_aura: MeshInstance3D
 var _heat_bar: ProgressBar
+var _opening_grace_remaining := OPENING_GRACE_SECONDS
 
 
 func _ready() -> void:
@@ -47,9 +50,21 @@ func _physics_process(delta: float) -> void:
 
 	_shot_cooldown = maxf(0.0, _shot_cooldown - delta)
 	_dash_cooldown = maxf(0.0, _dash_cooldown - delta)
+	_opening_grace_remaining = maxf(0.0, _opening_grace_remaining - delta)
+	if _player.velocity.length_squared() > 0.04:
+		_opening_grace_remaining = minf(_opening_grace_remaining, ACTIVE_PLAYER_GRACE_SECONDS)
 	_dash_streak_remaining = maxf(0.0, _dash_streak_remaining - delta)
 	_update_dash_streak()
-	var decision := SimpleAIScript.decide(global_position, _ball.global_position, _player.global_position, _ball.ball_velocity, _dash_cooldown <= 0.0)
+	var has_possession := _ball.has_method("is_controlled_by") and bool(_ball.call("is_controlled_by", &"blue"))
+	var decision := SimpleAIScript.decide(
+		global_position,
+		_ball.global_position,
+		_player.global_position,
+		_ball.ball_velocity,
+		_dash_cooldown <= 0.0,
+		has_possession,
+		_opening_grace_remaining > 0.0
+	)
 	if decision.wants_dash:
 		try_dash(decision.movement)
 	if is_dashing():
@@ -86,6 +101,16 @@ func get_facing_direction() -> Vector3:
 
 func is_ai_controlled() -> bool:
 	return true
+
+
+func reset_for_faceoff() -> void:
+	_opening_grace_remaining = OPENING_GRACE_SECONDS
+	_shot_charge = 0.0
+	_shot_cooldown = 0.0
+	_dash_streak_remaining = 0.0
+	_parry_window_remaining = 0.0
+	if _dash_streak != null:
+		_dash_streak.visible = false
 
 
 func is_dashing() -> bool:
