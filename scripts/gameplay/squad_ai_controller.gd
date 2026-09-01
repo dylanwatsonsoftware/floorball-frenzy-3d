@@ -47,7 +47,10 @@ func _physics_process(delta: float) -> void:
 	if is_dashing():
 		velocity = _dash_direction * PlayerMotorScript.DASH_SPEED
 	else:
-		velocity = PlayerMotorScript.step_velocity(velocity, movement, delta)
+		var speed_multiplier := 1.0
+		if _ball.has_method("is_controlled_by_actor") and bool(_ball.call("is_controlled_by_actor", get_actor_id())):
+			speed_multiplier = PlayerMotorScript.BALL_CARRIER_SPEED_MULTIPLIER
+		velocity = PlayerMotorScript.step_velocity(velocity, movement, delta, speed_multiplier)
 	move_and_slide()
 	var boundary := RinkCollisionScript.constrain_body(global_position, velocity, RINK_HALF_LENGTH, RINK_HALF_WIDTH, 1.8)
 	global_position = boundary.position

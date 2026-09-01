@@ -23,6 +23,10 @@ func _init() -> void:
 	if not is_equal_approx(fuego_capped.length(), script.MAX_SPEED * 1.2):
 		fail("En Fuego movement must use the boosted maximum speed")
 		return
+	var carrier_capped: Vector3 = script.step_velocity(Vector3(100.0, 0.0, 0.0), Vector2.RIGHT, 1.0, script.BALL_CARRIER_SPEED_MULTIPLIER)
+	if carrier_capped.length() >= capped.length() or carrier_capped.length() < capped.length() * 0.8:
+		fail("Ball carriers must be slightly slower so defenders can realistically close them down; carrier=%s free=%s" % [carrier_capped.length(), capped.length()])
+		return
 
 	var slowed: Vector3 = script.step_velocity(Vector3(5.0, 0.0, 0.0), Vector2.ZERO, 0.1)
 	if slowed.length() >= 5.0:
