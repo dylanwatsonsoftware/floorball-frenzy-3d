@@ -14,6 +14,16 @@ script = ExtResource("2_arena")
 
 [node name="HUD" type="CanvasLayer" parent="."]
 
+[node name="GoalFlash" type="ColorRect" parent="HUD"]
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.86, 0.12, 0.25, 0.32)
+
 [node name="CameraLabel" type="Label" parent="HUD"]
 offset_left = 24.0
 offset_top = 20.0

@@ -41,6 +41,7 @@ func run_test() -> void:
 		"HUD/WebDisplayControls/OrientationHint",
 		"HUD/ScoreLabel",
 		"HUD/MessageLabel",
+		"HUD/GoalFlash",
 		"MatchFlow",
 	]
 	for path in required_nodes:
@@ -50,6 +51,10 @@ func run_test() -> void:
 	var fullscreen_button := scene.get_node("HUD/WebDisplayControls/FullscreenButton") as Button
 	if fullscreen_button.text != "FULLSCREEN":
 		fail("Fullscreen label must use portable web-font characters")
+		return
+	var goal_flash := scene.get_node("HUD/GoalFlash") as ColorRect
+	if goal_flash.visible:
+		fail("Goal flash must remain hidden before a goal")
 		return
 	var camera := scene.get_node("Arena/BroadcastCamera") as Camera3D
 	if not camera.current:
@@ -143,6 +148,15 @@ func run_test() -> void:
 		return
 	if not shot_trail.visible:
 		fail("A fast charged shot must reveal the ball trail")
+		return
+	var match_flow := scene.get_node("MatchFlow")
+	match_flow.call("_on_goal_scored", &"red")
+	if not goal_flash.visible or goal_flash.color.r <= goal_flash.color.b or goal_flash.color.a <= 0.0:
+		fail("A red goal must trigger a visible red celebration flash")
+		return
+	match_flow.call("_reset_faceoff")
+	if goal_flash.visible:
+		fail("Faceoff reset must clear any remaining goal flash")
 		return
 
 	print("Greybox scene contract is valid.")

@@ -5,6 +5,9 @@ const GOAL_PAUSE_SECONDS := 1.6
 const WIN_PAUSE_SECONDS := 3.0
 const PLAYER_FACEOFF_POSITION := Vector3(-5.0, 0.75, 0.0)
 const OPPONENT_FACEOFF_POSITION := Vector3(5.0, 0.75, 0.0)
+const RED_GOAL_FLASH := Color(0.95, 0.12, 0.28, 0.34)
+const BLUE_GOAL_FLASH := Color(0.12, 0.42, 1.0, 0.34)
+const GOAL_FLASH_SECONDS := 0.72
 
 var score := {"red": 0, "blue": 0}
 var _pause_remaining := 0.0
@@ -14,6 +17,8 @@ var _player: CharacterBody3D
 var _opponent: Node3D
 var _score_label: Label
 var _message_label: Label
+var _goal_flash: ColorRect
+var _goal_flash_tween: Tween
 
 
 func _ready() -> void:
@@ -22,6 +27,7 @@ func _ready() -> void:
 	_opponent = get_node("../Arena/Opponent") as Node3D
 	_score_label = get_node("../HUD/ScoreLabel") as Label
 	_message_label = get_node("../HUD/MessageLabel") as Label
+	_goal_flash = get_node("../HUD/GoalFlash") as ColorRect
 	_ball.connect("goal_scored", _on_goal_scored)
 	_update_score_label()
 
@@ -40,6 +46,7 @@ func _on_goal_scored(scorer: StringName) -> void:
 	score.blue = result.blue
 	_winner = result.winner
 	_update_score_label()
+	_show_goal_flash(scorer)
 
 	if _winner != &"":
 		_message_label.text = "%s WINS!" % String(_winner).to_upper()
@@ -50,6 +57,7 @@ func _on_goal_scored(scorer: StringName) -> void:
 
 
 func _reset_faceoff() -> void:
+	_clear_goal_flash()
 	if _winner != &"":
 		score.red = 0
 		score.blue = 0
@@ -67,3 +75,23 @@ func _reset_faceoff() -> void:
 
 func _update_score_label() -> void:
 	_score_label.text = "RED  %d  —  %d  BLUE" % [score.red, score.blue]
+
+
+func _show_goal_flash(scorer: StringName) -> void:
+	if _goal_flash_tween != null and _goal_flash_tween.is_valid():
+		_goal_flash_tween.kill()
+	_goal_flash.color = RED_GOAL_FLASH if scorer == &"red" else BLUE_GOAL_FLASH
+	_goal_flash.visible = true
+	_goal_flash_tween = create_tween()
+	_goal_flash_tween.tween_property(_goal_flash, "color:a", 0.0, GOAL_FLASH_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_goal_flash_tween.tween_callback(_hide_goal_flash)
+
+
+func _hide_goal_flash() -> void:
+	_goal_flash.visible = false
+
+
+func _clear_goal_flash() -> void:
+	if _goal_flash_tween != null and _goal_flash_tween.is_valid():
+		_goal_flash_tween.kill()
+	_goal_flash.visible = false
