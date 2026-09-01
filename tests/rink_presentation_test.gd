@@ -58,6 +58,8 @@ func run_test() -> void:
 		return
 
 	var red_players: Array = arena.call("get_team_players", &"red")
+	var lamb_variants := {}
+	var pirate_variants := {}
 	for actor in arena.call("get_field_players"):
 		var rig := actor.get_node_or_null("BodyRig") as Node3D
 		if rig == null:
@@ -70,12 +72,36 @@ func run_test() -> void:
 		if not rig.has_method("apply_movement_pose"):
 			fail("Humanoid rigs must expose deterministic running animation")
 			return
+		var team: StringName = actor.call("get_team")
+		var signature: String = String(rig.get_meta("variant_signature", ""))
+		if signature.is_empty():
+			fail("Every mascot player needs a distinct visual variant signature")
+			return
+		if team == &"red":
+			for mascot_part in ["LambWool", "LeftLambEar", "RightLambEar", "Muzzle"]:
+				if rig.get_node_or_null(mascot_part) == null:
+					fail("The Lambs must read as anthropomorphic lambs; missing %s" % mascot_part)
+					return
+			lamb_variants[signature] = true
+			var lamb_jersey := (rig.get_node("Torso") as MeshInstance3D).material_override as StandardMaterial3D
+			if lamb_jersey.albedo_color.g <= lamb_jersey.albedo_color.r:
+				fail("The Lambs must wear recognisable green, white and black")
+				return
+		else:
+			for mascot_part in ["PirateBandana", "PirateEyePatch", "LeftPirateEar", "RightPirateEar", "Muzzle"]:
+				if rig.get_node_or_null(mascot_part) == null:
+					fail("The Pirates must read as distinct anthropomorphic pirate animals; missing %s" % mascot_part)
+					return
+			pirate_variants[signature] = true
 		var left_leg := rig.get_node("LeftLeg") as Node3D
 		var right_leg := rig.get_node("RightLeg") as Node3D
 		rig.call("apply_movement_pose", 7.0, 0.18, false)
 		if absf(left_leg.rotation.x) < 0.08 or left_leg.rotation.x * right_leg.rotation.x >= 0.0:
 			fail("Running must visibly swing the legs in opposing directions")
 			return
+	if lamb_variants.size() != 3 or pirate_variants.size() != 3:
+		fail("All three characters on each team must be visually distinguishable; lambs=%d pirates=%d" % [lamb_variants.size(), pirate_variants.size()])
+		return
 	for actor in red_players:
 		if actor.get_node_or_null("PlayerMarker") == null:
 			fail("Every potentially controlled red player needs a floating downward arrow")

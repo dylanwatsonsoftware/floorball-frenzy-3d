@@ -5,8 +5,8 @@ const GOAL_PAUSE_SECONDS := 1.6
 const WIN_PAUSE_SECONDS := 3.0
 const PLAYER_FACEOFF_POSITION := Vector3(-5.0, 0.75, 0.0)
 const OPPONENT_FACEOFF_POSITION := Vector3(5.0, 0.75, 0.0)
-const RED_GOAL_FLASH := Color(0.95, 0.12, 0.28, 0.34)
-const BLUE_GOAL_FLASH := Color(0.12, 0.42, 1.0, 0.34)
+const RED_GOAL_FLASH := Color(0.10, 0.65, 0.30, 0.34)
+const BLUE_GOAL_FLASH := Color(0.35, 0.78, 0.94, 0.34)
 const GOAL_FLASH_SECONDS := 0.72
 
 var score := {"red": 0, "blue": 0}
@@ -52,10 +52,10 @@ func _on_goal_scored(scorer: StringName) -> void:
 	_award_goal_heat(scorer)
 
 	if _winner != &"":
-		_message_label.text = "%s WINS!" % String(_winner).to_upper()
+		_message_label.text = "%s WINS!" % _team_name(_winner)
 		_pause_remaining = WIN_PAUSE_SECONDS
 	else:
-		_message_label.text = "%s GOAL!" % String(scorer).to_upper()
+		_message_label.text = "%s GOAL!" % _team_name(scorer)
 		_pause_remaining = GOAL_PAUSE_SECONDS
 
 
@@ -86,7 +86,11 @@ func _reset_faceoff() -> void:
 
 
 func _update_score_label() -> void:
-	_score_label.text = "RED  %d  —  %d  BLUE" % [score.red, score.blue]
+	_score_label.text = "LAMBS  %d  —  %d  PIRATES" % [score.red, score.blue]
+
+
+func _team_name(team: StringName) -> String:
+	return "LAMBS" if team == &"red" else "PIRATES"
 
 
 func _award_goal_heat(scorer: StringName) -> void:

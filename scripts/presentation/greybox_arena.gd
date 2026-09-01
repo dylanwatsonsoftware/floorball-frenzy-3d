@@ -103,8 +103,8 @@ func _build_world() -> void:
 	floor.material_override = _wood_floor_material()
 	_build_markings()
 	_build_boards()
-	_build_goal("LeftGoal", -GOAL_LINE_X, Color("dd3155"))
-	_build_goal("RightGoal", GOAL_LINE_X, Color("2b64e8"))
+	_build_goal("LeftGoal", -GOAL_LINE_X, Color("168a45"))
+	_build_goal("RightGoal", GOAL_LINE_X, Color("75d4ed"))
 	_build_player()
 	_build_ball()
 	_build_shot_impact()
@@ -258,11 +258,11 @@ func _build_player() -> void:
 	shape.shape = capsule_shape
 	player.add_child(shape)
 
-	_add_humanoid(player, Color("dd3155"), 0)
+	_add_humanoid(player, &"red", 0)
 	_add_stick(player, Color("202a38"))
 	_add_control_ring(player)
 	_add_aim_arrow(player)
-	_add_dash_streak(player, Color(1.0, 0.32, 0.2, 0.76))
+	_add_dash_streak(player, Color(0.18, 0.78, 0.35, 0.78))
 	_add_player_marker(player)
 	_add_fuego_aura(player, Color("ff7a24"))
 
@@ -284,9 +284,9 @@ func _build_opponent() -> void:
 	capsule_shape.height = 1.5
 	shape.shape = capsule_shape
 	opponent.add_child(shape)
-	_add_humanoid(opponent, Color("2b64e8"), 0)
+	_add_humanoid(opponent, &"blue", 0)
 	_add_stick(opponent, Color("202a38"))
-	_add_dash_streak(opponent, Color(0.18, 0.55, 1.0, 0.78))
+	_add_dash_streak(opponent, Color(0.35, 0.78, 0.94, 0.78))
 	_add_fuego_aura(opponent, Color("ffb52e"))
 
 
@@ -307,33 +307,97 @@ func _build_support_player(node_name: String, actor_id: StringName, team: String
 	capsule_shape.height = 1.5
 	shape.shape = capsule_shape
 	actor.add_child(shape)
-	_add_humanoid(actor, color, slot)
+	_add_humanoid(actor, team, slot)
 	_add_stick(actor, Color("202a38"))
-	_add_dash_streak(actor, Color(1.0, 0.32, 0.2, 0.76) if team == &"red" else Color(0.18, 0.55, 1.0, 0.78))
+	_add_dash_streak(actor, Color(0.18, 0.78, 0.35, 0.78) if team == &"red" else Color(0.35, 0.78, 0.94, 0.78))
 	if team == &"red":
 		_add_control_ring(actor)
 		_add_aim_arrow(actor)
 		_add_player_marker(actor)
 
 
-func _add_humanoid(parent: Node3D, jersey_color: Color, slot: int) -> void:
+func _add_humanoid(parent: Node3D, team: StringName, slot: int) -> void:
 	var rig := Node3D.new()
 	rig.name = "BodyRig"
 	rig.set_script(load("res://scripts/presentation/humanoid_player_visual.gd"))
+	rig.set_meta("variant_signature", "%s_%d" % ["lamb" if team == &"red" else "pirate", slot])
 	parent.add_child(rig)
-	var skin_colors := [Color("e5aa7a"), Color("8f5b3f"), Color("c9825b")]
-	var skin: Color = skin_colors[slot % skin_colors.size()]
+	var lamb_jerseys := [Color("168a45"), Color("24a653"), Color("0d6f38")]
+	var pirate_jerseys := [Color("171c25"), Color("242a34"), Color("0e1118")]
+	var jersey_color: Color = lamb_jerseys[slot] if team == &"red" else pirate_jerseys[slot]
+	var pirate_fur_colors: Array[Color] = [Color("66727f"), Color("9aa2aa"), Color("454c58")]
+	var hand_color: Color = Color("f1f1e8") if team == &"red" else pirate_fur_colors[slot]
 	_add_capsule_part(rig, "Torso", Vector3(0.0, 0.12, 0.0), 0.35, 0.72, jersey_color)
-	_add_sphere_part(rig, "Head", Vector3(0.0, 0.73, 0.0), 0.25, skin)
-	var hair := _add_sphere_part(rig, "Hair", Vector3(0.0, 0.88, -0.015), 0.255, Color("35251f"))
-	hair.scale = Vector3(1.0, 0.48, 1.0)
-	_add_sphere_part(rig, "Nose", Vector3(0.0, 0.73, 0.235), 0.055, skin)
-	_add_box_part(rig, "JerseyStripe", Vector3(0.0, 0.15, 0.337), Vector3(0.11, 0.48, 0.025), Color("f5f7fb"))
+	_add_box_part(rig, "JerseyStripe", Vector3(0.0, 0.15, 0.337), Vector3(0.11, 0.48, 0.025), Color("f5f7fb") if team == &"red" else Color("75d4ed"))
 	_add_box_part(rig, "Shorts", Vector3(0.0, -0.22, 0.0), Vector3(0.58, 0.24, 0.4), Color("17243a"))
-	_add_limb(rig, "LeftArm", Vector3(-0.34, 0.35, 0.02), 0.12, 0.58, jersey_color, skin, true)
-	_add_limb(rig, "RightArm", Vector3(0.34, 0.35, 0.02), 0.12, 0.58, jersey_color, skin, true)
-	_add_limb(rig, "LeftLeg", Vector3(-0.17, -0.27, 0.0), 0.14, 0.65, Color("e8edf4"), skin, false)
-	_add_limb(rig, "RightLeg", Vector3(0.17, -0.27, 0.0), 0.14, 0.65, Color("e8edf4"), skin, false)
+	_add_limb(rig, "LeftArm", Vector3(-0.34, 0.35, 0.02), 0.12, 0.58, jersey_color, hand_color, true)
+	_add_limb(rig, "RightArm", Vector3(0.34, 0.35, 0.02), 0.12, 0.58, jersey_color, hand_color, true)
+	var sock_color: Color = Color("f1f1e8") if team == &"red" else Color("75d4ed")
+	_add_limb(rig, "LeftLeg", Vector3(-0.17, -0.27, 0.0), 0.14, 0.65, sock_color, hand_color, false)
+	_add_limb(rig, "RightLeg", Vector3(0.17, -0.27, 0.0), 0.14, 0.65, sock_color, hand_color, false)
+	if team == &"red":
+		_add_lamb_head(rig, slot)
+	else:
+		_add_pirate_head(rig, slot)
+
+
+func _add_lamb_head(rig: Node3D, slot: int) -> void:
+	var wool_colors := [Color("fafaf2"), Color("e8e5da"), Color("d2d5cf")]
+	var wool: Color = wool_colors[slot]
+	_add_sphere_part(rig, "Head", Vector3(0.0, 0.74, 0.0), 0.27, wool)
+	var wool_root := Node3D.new()
+	wool_root.name = "LambWool"
+	rig.add_child(wool_root)
+	for index in 5:
+		var angle := TAU * float(index) / 5.0
+		_add_sphere_part(wool_root, "Curl%d" % index, Vector3(cos(angle) * 0.18, 0.87 + sin(angle) * 0.09, -0.03), 0.13, wool)
+	var left_ear := _add_sphere_part(rig, "LeftLambEar", Vector3(-0.31, 0.78, 0.0), 0.15, wool.darkened(0.08))
+	left_ear.scale = Vector3(1.65, 0.55, 0.7)
+	left_ear.rotation_degrees.z = -18.0
+	var right_ear := _add_sphere_part(rig, "RightLambEar", Vector3(0.31, 0.78, 0.0), 0.15, wool.darkened(0.08))
+	right_ear.scale = Vector3(1.65, 0.55, 0.7)
+	right_ear.rotation_degrees.z = 18.0
+	var muzzle := _add_sphere_part(rig, "Muzzle", Vector3(0.0, 0.68, 0.235), 0.15, Color("ded9ce"))
+	muzzle.scale = Vector3(0.85, 0.7, 0.65)
+	_add_mascot_eyes(rig, 0.77, Color("15191c"))
+	_add_sphere_part(rig, "LambNose", Vector3(0.0, 0.69, 0.33), 0.045, Color("25292c"))
+	if slot == 0:
+		_add_torus_part(rig, "LambVariant0", Vector3(-0.24, 0.88, -0.04), 0.09, 0.14, Color("bca77b"), Vector3(90.0, 0.0, 0.0))
+	elif slot == 1:
+		var forelock := _add_sphere_part(rig, "LambVariant1", Vector3(0.0, 0.98, 0.05), 0.13, Color("242a2d"))
+		forelock.scale = Vector3(0.8, 1.1, 0.8)
+	else:
+		_add_box_part(rig, "LambVariant2", Vector3(0.34, 0.76, 0.02), Vector3(0.06, 0.13, 0.04), Color("5bd06c"))
+
+
+func _add_pirate_head(rig: Node3D, slot: int) -> void:
+	var fur_colors := [Color("4d5966"), Color("8b9298"), Color("303844")]
+	var fur: Color = fur_colors[slot]
+	_add_sphere_part(rig, "Head", Vector3(0.0, 0.74, 0.0), 0.27, fur)
+	_add_cone_part(rig, "LeftPirateEar", Vector3(-0.17, 0.98, -0.01), 0.12, 0.28, fur)
+	_add_cone_part(rig, "RightPirateEar", Vector3(0.17, 0.98, -0.01), 0.12, 0.28, fur)
+	var muzzle := _add_sphere_part(rig, "Muzzle", Vector3(0.0, 0.67, 0.235), 0.16, Color("dfe4e5"))
+	muzzle.scale = Vector3(0.95, 0.68, 0.65)
+	_add_mascot_eyes(rig, 0.78, Color("eef5f6"))
+	_add_sphere_part(rig, "PirateNose", Vector3(0.0, 0.70, 0.34), 0.052, Color("101318"))
+	_add_box_part(rig, "PirateBandana", Vector3(0.0, 0.89, 0.12), Vector3(0.52, 0.11, 0.16), Color("72d2eb"))
+	var patch := _add_sphere_part(rig, "PirateEyePatch", Vector3(-0.095, 0.78, 0.252), 0.085, Color("080a0d"))
+	patch.scale = Vector3(1.0, 0.75, 0.28)
+	var strap := _add_box_part(rig, "EyePatchStrap", Vector3(0.0, 0.82, 0.25), Vector3(0.49, 0.035, 0.025), Color("080a0d"))
+	strap.rotation_degrees.z = -10.0
+	if slot == 0:
+		var bandana_tail := _add_box_part(rig, "PirateVariant0", Vector3(0.26, 0.91, -0.02), Vector3(0.10, 0.31, 0.08), Color("72d2eb"))
+		bandana_tail.rotation_degrees.z = -25.0
+	elif slot == 1:
+		_add_torus_part(rig, "PirateVariant1", Vector3(0.27, 0.74, 0.0), 0.045, 0.068, Color("e8c451"), Vector3(90.0, 0.0, 0.0))
+	else:
+		var crest := _add_box_part(rig, "PirateVariant2", Vector3(0.0, 1.06, -0.02), Vector3(0.12, 0.25, 0.10), Color("f3f5f5"))
+		crest.rotation_degrees.z = 8.0
+
+
+func _add_mascot_eyes(rig: Node3D, eye_y: float, color: Color) -> void:
+	_add_sphere_part(rig, "LeftEye", Vector3(-0.095, eye_y, 0.245), 0.055, color)
+	_add_sphere_part(rig, "RightEye", Vector3(0.095, eye_y, 0.245), 0.055, color)
 
 
 func _add_limb(parent: Node3D, limb_name: String, pivot_position: Vector3, radius: float, length: float, color: Color, end_color: Color, is_arm: bool) -> void:
@@ -386,6 +450,37 @@ func _add_box_part(parent: Node3D, part_name: String, part_position: Vector3, si
 	part.mesh = mesh
 	part.position = part_position
 	part.material_override = _material(color, 0.72)
+	parent.add_child(part)
+	return part
+
+
+func _add_cone_part(parent: Node3D, part_name: String, part_position: Vector3, radius: float, height: float, color: Color) -> MeshInstance3D:
+	var part := MeshInstance3D.new()
+	part.name = part_name
+	var mesh := CylinderMesh.new()
+	mesh.top_radius = 0.0
+	mesh.bottom_radius = radius
+	mesh.height = height
+	mesh.radial_segments = 10
+	part.mesh = mesh
+	part.position = part_position
+	part.material_override = _material(color, 0.74)
+	parent.add_child(part)
+	return part
+
+
+func _add_torus_part(parent: Node3D, part_name: String, part_position: Vector3, inner_radius: float, outer_radius: float, color: Color, rotation: Vector3) -> MeshInstance3D:
+	var part := MeshInstance3D.new()
+	part.name = part_name
+	var mesh := TorusMesh.new()
+	mesh.inner_radius = inner_radius
+	mesh.outer_radius = outer_radius
+	mesh.rings = 12
+	mesh.ring_segments = 6
+	part.mesh = mesh
+	part.position = part_position
+	part.rotation_degrees = rotation
+	part.material_override = _material(color, 0.66)
 	parent.add_child(part)
 	return part
 
@@ -694,7 +789,7 @@ func _apply_camera_preset(index: int) -> void:
 	_camera_tracking_initialized = true
 	_camera_charge_pullback = 0.0
 	if _camera_label != null:
-		_camera_label.text = "CAMERA %d · %s\nCONTROL FOLLOWS RED POSSESSION · TAB SWITCH · SHIFT DASH · HOLD SHOOT" % [index + 1, preset.name.to_upper()]
+		_camera_label.text = "CAMERA %d · %s\nCONTROL FOLLOWS LAMBS POSSESSION · TAB SWITCH · SHIFT DASH · HOLD SHOOT" % [index + 1, preset.name.to_upper()]
 
 
 func _add_box(node_name: String, size: Vector3, position: Vector3, color: Color, shadow: bool = true) -> MeshInstance3D:

@@ -14,8 +14,12 @@ func run_test() -> void:
 			fail("Special-mechanic HUD must stay hidden while the core floorball loop is being tuned: %s" % path)
 			return
 	var camera_label := scene.get_node("HUD/CameraLabel") as Label
-	if "CONTROL FOLLOWS RED POSSESSION" not in camera_label.text:
-		fail("The 3v3 HUD must explain that human control follows the red ball carrier")
+	var score_label := scene.get_node("HUD/ScoreLabel") as Label
+	if "LAMBS" not in score_label.text or "PIRATES" not in score_label.text:
+		fail("The match presentation must identify the local Lambs versus Pirates matchup")
+		return
+	if "CONTROL FOLLOWS LAMBS POSSESSION" not in camera_label.text:
+		fail("The 3v3 HUD must explain that human control follows the Lambs ball carrier")
 		return
 	if "DASH" not in camera_label.text:
 		fail("The core HUD must make the restored desktop dash control discoverable")

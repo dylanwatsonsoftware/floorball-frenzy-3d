@@ -99,7 +99,7 @@ func run_test() -> void:
 	await physics_frame
 	await physics_frame
 	var ai_steal_label := scene.get_node("HUD/ChargeLabel") as Label
-	if ai_dash_ball.ball_velocity.x >= opponent.velocity.x or ai_steal_label.text != "BLUE STEAL!":
+	if ai_dash_ball.ball_velocity.x >= opponent.velocity.x or ai_steal_label.text != "PIRATES STEAL!":
 		fail("Blue AI body contact during dash must use the same physical steal; velocity=%s label=%s" % [ai_dash_ball.ball_velocity, ai_steal_label.text])
 		return
 	if opponent.call("get_heat_ratio") < 0.19 or (scene.get_node("HUD/BlueHeatBar") as ProgressBar).value < 19.0:
@@ -272,8 +272,8 @@ func run_test() -> void:
 		return
 	var match_flow := scene.get_node("MatchFlow")
 	match_flow.call("_on_goal_scored", &"red")
-	if not goal_flash.visible or goal_flash.color.r <= goal_flash.color.b or goal_flash.color.a <= 0.0:
-		fail("A red goal must trigger a visible red celebration flash")
+	if not goal_flash.visible or goal_flash.color.g <= goal_flash.color.r or goal_flash.color.a <= 0.0:
+		fail("A Lambs goal must trigger a visible green celebration flash")
 		return
 	await physics_frame
 	var red_fuego_aura := scene.get_node("Arena/Player/FuegoAura") as MeshInstance3D
@@ -326,7 +326,7 @@ func run_test() -> void:
 	ball.position = opponent.position + Vector3(-0.6, -0.53, 0.0)
 	ball.ball_velocity = Vector3(14.0, 0.0, 0.0)
 	await physics_frame
-	if ball.ball_velocity.x > -20.0 or charge_label.text != "BLUE PARRY!":
+	if ball.ball_velocity.x > -20.0 or charge_label.text != "PIRATES PARRY!":
 		fail("Blue must reflect a fast incoming body shot at 1.5x speed; velocity=%s label=%s" % [ball.ball_velocity, charge_label.text])
 		return
 	if not opponent.call("is_en_fuego") or opponent.call("get_heat_ratio") < 0.99:

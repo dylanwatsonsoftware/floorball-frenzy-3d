@@ -34,7 +34,7 @@ theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.8)
 theme_override_constants/shadow_offset_x = 2
 theme_override_constants/shadow_offset_y = 2
 theme_override_font_sizes/font_size = 22
-text = "CAMERA 1 · BROADCAST\nCONTROL FOLLOWS RED POSSESSION · MOVE + HOLD SHOOT"
+text = "CAMERA 1 · BROADCAST\nCONTROL FOLLOWS LAMBS POSSESSION · MOVE + HOLD SHOOT"
 
 [node name="ChargeLabel" type="Label" parent="HUD"]
 anchors_preset = 7
@@ -67,7 +67,7 @@ theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.85)
 theme_override_constants/shadow_offset_x = 2
 theme_override_constants/shadow_offset_y = 2
 theme_override_font_sizes/font_size = 28
-text = "RED  0  —  0  BLUE"
+text = "LAMBS  0  —  0  PIRATES"
 horizontal_alignment = 1
 
 [node name="RedHeatBar" type="ProgressBar" parent="HUD"]

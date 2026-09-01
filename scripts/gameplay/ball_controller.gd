@@ -496,7 +496,7 @@ func _apply_parry(body_controller: int) -> bool:
 	if actor.has_method("activate_en_fuego"):
 		actor.call("activate_en_fuego")
 	_steal_feedback_remaining = STEAL_FEEDBACK_SECONDS
-	_charge_label.text = "PARRY!" if team == &"red" else "BLUE PARRY!"
+	_charge_label.text = "PARRY!" if team == &"red" else "PIRATES PARRY!"
 	_charge_label.add_theme_color_override("font_color", PARRY_TRAIL_EMISSION)
 	_set_shot_trail_style(false, false, true)
 	var arena := get_parent()
@@ -533,7 +533,7 @@ func _team_for_controller(controller: int) -> StringName:
 
 func _show_steal_feedback(team: StringName) -> void:
 	_steal_feedback_remaining = STEAL_FEEDBACK_SECONDS
-	_charge_label.text = "STEAL!" if team == &"red" else "BLUE STEAL!"
+	_charge_label.text = "STEAL!" if team == &"red" else "PIRATES STEAL!"
 	_charge_label.add_theme_color_override("font_color", STEAL_COLOR if team == &"red" else BLUE_STEAL_COLOR)
 
 
@@ -548,7 +548,7 @@ func _update_steal_feedback(delta: float) -> void:
 	if _steal_feedback_remaining <= 0.0:
 		return
 	_steal_feedback_remaining = maxf(0.0, _steal_feedback_remaining - delta)
-	if _steal_feedback_remaining <= 0.0 and _charge_label.text in ["STEAL!", "BLUE STEAL!", "PARRY!", "BLUE PARRY!"]:
+	if _steal_feedback_remaining <= 0.0 and _charge_label.text in ["STEAL!", "PIRATES STEAL!", "PARRY!", "PIRATES PARRY!"]:
 		_clear_charge_feedback()
 
 
