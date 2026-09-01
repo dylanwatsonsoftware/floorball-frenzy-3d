@@ -95,7 +95,16 @@ func run_test() -> void:
 		fail("A new dash must immediately arm a Bolt shot")
 		return
 	var bolt_probe := scene.get_node("Arena/Ball")
-	bolt_probe.position = Vector3(-4.1, 0.22, 0.75)
+	bolt_probe.position = player.position + Vector3(0.35, -0.53, 0.0)
+	bolt_probe.ball_velocity = Vector3.ZERO
+	await physics_frame
+	await physics_frame
+	var steal_label := scene.get_node("HUD/ChargeLabel") as Label
+	if bolt_probe.ball_velocity.x <= player.velocity.x or steal_label.text != "STEAL!":
+		fail("Dashing through the ball must produce a strong one-hit steal poke and feedback; velocity=%s label=%s" % [bolt_probe.ball_velocity, steal_label.text])
+		return
+	bolt_probe.position = player.position + Vector3(0.9, -0.53, 0.75)
+	bolt_probe.ball_velocity = Vector3.ZERO
 	bolt_probe.begin_slap(Vector2.RIGHT, 0.5)
 	var bolt_label := scene.get_node("HUD/ChargeLabel") as Label
 	if bolt_label.text != "BOLT!":

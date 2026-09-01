@@ -5,6 +5,7 @@ const MatchSimulationScript = preload("res://scripts/simulation/match_simulation
 const BallInteractionScript = preload("res://scripts/simulation/ball_interaction.gd")
 const StickSlapScript = preload("res://scripts/simulation/stick_slap.gd")
 const OneTouchScript = preload("res://scripts/simulation/one_touch.gd")
+const DashStealScript = preload("res://scripts/simulation/dash_steal.gd")
 const ShotChargeFeedbackScript = preload("res://scripts/presentation/shot_charge_feedback.gd")
 const ShotImpactFeedbackScript = preload("res://scripts/presentation/shot_impact_feedback.gd")
 const MAX_CHARGE_SECONDS := 0.8
@@ -16,6 +17,8 @@ const NORMAL_TRAIL_COLOR := Color(1.0, 0.3, 0.04, 0.58)
 const NORMAL_TRAIL_EMISSION := Color("ff5a00")
 const BOLT_TRAIL_COLOR := Color(0.18, 0.72, 1.0, 0.76)
 const BOLT_TRAIL_EMISSION := Color("42b8ff")
+const STEAL_FEEDBACK_SECONDS := 0.38
+const STEAL_COLOR := Color("7dff6a")
 
 var ball_velocity := Vector3.ZERO
 var _charge_seconds := 0.0
@@ -30,6 +33,8 @@ var _pending_one_touch := false
 var _pending_bolt := false
 var _last_touch_actor: StringName = &""
 var _last_touch_age := INF
+var _dash_steal_consumed := false
+var _steal_feedback_remaining := 0.0
 
 signal goal_scored(scorer: StringName)
 
@@ -42,12 +47,16 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	_last_touch_age += delta
+	_update_steal_feedback(delta)
+	if not bool(_player.call("is_dashing")):
+		_dash_steal_consumed = false
 	_advance_slap(delta)
 	var previous_position := position
 	var next_state := BallSimulationScript.step(position, ball_velocity, delta)
 	var interaction_state := BallInteractionScript.step(next_state.position, next_state.velocity, _interaction_participants(), delta)
 	position = interaction_state.position
 	ball_velocity = interaction_state.velocity
+	_apply_dash_steal(interaction_state.body_controller)
 	var scorer := MatchSimulationScript.detect_goal(previous_position, position, ball_velocity)
 	if scorer != &"":
 		ball_velocity = Vector3.ZERO
@@ -78,6 +87,8 @@ func reset_for_faceoff() -> void:
 	_cancel_slap()
 	_last_touch_actor = &""
 	_last_touch_age = INF
+	_dash_steal_consumed = false
+	_steal_feedback_remaining = 0.0
 	_clear_charge_feedback()
 	_set_trail_visible(false)
 	_set_shot_trail_style(false)
@@ -103,7 +114,8 @@ func _update_shot_charge(delta: float) -> void:
 			_clear_charge_feedback()
 			_player.call("set_stick_slap_angle", 0.0)
 	elif not Input.is_action_pressed("shoot"):
-		_clear_charge_feedback()
+		if _steal_feedback_remaining <= 0.0:
+			_clear_charge_feedback()
 		_player.call("set_stick_slap_angle", 0.0)
 
 
@@ -221,6 +233,38 @@ func _record_body_touch(controller: int) -> void:
 	var actor := OneTouchScript.actor_for_controller(controller)
 	if actor != &"":
 		record_touch(actor)
+
+
+func _apply_dash_steal(body_controller: int) -> void:
+	var player_dashing := bool(_player.call("is_dashing"))
+	if not DashStealScript.can_steal(body_controller, player_dashing, _dash_steal_consumed):
+		return
+	ball_velocity = DashStealScript.poke_velocity(_player.velocity)
+	_dash_steal_consumed = true
+	record_touch(&"red")
+	_show_steal_feedback()
+	var arena := get_parent()
+	if arena.has_method("play_shot_impact"):
+		arena.call("play_shot_impact", global_position, {
+			"scale": 1.65,
+			"kick": 0.065,
+			"duration": 0.22,
+			"color": STEAL_COLOR,
+		})
+
+
+func _show_steal_feedback() -> void:
+	_steal_feedback_remaining = STEAL_FEEDBACK_SECONDS
+	_charge_label.text = "STEAL!"
+	_charge_label.add_theme_color_override("font_color", STEAL_COLOR)
+
+
+func _update_steal_feedback(delta: float) -> void:
+	if _steal_feedback_remaining <= 0.0:
+		return
+	_steal_feedback_remaining = maxf(0.0, _steal_feedback_remaining - delta)
+	if _steal_feedback_remaining <= 0.0 and _charge_label.text == "STEAL!":
+		_clear_charge_feedback()
 
 
 func _update_spin(delta: float) -> void:
