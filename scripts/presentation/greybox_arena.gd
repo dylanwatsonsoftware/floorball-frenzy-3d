@@ -6,7 +6,9 @@ const RINK_LENGTH := 40.0
 const RINK_WIDTH := 20.0
 const BOARD_HEIGHT := 0.5
 const BOARD_CORNER_RADIUS := 2.15
-const LINE_WIDTH := 0.05
+# Regulation paint is 4-5 cm wide. At the mobile broadcast scale that falls
+# below one pixel, so the visual mesh is doubled while retaining exact centres.
+const LINE_WIDTH := 0.10
 const GOAL_LINE_X := 16.5
 
 var _camera_presets: Array[Dictionary] = CameraPresetsScript.all()
@@ -116,8 +118,8 @@ func _build_world() -> void:
 
 
 func _build_markings() -> void:
-	var line_color := Color("c92f45")
-	_add_box("CenterLine", Vector3(LINE_WIDTH, 0.018, RINK_WIDTH), Vector3(0.0, 0.018, 0.0), line_color, false)
+	var line_color := Color("f4f7f8")
+	_add_painted_box("CenterLine", Vector3(LINE_WIDTH, 0.024, RINK_WIDTH), Vector3(0.0, 0.024, 0.0), line_color)
 	var center_spot := MeshInstance3D.new()
 	center_spot.name = "CenterSpot"
 	var spot_mesh := CylinderMesh.new()
@@ -126,8 +128,8 @@ func _build_markings() -> void:
 	spot_mesh.height = 0.02
 	spot_mesh.radial_segments = 20
 	center_spot.mesh = spot_mesh
-	center_spot.position.y = 0.024
-	center_spot.material_override = _material(line_color, 0.72)
+	center_spot.position.y = 0.032
+	center_spot.material_override = _marking_material(line_color)
 	add_child(center_spot)
 	_add_rectangle_marking("LeftGoalCrease", -17.15, 1.0, 4.0, 5.0, line_color)
 	_add_rectangle_marking("RightGoalCrease", 17.15, -1.0, 4.0, 5.0, line_color)
@@ -139,15 +141,17 @@ func _build_markings() -> void:
 	_add_faceoff_cross("FaceOffCenterBottom", Vector2(0.0, 8.5), line_color)
 	_add_faceoff_cross("FaceOffRightTop", Vector2(GOAL_LINE_X, -8.5), line_color)
 	_add_faceoff_cross("FaceOffRightBottom", Vector2(GOAL_LINE_X, 8.5), line_color)
+	_add_goal_post_marks("Left", -GOAL_LINE_X, line_color)
+	_add_goal_post_marks("Right", GOAL_LINE_X, line_color)
 
 
 func _add_rectangle_marking(prefix: String, rear_x: float, direction: float, length: float, width: float, color: Color) -> void:
 	var front_x := rear_x + direction * length
-	_add_box(prefix + "Rear", Vector3(LINE_WIDTH, 0.019, width), Vector3(rear_x, 0.019, 0.0), color, false)
-	_add_box(prefix + "Front", Vector3(LINE_WIDTH, 0.019, width), Vector3(front_x, 0.019, 0.0), color, false)
+	_add_painted_box(prefix + "Rear", Vector3(LINE_WIDTH, 0.025, width), Vector3(rear_x, 0.025, 0.0), color)
+	_add_painted_box(prefix + "Front", Vector3(LINE_WIDTH, 0.025, width), Vector3(front_x, 0.025, 0.0), color)
 	var center_x := (rear_x + front_x) * 0.5
-	_add_box(prefix + "Top", Vector3(length, 0.019, LINE_WIDTH), Vector3(center_x, 0.019, -width * 0.5), color, false)
-	_add_box(prefix + "Bottom", Vector3(length, 0.019, LINE_WIDTH), Vector3(center_x, 0.019, width * 0.5), color, false)
+	_add_painted_box(prefix + "Top", Vector3(length, 0.025, LINE_WIDTH), Vector3(center_x, 0.025, -width * 0.5), color)
+	_add_painted_box(prefix + "Bottom", Vector3(length, 0.025, LINE_WIDTH), Vector3(center_x, 0.025, width * 0.5), color)
 
 
 func _add_faceoff_cross(cross_name: String, planar_position: Vector2, color: Color) -> void:
@@ -155,10 +159,31 @@ func _add_faceoff_cross(cross_name: String, planar_position: Vector2, color: Col
 	cross.name = cross_name
 	cross.position = Vector3(planar_position.x, 0.021, planar_position.y)
 	add_child(cross)
-	var first := _add_box_to(cross, "StrokeA", Vector3(0.28, 0.02, LINE_WIDTH), Vector3.ZERO, color, false)
+	var first := _add_painted_box_to(cross, "StrokeA", Vector3(0.30, 0.026, LINE_WIDTH), Vector3.ZERO, color)
 	first.rotation_degrees.y = 45.0
-	var second := _add_box_to(cross, "StrokeB", Vector3(0.28, 0.02, LINE_WIDTH), Vector3.ZERO, color, false)
+	var second := _add_painted_box_to(cross, "StrokeB", Vector3(0.30, 0.026, LINE_WIDTH), Vector3.ZERO, color)
 	second.rotation_degrees.y = -45.0
+
+
+func _add_goal_post_marks(side: String, goal_line_x: float, color: Color) -> void:
+	_add_painted_box(side + "GoalPostTopMark", Vector3(0.34, 0.027, LINE_WIDTH), Vector3(goal_line_x, 0.027, -0.8), color)
+	_add_painted_box(side + "GoalPostBottomMark", Vector3(0.34, 0.027, LINE_WIDTH), Vector3(goal_line_x, 0.027, 0.8), color)
+
+
+func _add_painted_box(node_name: String, size: Vector3, position: Vector3, color: Color) -> MeshInstance3D:
+	return _add_painted_box_to(self, node_name, size, position, color)
+
+
+func _add_painted_box_to(parent: Node, node_name: String, size: Vector3, position: Vector3, color: Color) -> MeshInstance3D:
+	var marking := _add_box_to(parent, node_name, size, position, color, false)
+	marking.material_override = _marking_material(color)
+	return marking
+
+
+func _marking_material(color: Color) -> StandardMaterial3D:
+	var material := _material(color, 0.32, color)
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	return material
 
 
 func _build_boards() -> void:

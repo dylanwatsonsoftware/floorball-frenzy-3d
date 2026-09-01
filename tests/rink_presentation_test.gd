@@ -29,11 +29,18 @@ func run_test() -> void:
 		"LeftGoalkeeperAreaRear", "LeftGoalkeeperAreaFront", "LeftGoalkeeperAreaTop", "LeftGoalkeeperAreaBottom",
 		"RightGoalkeeperAreaRear", "RightGoalkeeperAreaFront", "RightGoalkeeperAreaTop", "RightGoalkeeperAreaBottom",
 		"FaceOffLeftTop", "FaceOffLeftBottom", "FaceOffCenterTop", "FaceOffCenterBottom", "FaceOffRightTop", "FaceOffRightBottom",
+		"LeftGoalPostTopMark", "LeftGoalPostBottomMark", "RightGoalPostTopMark", "RightGoalPostBottomMark",
 	]
 	for marking_name in required_markings:
 		if arena.get_node_or_null(marking_name) == null:
 			fail("Missing official floorball marking: %s" % marking_name)
 			return
+	var center_line := arena.get_node("CenterLine") as MeshInstance3D
+	var center_line_size: Vector3 = (center_line.mesh as BoxMesh).size
+	var marking_material := center_line.material_override as StandardMaterial3D
+	if center_line_size.x < 0.08 or not marking_material.emission_enabled or marking_material.albedo_color.get_luminance() < 0.75:
+		fail("Regulation markings must remain clearly painted and readable against wood at mobile camera distance")
+		return
 	var left_crease_rear := arena.get_node("LeftGoalCreaseRear") as MeshInstance3D
 	var left_crease_front := arena.get_node("LeftGoalCreaseFront") as MeshInstance3D
 	if not is_equal_approx(left_crease_rear.position.x, -17.15) or not is_equal_approx(absf(left_crease_front.position.x - left_crease_rear.position.x), 4.0):
@@ -43,6 +50,11 @@ func run_test() -> void:
 	var left_keeper_front := arena.get_node("LeftGoalkeeperAreaFront") as MeshInstance3D
 	if not is_equal_approx(left_keeper_rear.position.x, -16.5) or not is_equal_approx(absf(left_keeper_front.position.x - left_keeper_rear.position.x), 1.0):
 		fail("The 1 x 2.5 metre goalkeeper area must place the official goal line at x=16.5")
+		return
+	var left_post_top := arena.get_node("LeftGoalPostTopMark") as MeshInstance3D
+	var left_post_bottom := arena.get_node("LeftGoalPostBottomMark") as MeshInstance3D
+	if not is_equal_approx(absf(left_post_top.position.z - left_post_bottom.position.z), 1.6):
+		fail("Painted goal-post marks must be 1.6 metres apart on the goal line")
 		return
 
 	var red_players: Array = arena.call("get_team_players", &"red")
