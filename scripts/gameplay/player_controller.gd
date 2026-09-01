@@ -7,6 +7,7 @@ const RINK_HALF_LENGTH := 18.1
 const RINK_HALF_WIDTH := 8.6
 const DASH_STREAK_SECONDS := 0.18
 const BOLT_WINDOW_SECONDS := 0.2
+const PARRY_WINDOW_SECONDS := 0.15
 const STICK_BASE_Y_ANGLE := -28.0
 
 var _facing_direction := Vector3.RIGHT
@@ -16,6 +17,7 @@ var _dash_streak_remaining := 0.0
 var _dash_streak: Node3D
 var _dash_direction := Vector3.RIGHT
 var _recent_dash_remaining := 0.0
+var _parry_window_remaining := 0.0
 var _heat := 0.0
 var _fuego_remaining := 0.0
 var _fuego_aura: MeshInstance3D
@@ -40,6 +42,7 @@ func _physics_process(delta: float) -> void:
 	_dash_cooldown = maxf(0.0, _dash_cooldown - delta)
 	_dash_streak_remaining = maxf(0.0, _dash_streak_remaining - delta)
 	_recent_dash_remaining = maxf(0.0, _recent_dash_remaining - delta)
+	_parry_window_remaining = maxf(0.0, _parry_window_remaining - delta)
 	if _dash_streak != null:
 		_dash_streak.visible = _dash_streak_remaining > 0.0
 		if _dash_streak.visible:
@@ -87,6 +90,10 @@ func has_recent_dash() -> bool:
 	return _recent_dash_remaining > 0.0001
 
 
+func has_parry_window() -> bool:
+	return _parry_window_remaining > 0.0001
+
+
 func try_dash(input_vector: Vector2 = Vector2.ZERO) -> bool:
 	if _dash_streak == null:
 		_dash_streak = get_node_or_null("DashStreak") as Node3D
@@ -98,6 +105,7 @@ func try_dash(input_vector: Vector2 = Vector2.ZERO) -> bool:
 	_dash_cooldown = dash.cooldown
 	_dash_streak_remaining = DASH_STREAK_SECONDS
 	_recent_dash_remaining = BOLT_WINDOW_SECONDS
+	_parry_window_remaining = PARRY_WINDOW_SECONDS
 	add_heat(5.0)
 	if _dash_streak != null:
 		_dash_streak.scale = Vector3.ONE

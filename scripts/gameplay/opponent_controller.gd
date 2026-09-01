@@ -9,6 +9,7 @@ const RINK_HALF_WIDTH := 8.6
 const SHOT_CHARGE_SECONDS := 0.55
 const SHOT_COOLDOWN_SECONDS := 0.8
 const DASH_STREAK_SECONDS := 0.18
+const PARRY_WINDOW_SECONDS := 0.15
 
 var _facing_direction := Vector3.LEFT
 var _shot_charge := 0.0
@@ -18,6 +19,7 @@ var _player: CharacterBody3D
 var _dash_cooldown := 0.0
 var _dash_streak_remaining := 0.0
 var _dash_direction := Vector3.LEFT
+var _parry_window_remaining := 0.0
 var _dash_streak: Node3D
 var _heat := 0.0
 var _fuego_remaining := 0.0
@@ -35,6 +37,7 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	_step_heat(delta)
+	_parry_window_remaining = maxf(0.0, _parry_window_remaining - delta)
 	if not _ball.is_physics_processing():
 		velocity = Vector3.ZERO
 		_dash_streak_remaining = 0.0
@@ -93,6 +96,10 @@ func get_dash_cooldown_ratio() -> float:
 	return clampf(_dash_cooldown / PlayerMotorScript.DASH_COOLDOWN, 0.0, 1.0)
 
 
+func has_parry_window() -> bool:
+	return _parry_window_remaining > 0.0001
+
+
 func try_dash(input_vector: Vector2) -> bool:
 	if _dash_streak == null:
 		_dash_streak = get_node_or_null("DashStreak") as Node3D
@@ -103,6 +110,7 @@ func try_dash(input_vector: Vector2) -> bool:
 	_dash_direction = dash.velocity.normalized()
 	_dash_cooldown = dash.cooldown
 	_dash_streak_remaining = DASH_STREAK_SECONDS
+	_parry_window_remaining = PARRY_WINDOW_SECONDS
 	add_heat(5.0)
 	if _dash_streak != null:
 		_dash_streak.scale = Vector3.ONE

@@ -6,6 +6,7 @@ const BallInteractionScript = preload("res://scripts/simulation/ball_interaction
 const StickSlapScript = preload("res://scripts/simulation/stick_slap.gd")
 const OneTouchScript = preload("res://scripts/simulation/one_touch.gd")
 const DashStealScript = preload("res://scripts/simulation/dash_steal.gd")
+const ParryScript = preload("res://scripts/simulation/parry.gd")
 const ShotChargeFeedbackScript = preload("res://scripts/presentation/shot_charge_feedback.gd")
 const ShotImpactFeedbackScript = preload("res://scripts/presentation/shot_impact_feedback.gd")
 const MAX_CHARGE_SECONDS := 0.8
@@ -19,6 +20,8 @@ const BOLT_TRAIL_COLOR := Color(0.18, 0.72, 1.0, 0.76)
 const BOLT_TRAIL_EMISSION := Color("42b8ff")
 const SCOOP_TRAIL_COLOR := Color(0.48, 0.92, 1.0, 0.78)
 const SCOOP_TRAIL_EMISSION := Color("7deaff")
+const PARRY_TRAIL_COLOR := Color(1.0, 0.86, 0.25, 0.86)
+const PARRY_TRAIL_EMISSION := Color("ffd83f")
 const SCOOP_FEEDBACK_SECONDS := 0.8
 const STEAL_FEEDBACK_SECONDS := 0.38
 const STEAL_COLOR := Color("7dff6a")
@@ -61,7 +64,8 @@ func _physics_process(delta: float) -> void:
 	position = interaction_state.position
 	ball_velocity = interaction_state.velocity
 	_update_dash_steal_latches()
-	_apply_dash_steal(interaction_state.body_controller)
+	if not _apply_parry(interaction_state.body_controller):
+		_apply_dash_steal(interaction_state.body_controller)
 	var scorer := MatchSimulationScript.detect_goal(previous_position, position, ball_velocity)
 	if scorer != &"":
 		ball_velocity = Vector3.ZERO
@@ -82,7 +86,7 @@ func launch(planar_direction: Vector2, charge: float, inherited_velocity: Vector
 	var plan: Dictionary = BallSimulationScript.shot_plan(planar_direction, charge, inherited_velocity, one_touch, bolt)
 	ball_velocity = plan.velocity
 	_scoop_remaining = SCOOP_FEEDBACK_SECONDS if plan.is_scoop else 0.0
-	_set_shot_trail_style(bolt, plan.is_scoop)
+	_set_shot_trail_style(bolt, plan.is_scoop, false)
 	if plan.is_scoop and _charge_label != null:
 		_charge_label.text = "SCOOP!"
 		_charge_label.add_theme_color_override("font_color", SCOOP_TRAIL_EMISSION)
@@ -104,7 +108,7 @@ func reset_for_faceoff() -> void:
 	_scoop_remaining = 0.0
 	_clear_charge_feedback()
 	_set_trail_visible(false)
-	_set_shot_trail_style(false, false)
+	_set_shot_trail_style(false, false, false)
 	set_physics_process(true)
 
 
@@ -280,6 +284,33 @@ func _apply_dash_steal(body_controller: int) -> void:
 		})
 
 
+func _apply_parry(body_controller: int) -> bool:
+	if body_controller < 0 or body_controller > 1:
+		return false
+	var actor := _player if body_controller == 0 else _opponent
+	if actor == null or not actor.has_method("has_parry_window"):
+		return false
+	if not ParryScript.can_parry(global_position, ball_velocity, actor.global_position, bool(actor.call("has_parry_window"))):
+		return false
+	var team: StringName = &"red" if body_controller == 0 else &"blue"
+	ball_velocity = ParryScript.reflected_velocity(ball_velocity)
+	_dash_steal_consumed[body_controller] = true
+	record_touch(team)
+	_steal_feedback_remaining = STEAL_FEEDBACK_SECONDS
+	_charge_label.text = "PARRY!" if team == &"red" else "BLUE PARRY!"
+	_charge_label.add_theme_color_override("font_color", PARRY_TRAIL_EMISSION)
+	_set_shot_trail_style(false, false, true)
+	var arena := get_parent()
+	if arena.has_method("play_shot_impact"):
+		arena.call("play_shot_impact", global_position, {
+			"scale": 2.2,
+			"kick": 0.095,
+			"duration": 0.28,
+			"color": PARRY_TRAIL_EMISSION,
+		})
+	return true
+
+
 func _update_dash_steal_latches() -> void:
 	for controller in 2:
 		if not _is_controller_dashing(controller):
@@ -307,7 +338,7 @@ func _update_steal_feedback(delta: float) -> void:
 	if _steal_feedback_remaining <= 0.0:
 		return
 	_steal_feedback_remaining = maxf(0.0, _steal_feedback_remaining - delta)
-	if _steal_feedback_remaining <= 0.0 and _charge_label.text in ["STEAL!", "BLUE STEAL!"]:
+	if _steal_feedback_remaining <= 0.0 and _charge_label.text in ["STEAL!", "BLUE STEAL!", "PARRY!", "BLUE PARRY!"]:
 		_clear_charge_feedback()
 
 
@@ -351,14 +382,14 @@ func _set_trail_visible(value: bool) -> void:
 		_shot_trail.visible = value
 
 
-func _set_shot_trail_style(bolt: bool, scoop: bool = false) -> void:
+func _set_shot_trail_style(bolt: bool, scoop: bool = false, parry: bool = false) -> void:
 	if _shot_trail == null:
 		_shot_trail = get_node_or_null("ShotTrail") as MeshInstance3D
 	if _shot_trail == null:
 		return
 	var material := _shot_trail.material_override as StandardMaterial3D
-	material.albedo_color = BOLT_TRAIL_COLOR if bolt else SCOOP_TRAIL_COLOR if scoop else NORMAL_TRAIL_COLOR
-	material.emission = BOLT_TRAIL_EMISSION if bolt else SCOOP_TRAIL_EMISSION if scoop else NORMAL_TRAIL_EMISSION
+	material.albedo_color = PARRY_TRAIL_COLOR if parry else BOLT_TRAIL_COLOR if bolt else SCOOP_TRAIL_COLOR if scoop else NORMAL_TRAIL_COLOR
+	material.emission = PARRY_TRAIL_EMISSION if parry else BOLT_TRAIL_EMISSION if bolt else SCOOP_TRAIL_EMISSION if scoop else NORMAL_TRAIL_EMISSION
 
 
 func _apply_charge_feedback(normalized_charge: float) -> void:

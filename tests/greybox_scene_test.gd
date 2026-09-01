@@ -293,6 +293,40 @@ func run_test() -> void:
 		fail("Starting a new match after first-to-five must reset Heat")
 		return
 
+	if not player.has_method("has_parry_window") or not opponent.has_method("has_parry_window"):
+		fail("Both local players must expose the original post-dash perfect-parry window")
+		return
+	player.call("add_heat", 100.0)
+	await physics_frame
+	if not player.call("try_dash", Vector2.LEFT) or not player.call("has_parry_window"):
+		fail("Red's dash must arm its 150 ms parry window")
+		return
+	ball.position = player.position + Vector3(0.6, -0.53, 0.0)
+	ball.ball_velocity = Vector3(-14.0, 0.0, 0.0)
+	await physics_frame
+	if ball.ball_velocity.x < 20.0 or charge_label.text != "PARRY!":
+		fail("Red must reflect a fast incoming body shot at 1.5x speed; velocity=%s label=%s" % [ball.ball_velocity, charge_label.text])
+		return
+
+	ball.reset_for_faceoff()
+	opponent.call("add_heat", 100.0)
+	await physics_frame
+	if not opponent.call("try_dash", Vector2.RIGHT) or not opponent.call("has_parry_window"):
+		fail("Blue's dash must arm the same 150 ms parry window")
+		return
+	ball.position = opponent.position + Vector3(-0.6, -0.53, 0.0)
+	ball.ball_velocity = Vector3(14.0, 0.0, 0.0)
+	await physics_frame
+	if ball.ball_velocity.x > -20.0 or charge_label.text != "BLUE PARRY!":
+		fail("Blue must reflect a fast incoming body shot at 1.5x speed; velocity=%s label=%s" % [ball.ball_velocity, charge_label.text])
+		return
+	ball.set_physics_process(false)
+	opponent.call("_physics_process", 0.2)
+	if opponent.call("has_parry_window"):
+		fail("Blue's parry window must expire while play is stopped between goals")
+		return
+	ball.set_physics_process(true)
+
 	print("Greybox scene contract is valid.")
 	scene.queue_free()
 	quit(0)

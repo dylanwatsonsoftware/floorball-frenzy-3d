@@ -6,6 +6,7 @@ const BLADE_FORWARD_OFFSET := 0.9
 const BLADE_RIGHT_OFFSET := 0.75
 const STICK_CONTROL_RADIUS := 0.78
 const CONTROL_HEIGHT := 0.68
+const BODY_CONTACT_HEIGHT := 1.5
 const DRIBBLE_LEAD_SPEED := 2.2
 const VELOCITY_TRANSFER := 0.72
 const ASSIST_RATE := 8.0
@@ -16,7 +17,7 @@ const POSITION_ASSIST_RATE := 7.0
 static func step(ball_position: Vector3, ball_velocity: Vector3, participants: Array, delta: float) -> Dictionary:
 	var next_position := ball_position
 	var next_velocity := ball_velocity
-	if ball_position.y > CONTROL_HEIGHT:
+	if ball_position.y > BODY_CONTACT_HEIGHT:
 		return _result(next_position, next_velocity, -1, -1)
 
 	var body_controller := -1
@@ -44,6 +45,8 @@ static func step(ball_position: Vector3, ball_velocity: Vector3, participants: A
 			next_velocity.z += normal.y * transfer_speed * VELOCITY_TRANSFER
 
 	var controller := -1
+	if ball_position.y > CONTROL_HEIGHT:
+		return _result(next_position, next_velocity, controller, body_controller)
 	if Vector2(next_velocity.x, next_velocity.z).length() > MAX_CONTROL_SPEED:
 		return _result(next_position, next_velocity, controller, body_controller)
 	var closest_stick_distance := INF

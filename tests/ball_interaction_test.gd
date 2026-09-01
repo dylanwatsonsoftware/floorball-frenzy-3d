@@ -56,6 +56,15 @@ func _init() -> void:
 	if airborne.controller != -1 or not airborne.velocity.is_equal_approx(Vector3(2.0, -1.0, 0.0)):
 		fail("Airborne balls must pass over possession assistance")
 		return
+	var torso_hit: Dictionary = interaction.step(
+		Vector3(0.3, 1.2, 0.0),
+		Vector3(-14.0, 0.0, 0.0),
+		[player],
+		0.1
+	)
+	if torso_hit.body_controller != 0 or torso_hit.controller != -1:
+		fail("A lifted shot at torso height must still report body contact without magnetic stick control")
+		return
 
 	var fast_shot: Dictionary = interaction.step(
 		Vector3(0.9, 0.22, 0.75),
