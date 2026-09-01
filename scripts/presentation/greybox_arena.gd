@@ -614,7 +614,7 @@ func _add_stick(parent: Node3D, color: Color) -> void:
 	rig.name = "StickRig"
 	# The blade sits at the player's right-front foot while the grip rises across
 	# their body. The controller owns the Y rotation for slap animations.
-	rig.position = Vector3(0.18, 0.25, 0.0)
+	rig.position = Vector3(0.52, 0.50, 0.0)
 	rig.rotation_degrees = Vector3(55.0, -28.0, 5.0)
 	parent.add_child(rig)
 
@@ -657,7 +657,7 @@ func _add_stick(parent: Node3D, color: Color) -> void:
 	neck.material_override = _material(color, 0.6)
 	rig.add_child(neck)
 
-	var blade_color := Color("f4d84a")
+	var blade_color := Color("168a45") if StringName(parent.get_meta("team", &"red")) == &"red" else Color("17284d")
 	_add_floorball_blade(rig, blade_color)
 
 
@@ -667,12 +667,12 @@ func _add_floorball_blade(rig: Node3D, color: Color) -> void:
 	var arrays := []
 	arrays.resize(ArrayMesh.ARRAY_MAX)
 	arrays[ArrayMesh.ARRAY_VERTEX] = PackedVector3Array([
-		Vector3(0.02, 0.0, 1.17), Vector3(0.28, 0.0, 1.14),
-		Vector3(0.58, 0.0, 1.02), Vector3(0.79, 0.0, 0.82),
-		Vector3(0.66, 0.0, 0.71), Vector3(0.34, 0.0, 0.90),
-		Vector3(0.02, 0.0, 1.00),
+		Vector3(-0.04, 0.0, 1.04), Vector3(0.08, 0.0, 1.06),
+		Vector3(0.14, 0.0, 1.26), Vector3(0.24, 0.0, 1.52),
+		Vector3(0.18, 0.0, 1.66), Vector3(0.05, 0.0, 1.72),
+		Vector3(-0.06, 0.0, 1.55), Vector3(-0.08, 0.0, 1.25),
 	])
-	arrays[ArrayMesh.ARRAY_INDEX] = PackedInt32Array([0, 1, 6, 1, 5, 6, 1, 2, 5, 2, 4, 5, 2, 3, 4])
+	arrays[ArrayMesh.ARRAY_INDEX] = PackedInt32Array([0, 1, 2, 0, 2, 7, 2, 6, 7, 2, 3, 6, 3, 5, 6, 3, 4, 5])
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	blade.mesh = mesh

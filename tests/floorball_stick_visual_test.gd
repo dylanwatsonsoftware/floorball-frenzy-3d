@@ -38,6 +38,10 @@ func run_test() -> void:
 		if not blade.mesh is ArrayMesh or (blade.mesh as ArrayMesh).get_surface_count() != 1:
 			fail("The floorball blade must use a single lightweight curved mesh")
 			return
+		var blade_size: Vector3 = blade.get_aabb().size
+		if blade_size.z < blade_size.x * 1.6:
+			fail("The blade's long axis must continue along the shaft rather than sit across it at right angles; size=%s" % blade_size)
+			return
 		var blade_center_in_actor: Vector3 = rig.transform * blade.get_aabb().get_center()
 		var grip_center_in_actor: Vector3 = rig.transform * grip.position
 		if blade_center_in_actor.x <= 0.15 or blade_center_in_actor.z <= 0.35:
@@ -47,8 +51,13 @@ func run_test() -> void:
 			fail("The grip must be visibly above the grounded blade; grip=%s blade=%s" % [grip_center_in_actor, blade_center_in_actor])
 			return
 		var blade_material := blade.material_override as StandardMaterial3D
-		if blade_material.albedo_color.get_luminance() < 0.55:
-			fail("The small floorball blade needs a bright contrasting color at gameplay camera distance")
+		var blade_color := blade_material.albedo_color
+		if actor.call("get_team") == &"red":
+			if blade_color.g <= blade_color.r * 1.5 or blade_color.g <= blade_color.b * 1.2:
+				fail("Lambs sticks must have recognisable green blades; color=%s" % blade_color)
+				return
+		elif blade_color.b <= blade_color.r * 1.5 or blade_color.b <= blade_color.g * 1.25:
+			fail("Pirates sticks must have recognisable navy blades; color=%s" % blade_color)
 			return
 	print("All six players carry recognizable lightweight floorball sticks.")
 	scene.queue_free()
