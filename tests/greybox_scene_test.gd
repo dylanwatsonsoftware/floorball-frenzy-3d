@@ -26,6 +26,9 @@ func run_test() -> void:
 		"HUD/MobileControls",
 		"HUD/WebDisplayControls/FullscreenButton",
 		"HUD/WebDisplayControls/OrientationHint",
+		"HUD/ScoreLabel",
+		"HUD/MessageLabel",
+		"MatchFlow",
 	]
 	for path in required_nodes:
 		if scene.get_node_or_null(path) == null:
@@ -44,6 +47,9 @@ func run_test() -> void:
 	var ball := scene.get_node("Arena/Ball")
 	if not ball.has_method("launch"):
 		fail("Ball must expose deterministic launch behavior")
+		return
+	if not ball.has_method("reset_for_faceoff") or not ball.has_signal("goal_scored"):
+		fail("Ball must integrate with scoring and faceoff flow")
 		return
 	if scene.get_node_or_null("HUD/ChargeLabel") == null:
 		fail("HUD must expose shot charging feedback")
