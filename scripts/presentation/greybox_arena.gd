@@ -4,6 +4,7 @@ const CameraPresetsScript = preload("res://scripts/presentation/camera_presets.g
 const RINK_LENGTH := 38.0
 const RINK_WIDTH := 19.0
 const BOARD_HEIGHT := 1.0
+const BOARD_CORNER_RADIUS := 2.15
 
 var _camera_presets: Array[Dictionary] = CameraPresetsScript.all()
 var _camera: Camera3D
@@ -71,10 +72,30 @@ func _build_markings() -> void:
 
 func _build_boards() -> void:
 	var board_color := Color("f5f8fa")
-	_add_box("FarBoard", Vector3(RINK_LENGTH + 1.0, BOARD_HEIGHT, 0.35), Vector3(0.0, BOARD_HEIGHT * 0.5, -RINK_WIDTH * 0.5), board_color)
-	_add_box("NearBoard", Vector3(RINK_LENGTH + 1.0, 0.48, 0.28), Vector3(0.0, 0.24, RINK_WIDTH * 0.5), Color(0.75, 0.84, 0.88, 0.55))
-	_add_box("LeftBoard", Vector3(0.35, BOARD_HEIGHT, RINK_WIDTH), Vector3(-RINK_LENGTH * 0.5, BOARD_HEIGHT * 0.5, 0.0), board_color)
-	_add_box("RightBoard", Vector3(0.35, BOARD_HEIGHT, RINK_WIDTH), Vector3(RINK_LENGTH * 0.5, BOARD_HEIGHT * 0.5, 0.0), board_color)
+	var straight_length := RINK_LENGTH - BOARD_CORNER_RADIUS * 2.0
+	var straight_width := RINK_WIDTH - BOARD_CORNER_RADIUS * 2.0
+	_add_box("FarBoard", Vector3(straight_length, BOARD_HEIGHT, 0.35), Vector3(0.0, BOARD_HEIGHT * 0.5, -RINK_WIDTH * 0.5), board_color)
+	_add_box("NearBoard", Vector3(straight_length, 0.48, 0.28), Vector3(0.0, 0.24, RINK_WIDTH * 0.5), Color(0.75, 0.84, 0.88, 0.55))
+	_add_box("LeftBoard", Vector3(0.35, BOARD_HEIGHT, straight_width), Vector3(-RINK_LENGTH * 0.5, BOARD_HEIGHT * 0.5, 0.0), board_color)
+	_add_box("RightBoard", Vector3(0.35, BOARD_HEIGHT, straight_width), Vector3(RINK_LENGTH * 0.5, BOARD_HEIGHT * 0.5, 0.0), board_color)
+	_build_corner_board("FarLeftCornerBoard", -1.0, -1.0, BOARD_HEIGHT, board_color)
+	_build_corner_board("FarRightCornerBoard", 1.0, -1.0, BOARD_HEIGHT, board_color)
+	_build_corner_board("NearLeftCornerBoard", -1.0, 1.0, 0.56, Color(0.75, 0.84, 0.88, 0.62))
+	_build_corner_board("NearRightCornerBoard", 1.0, 1.0, 0.56, Color(0.75, 0.84, 0.88, 0.62))
+
+
+func _build_corner_board(node_name: String, sign_x: float, sign_z: float, height: float, color: Color) -> void:
+	var corner := Node3D.new()
+	corner.name = node_name
+	add_child(corner)
+	var center := Vector2(sign_x * (RINK_LENGTH * 0.5 - BOARD_CORNER_RADIUS), sign_z * (RINK_WIDTH * 0.5 - BOARD_CORNER_RADIUS))
+	var segment_length := BOARD_CORNER_RADIUS * PI / 6.0 + 0.08
+	for index in 3:
+		var angle := deg_to_rad(15.0 + index * 30.0)
+		var outward := Vector2(sign_x * cos(angle), sign_z * sin(angle))
+		var tangent := Vector2(-sign_x * sin(angle), sign_z * cos(angle))
+		var segment := _add_box_to(corner, "Segment%d" % (index + 1), Vector3(segment_length, height, 0.34), Vector3(center.x + outward.x * BOARD_CORNER_RADIUS, height * 0.5, center.y + outward.y * BOARD_CORNER_RADIUS), color)
+		segment.rotation.y = -atan2(tangent.y, tangent.x)
 
 
 func _build_goal(goal_name: String, x_position: float, color: Color) -> void:
@@ -260,6 +281,10 @@ func _apply_camera_preset(index: int) -> void:
 
 
 func _add_box(node_name: String, size: Vector3, position: Vector3, color: Color, shadow: bool = true) -> MeshInstance3D:
+	return _add_box_to(self, node_name, size, position, color, shadow)
+
+
+func _add_box_to(parent: Node, node_name: String, size: Vector3, position: Vector3, color: Color, shadow: bool = true) -> MeshInstance3D:
 	var mesh_instance := MeshInstance3D.new()
 	mesh_instance.name = node_name
 	var mesh := BoxMesh.new()
@@ -268,7 +293,7 @@ func _add_box(node_name: String, size: Vector3, position: Vector3, color: Color,
 	mesh_instance.position = position
 	mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if shadow else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mesh_instance.material_override = _material(color, 0.72)
-	add_child(mesh_instance)
+	parent.add_child(mesh_instance)
 	return mesh_instance
 
 

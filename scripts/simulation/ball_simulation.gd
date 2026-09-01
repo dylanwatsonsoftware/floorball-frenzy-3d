@@ -2,14 +2,15 @@ class_name BallSimulation
 extends RefCounted
 
 const GoalCollisionScript = preload("res://scripts/simulation/goal_collision.gd")
+const RinkCollisionScript = preload("res://scripts/simulation/rink_collision.gd")
 
 const SHOT_BASE_SPEED := 13.0
 const SHOT_SPEED_SCALE := 12.0
 const SHOT_BASE_LIFT := 1.5
 const SHOT_LIFT_SCALE := 5.5
 const BALL_RADIUS := 0.22
-const RINK_HALF_LENGTH := 18.65
-const RINK_HALF_WIDTH := 9.15
+const RINK_HALF_LENGTH := RinkCollisionScript.HALF_LENGTH
+const RINK_HALF_WIDTH := RinkCollisionScript.HALF_WIDTH
 const GRAVITY := 14.0
 const FLOOR_BOUNCE := 0.42
 const WALL_BOUNCE := 0.78
@@ -45,12 +46,9 @@ static func step(position: Vector3, velocity: Vector3, delta: float) -> Dictiona
 	next_position = goal_collision.position
 	next_velocity = goal_collision.velocity
 
-	if absf(next_position.x) > RINK_HALF_LENGTH:
-		next_position.x = clampf(next_position.x, -RINK_HALF_LENGTH, RINK_HALF_LENGTH)
-		next_velocity.x = -next_velocity.x * WALL_BOUNCE
-	if absf(next_position.z) > RINK_HALF_WIDTH:
-		next_position.z = clampf(next_position.z, -RINK_HALF_WIDTH, RINK_HALF_WIDTH)
-		next_velocity.z = -next_velocity.z * WALL_BOUNCE
+	var rink_collision := RinkCollisionScript.resolve(next_position, next_velocity)
+	next_position = rink_collision.position
+	next_velocity = rink_collision.velocity
 
 	return {
 		"position": next_position,

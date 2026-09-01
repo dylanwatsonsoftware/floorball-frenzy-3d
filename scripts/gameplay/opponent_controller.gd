@@ -2,6 +2,7 @@ extends CharacterBody3D
 
 const SimpleAIScript = preload("res://scripts/simulation/simple_ai.gd")
 const PlayerMotorScript = preload("res://scripts/gameplay/player_motor.gd")
+const RinkCollisionScript = preload("res://scripts/simulation/rink_collision.gd")
 const RINK_HALF_LENGTH := 18.1
 const RINK_HALF_WIDTH := 8.6
 const SHOT_CHARGE_SECONDS := 0.55
@@ -28,8 +29,9 @@ func _physics_process(delta: float) -> void:
 	var decision := SimpleAIScript.decide(global_position, _ball.global_position, _player.global_position, _ball.ball_velocity)
 	velocity = PlayerMotorScript.step_velocity(velocity, decision.movement, delta)
 	move_and_slide()
-	global_position.x = clampf(global_position.x, -RINK_HALF_LENGTH, RINK_HALF_LENGTH)
-	global_position.z = clampf(global_position.z, -RINK_HALF_WIDTH, RINK_HALF_WIDTH)
+	var boundary := RinkCollisionScript.constrain_body(global_position, velocity, RINK_HALF_LENGTH, RINK_HALF_WIDTH, 1.8)
+	global_position = boundary.position
+	velocity = boundary.velocity
 
 	var facing_planar: Vector2 = decision.shot_direction if decision.wants_shot else decision.movement
 	if not facing_planar.is_zero_approx():

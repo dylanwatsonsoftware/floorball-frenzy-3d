@@ -1,6 +1,7 @@
 extends CharacterBody3D
 
 const PlayerMotorScript = preload("res://scripts/gameplay/player_motor.gd")
+const RinkCollisionScript = preload("res://scripts/simulation/rink_collision.gd")
 const RINK_HALF_LENGTH := 18.1
 const RINK_HALF_WIDTH := 8.6
 const DASH_STREAK_SECONDS := 0.18
@@ -39,8 +40,9 @@ func _physics_process(delta: float) -> void:
 	else:
 		velocity = PlayerMotorScript.step_velocity(velocity, input_vector, delta)
 	move_and_slide()
-	global_position.x = clampf(global_position.x, -RINK_HALF_LENGTH, RINK_HALF_LENGTH)
-	global_position.z = clampf(global_position.z, -RINK_HALF_WIDTH, RINK_HALF_WIDTH)
+	var boundary := RinkCollisionScript.constrain_body(global_position, velocity, RINK_HALF_LENGTH, RINK_HALF_WIDTH, 1.8)
+	global_position = boundary.position
+	velocity = boundary.velocity
 
 	if velocity.length_squared() > 0.04:
 		_facing_direction = Vector3(velocity.x, 0.0, velocity.z).normalized()

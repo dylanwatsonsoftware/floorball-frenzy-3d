@@ -17,6 +17,10 @@ func run_test() -> void:
 
 	var required_nodes := [
 		"Arena/RinkFloor",
+		"Arena/FarLeftCornerBoard",
+		"Arena/FarRightCornerBoard",
+		"Arena/NearLeftCornerBoard",
+		"Arena/NearRightCornerBoard",
 		"Arena/Player",
 		"Arena/Player/StickRig/Shaft",
 		"Arena/Player/StickRig/Blade",
