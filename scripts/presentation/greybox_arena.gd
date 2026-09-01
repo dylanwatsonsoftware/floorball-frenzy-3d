@@ -333,32 +333,66 @@ func _add_stick(parent: Node3D, color: Color) -> void:
 
 	var shaft := MeshInstance3D.new()
 	shaft.name = "Shaft"
-	var shaft_mesh := BoxMesh.new()
-	shaft_mesh.size = Vector3(0.075, 0.075, 1.55)
+	var shaft_mesh := CylinderMesh.new()
+	shaft_mesh.top_radius = 0.035
+	shaft_mesh.bottom_radius = 0.044
+	shaft_mesh.height = 1.78
+	shaft_mesh.radial_segments = 10
 	shaft.mesh = shaft_mesh
-	shaft.position = Vector3(0.0, 0.0, 0.35)
+	shaft.position = Vector3(0.0, 0.0, 0.25)
+	shaft.rotation_degrees.x = 90.0
 	shaft.material_override = _material(color, 0.65)
 	rig.add_child(shaft)
 
-	var blade := MeshInstance3D.new()
-	blade.name = "Blade"
-	var blade_mesh := BoxMesh.new()
-	blade_mesh.size = Vector3(0.48, 0.11, 0.13)
-	blade.mesh = blade_mesh
-	blade.position = Vector3(-0.18, 0.0, 1.08)
-	blade.rotation_degrees.y = 12.0
-	blade.material_override = _material(color, 0.58)
-	rig.add_child(blade)
+	var grip := MeshInstance3D.new()
+	grip.name = "Grip"
+	var grip_mesh := CylinderMesh.new()
+	grip_mesh.top_radius = 0.052
+	grip_mesh.bottom_radius = 0.052
+	grip_mesh.height = 0.48
+	grip_mesh.radial_segments = 10
+	grip.mesh = grip_mesh
+	grip.position = Vector3(0.0, 0.0, -0.49)
+	grip.rotation_degrees.x = 90.0
+	grip.material_override = _material(Color("f2f4f7"), 0.82)
+	rig.add_child(grip)
 
-	var blade_toe := MeshInstance3D.new()
-	blade_toe.name = "BladeToe"
-	var toe_mesh := BoxMesh.new()
-	toe_mesh.size = Vector3(0.22, 0.11, 0.13)
-	blade_toe.mesh = toe_mesh
-	blade_toe.position = Vector3(-0.47, 0.0, 1.0)
-	blade_toe.rotation_degrees.y = -34.0
-	blade_toe.material_override = _material(color, 0.58)
-	rig.add_child(blade_toe)
+	var neck := MeshInstance3D.new()
+	neck.name = "BladeNeck"
+	var neck_mesh := CylinderMesh.new()
+	neck_mesh.top_radius = 0.048
+	neck_mesh.bottom_radius = 0.065
+	neck_mesh.height = 0.26
+	neck_mesh.radial_segments = 10
+	neck.mesh = neck_mesh
+	neck.position = Vector3(-0.025, 0.0, 1.08)
+	neck.rotation_degrees = Vector3(90.0, 10.0, 0.0)
+	neck.material_override = _material(color, 0.6)
+	rig.add_child(neck)
+
+	var blade_color := Color("f4d84a")
+	_add_blade_piece(rig, "Blade", Vector3(0.28, 0.075, 0.055), Vector3(-0.13, 0.0, 1.16), 8.0, blade_color)
+	_add_blade_piece(rig, "BladeBackRail", Vector3(0.28, 0.075, 0.055), Vector3(-0.13, 0.0, 1.03), 8.0, blade_color)
+	_add_blade_piece(rig, "BladeMid", Vector3(0.27, 0.075, 0.055), Vector3(-0.38, 0.0, 1.11), 18.0, blade_color)
+	_add_blade_piece(rig, "BladeMidBack", Vector3(0.27, 0.075, 0.055), Vector3(-0.38, 0.0, 0.98), 18.0, blade_color)
+	_add_blade_piece(rig, "BladeToe", Vector3(0.23, 0.075, 0.055), Vector3(-0.59, 0.0, 1.01), 31.0, blade_color)
+	_add_blade_piece(rig, "BladeToeBack", Vector3(0.23, 0.075, 0.055), Vector3(-0.59, 0.0, 0.89), 31.0, blade_color)
+	_add_blade_piece(rig, "BladeTip", Vector3(0.18, 0.085, 0.06), Vector3(-0.74, 0.0, 0.85), 48.0, blade_color)
+	_add_blade_piece(rig, "BladeRib1", Vector3(0.055, 0.068, 0.14), Vector3(-0.24, 0.0, 1.07), 12.0, blade_color)
+	_add_blade_piece(rig, "BladeRib2", Vector3(0.055, 0.068, 0.14), Vector3(-0.43, 0.0, 1.02), 22.0, blade_color)
+	_add_blade_piece(rig, "BladeRib3", Vector3(0.055, 0.068, 0.13), Vector3(-0.60, 0.0, 0.95), 34.0, blade_color)
+
+
+func _add_blade_piece(rig: Node3D, piece_name: String, size: Vector3, piece_position: Vector3, yaw_degrees: float, color: Color) -> void:
+	var piece := MeshInstance3D.new()
+	piece.name = piece_name
+	var piece_mesh := BoxMesh.new()
+	piece_mesh.size = size
+	piece.mesh = piece_mesh
+	piece.position = piece_position
+	piece.rotation_degrees.y = yaw_degrees
+	piece.material_override = _material(color, 0.48)
+	rig.add_child(piece)
 
 
 func _add_dash_streak(parent: Node3D, color: Color) -> void:

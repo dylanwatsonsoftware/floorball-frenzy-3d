@@ -1,0 +1,50 @@
+extends SceneTree
+
+
+func _init() -> void:
+	call_deferred("run_test")
+
+
+func run_test() -> void:
+	var scene := (load("res://scenes/app/main.tscn") as PackedScene).instantiate()
+	root.add_child(scene)
+	await process_frame
+	var players: Array = scene.get_node("Arena").call("get_field_players")
+	for actor in players:
+		var rig := actor.get_node_or_null("StickRig") as Node3D
+		if rig == null:
+			fail("Every field player needs a floorball stick")
+			return
+		var shaft := rig.get_node_or_null("Shaft") as MeshInstance3D
+		var grip := rig.get_node_or_null("Grip") as MeshInstance3D
+		if shaft == null or not shaft.mesh is CylinderMesh or grip == null:
+			fail("The stick must use a round shaft with a distinct hand grip")
+			return
+		if (shaft.mesh as CylinderMesh).height < 1.65:
+			fail("The floorball shaft must be visibly long enough to reach from the hands to the rink")
+			return
+		var blade_parts := []
+		for child in rig.get_children():
+			if child.name.begins_with("Blade"):
+				blade_parts.append(child)
+		if blade_parts.size() < 7:
+			fail("The blade must have a curved, open lattice silhouette rather than one solid box; parts=%d" % blade_parts.size())
+			return
+		var blade := rig.get_node("Blade") as MeshInstance3D
+		var toe := rig.get_node("BladeToe") as MeshInstance3D
+		var tip := rig.get_node_or_null("BladeTip") as MeshInstance3D
+		if tip == null or absf(tip.rotation_degrees.y) <= absf(blade.rotation_degrees.y) or tip.position.x >= toe.position.x:
+			fail("The blade toe must visibly curl around the ball-carrying face")
+			return
+		var blade_material := blade.material_override as StandardMaterial3D
+		if blade_material.albedo_color.get_luminance() < 0.55:
+			fail("The small floorball blade needs a bright contrasting color at gameplay camera distance")
+			return
+	print("All six players carry recognizable lightweight floorball sticks.")
+	scene.queue_free()
+	quit(0)
+
+
+func fail(message: String) -> void:
+	push_error(message)
+	quit(1)
