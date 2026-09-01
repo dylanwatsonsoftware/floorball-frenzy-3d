@@ -6,10 +6,13 @@ func _init() -> void:
 	if goals == null:
 		fail("Goal collision script is missing")
 		return
+	if not is_equal_approx(goals.GOAL_LINE_X, 16.5) or not is_equal_approx(goals.GOAL_HALF_WIDTH, 0.8) or not is_equal_approx(goals.CROSSBAR_HEIGHT, 1.15):
+		fail("Goal collision must match the official floorball cage dimensions and goal line")
+		return
 
 	var post_hit: Dictionary = goals.resolve(
-		Vector3(15.75, 0.5, 1.25),
-		Vector3(16.25, 0.5, 1.25),
+		Vector3(16.25, 0.5, 0.8),
+		Vector3(16.75, 0.5, 0.8),
 		Vector3(10.0, 0.0, 0.0)
 	)
 	if post_hit.velocity.x >= 0.0:
@@ -17,8 +20,8 @@ func _init() -> void:
 		return
 
 	var crossbar_hit: Dictionary = goals.resolve(
-		Vector3(15.75, 1.5, 0.0),
-		Vector3(16.25, 1.4, 0.0),
+		Vector3(16.25, 1.2, 0.0),
+		Vector3(16.75, 1.1, 0.0),
 		Vector3(10.0, -2.0, 0.0)
 	)
 	if crossbar_hit.velocity.x >= 0.0:
@@ -26,8 +29,8 @@ func _init() -> void:
 		return
 
 	var cage_back_hit: Dictionary = goals.resolve(
-		Vector3(17.1, 0.4, 0.0),
 		Vector3(17.6, 0.4, 0.0),
+		Vector3(18.1, 0.4, 0.0),
 		Vector3(10.0, 0.0, 0.0)
 	)
 	if cage_back_hit.velocity.x >= 0.0:
@@ -35,8 +38,8 @@ func _init() -> void:
 		return
 
 	var cage_side_hit: Dictionary = goals.resolve(
-		Vector3(16.5, 0.4, 1.1),
-		Vector3(16.6, 0.4, 1.4),
+		Vector3(17.0, 0.4, 0.7),
+		Vector3(17.1, 0.4, 1.0),
 		Vector3(2.0, 0.0, 6.0)
 	)
 	if cage_side_hit.velocity.z >= 0.0:
@@ -44,8 +47,8 @@ func _init() -> void:
 		return
 
 	var clean_goal: Dictionary = goals.resolve(
-		Vector3(15.75, 0.4, 0.0),
 		Vector3(16.25, 0.4, 0.0),
+		Vector3(16.75, 0.4, 0.0),
 		Vector3(10.0, 0.0, 0.0)
 	)
 	if clean_goal.collided or clean_goal.velocity.x <= 0.0:

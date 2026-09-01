@@ -1,10 +1,10 @@
 class_name GoalCollision
 extends RefCounted
 
-const GOAL_LINE_X := 16.0
+const GOAL_LINE_X := 16.5
 const CAGE_DEPTH := 1.35
-const GOAL_HALF_WIDTH := 1.25
-const CROSSBAR_HEIGHT := 1.48
+const GOAL_HALF_WIDTH := 0.8
+const CROSSBAR_HEIGHT := 1.15
 const FRAME_RADIUS := 0.12
 const BALL_RADIUS := 0.22
 const CONTACT_RADIUS := FRAME_RADIUS + BALL_RADIUS

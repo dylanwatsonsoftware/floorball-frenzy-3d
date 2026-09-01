@@ -6,6 +6,9 @@ func _init() -> void:
 	if rink == null:
 		fail("Rounded rink collision simulation is missing")
 		return
+	if not is_equal_approx(rink.HALF_LENGTH, 19.65) or not is_equal_approx(rink.HALF_WIDTH, 9.65):
+		fail("Ball boundaries must follow the inside edge of the official 40 x 20 metre rink")
+		return
 
 	var straight: Dictionary = rink.resolve(
 		Vector3(rink.HALF_LENGTH + 0.2, 0.22, 0.0),

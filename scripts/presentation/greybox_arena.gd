@@ -2,10 +2,12 @@ extends Node3D
 
 const CameraPresetsScript = preload("res://scripts/presentation/camera_presets.gd")
 const ActionCameraScript = preload("res://scripts/presentation/action_camera.gd")
-const RINK_LENGTH := 38.0
-const RINK_WIDTH := 19.0
-const BOARD_HEIGHT := 1.0
+const RINK_LENGTH := 40.0
+const RINK_WIDTH := 20.0
+const BOARD_HEIGHT := 0.5
 const BOARD_CORNER_RADIUS := 2.15
+const LINE_WIDTH := 0.05
+const GOAL_LINE_X := 16.5
 
 var _camera_presets: Array[Dictionary] = CameraPresetsScript.all()
 var _camera: Camera3D
@@ -95,11 +97,12 @@ func _build_world() -> void:
 	add_child(environment)
 
 	_add_box("ArenaBase", Vector3(45.0, 0.5, 27.0), Vector3(0.0, -0.45, 0.0), Color("172334"))
-	_add_box("RinkFloor", Vector3(RINK_LENGTH, 0.2, RINK_WIDTH), Vector3(0.0, -0.1, 0.0), Color("dce8e8"))
+	var floor := _add_box("RinkFloor", Vector3(RINK_LENGTH, 0.2, RINK_WIDTH), Vector3(0.0, -0.1, 0.0), Color("c99250"))
+	floor.material_override = _wood_floor_material()
 	_build_markings()
 	_build_boards()
-	_build_goal("LeftGoal", -16.0, Color("dd3155"))
-	_build_goal("RightGoal", 16.0, Color("2b64e8"))
+	_build_goal("LeftGoal", -GOAL_LINE_X, Color("dd3155"))
+	_build_goal("RightGoal", GOAL_LINE_X, Color("2b64e8"))
 	_build_player()
 	_build_ball()
 	_build_shot_impact()
@@ -113,20 +116,49 @@ func _build_world() -> void:
 
 
 func _build_markings() -> void:
-	_add_box("CenterLine", Vector3(0.08, 0.012, RINK_WIDTH - 0.6), Vector3(0.0, 0.012, 0.0), Color("d74962"), false)
-	_add_box("LeftGoalLine", Vector3(0.07, 0.013, 5.0), Vector3(-16.0, 0.013, 0.0), Color("d74962"), false)
-	_add_box("RightGoalLine", Vector3(0.07, 0.013, 5.0), Vector3(16.0, 0.013, 0.0), Color("d74962"), false)
-	var center_circle := MeshInstance3D.new()
-	center_circle.name = "CenterCircle"
-	var ring := TorusMesh.new()
-	ring.inner_radius = 1.88
-	ring.outer_radius = 1.94
-	ring.rings = 32
-	ring.ring_segments = 8
-	center_circle.mesh = ring
-	center_circle.position.y = 0.025
-	center_circle.material_override = _material(Color("d74962"), 0.7)
-	add_child(center_circle)
+	var line_color := Color("c92f45")
+	_add_box("CenterLine", Vector3(LINE_WIDTH, 0.018, RINK_WIDTH), Vector3(0.0, 0.018, 0.0), line_color, false)
+	var center_spot := MeshInstance3D.new()
+	center_spot.name = "CenterSpot"
+	var spot_mesh := CylinderMesh.new()
+	spot_mesh.top_radius = 0.15
+	spot_mesh.bottom_radius = 0.15
+	spot_mesh.height = 0.02
+	spot_mesh.radial_segments = 20
+	center_spot.mesh = spot_mesh
+	center_spot.position.y = 0.024
+	center_spot.material_override = _material(line_color, 0.72)
+	add_child(center_spot)
+	_add_rectangle_marking("LeftGoalCrease", -17.15, 1.0, 4.0, 5.0, line_color)
+	_add_rectangle_marking("RightGoalCrease", 17.15, -1.0, 4.0, 5.0, line_color)
+	_add_rectangle_marking("LeftGoalkeeperArea", -16.5, 1.0, 1.0, 2.5, line_color)
+	_add_rectangle_marking("RightGoalkeeperArea", 16.5, -1.0, 1.0, 2.5, line_color)
+	_add_faceoff_cross("FaceOffLeftTop", Vector2(-GOAL_LINE_X, -8.5), line_color)
+	_add_faceoff_cross("FaceOffLeftBottom", Vector2(-GOAL_LINE_X, 8.5), line_color)
+	_add_faceoff_cross("FaceOffCenterTop", Vector2(0.0, -8.5), line_color)
+	_add_faceoff_cross("FaceOffCenterBottom", Vector2(0.0, 8.5), line_color)
+	_add_faceoff_cross("FaceOffRightTop", Vector2(GOAL_LINE_X, -8.5), line_color)
+	_add_faceoff_cross("FaceOffRightBottom", Vector2(GOAL_LINE_X, 8.5), line_color)
+
+
+func _add_rectangle_marking(prefix: String, rear_x: float, direction: float, length: float, width: float, color: Color) -> void:
+	var front_x := rear_x + direction * length
+	_add_box(prefix + "Rear", Vector3(LINE_WIDTH, 0.019, width), Vector3(rear_x, 0.019, 0.0), color, false)
+	_add_box(prefix + "Front", Vector3(LINE_WIDTH, 0.019, width), Vector3(front_x, 0.019, 0.0), color, false)
+	var center_x := (rear_x + front_x) * 0.5
+	_add_box(prefix + "Top", Vector3(length, 0.019, LINE_WIDTH), Vector3(center_x, 0.019, -width * 0.5), color, false)
+	_add_box(prefix + "Bottom", Vector3(length, 0.019, LINE_WIDTH), Vector3(center_x, 0.019, width * 0.5), color, false)
+
+
+func _add_faceoff_cross(cross_name: String, planar_position: Vector2, color: Color) -> void:
+	var cross := Node3D.new()
+	cross.name = cross_name
+	cross.position = Vector3(planar_position.x, 0.021, planar_position.y)
+	add_child(cross)
+	var first := _add_box_to(cross, "StrokeA", Vector3(0.28, 0.02, LINE_WIDTH), Vector3.ZERO, color, false)
+	first.rotation_degrees.y = 45.0
+	var second := _add_box_to(cross, "StrokeB", Vector3(0.28, 0.02, LINE_WIDTH), Vector3.ZERO, color, false)
+	second.rotation_degrees.y = -45.0
 
 
 func _build_boards() -> void:
@@ -163,12 +195,12 @@ func _build_goal(goal_name: String, x_position: float, color: Color) -> void:
 	goal.position.x = x_position
 	add_child(goal)
 	var direction := -1.0 if x_position < 0.0 else 1.0
-	_add_goal_post(goal, "TopPost", Vector3(0.0, 0.75, -1.25), Vector3(0.12, 1.5, 0.12), color)
-	_add_goal_post(goal, "BottomPost", Vector3(0.0, 0.75, 1.25), Vector3(0.12, 1.5, 0.12), color)
-	_add_goal_post(goal, "Crossbar", Vector3(0.0, 1.48, 0.0), Vector3(0.12, 0.12, 2.6), color)
-	_add_goal_post(goal, "Backbar", Vector3(direction * 1.35, 0.65, 0.0), Vector3(0.1, 1.3, 2.6), Color(color, 0.45))
-	_add_goal_post(goal, "TopSideNet", Vector3(direction * 0.675, 0.72, -1.25), Vector3(1.35, 1.44, 0.05), Color(color, 0.2))
-	_add_goal_post(goal, "BottomSideNet", Vector3(direction * 0.675, 0.72, 1.25), Vector3(1.35, 1.44, 0.05), Color(color, 0.2))
+	_add_goal_post(goal, "TopPost", Vector3(0.0, 0.575, -0.8), Vector3(0.1, 1.15, 0.1), color)
+	_add_goal_post(goal, "BottomPost", Vector3(0.0, 0.575, 0.8), Vector3(0.1, 1.15, 0.1), color)
+	_add_goal_post(goal, "Crossbar", Vector3(0.0, 1.15, 0.0), Vector3(0.1, 0.1, 1.7), color)
+	_add_goal_post(goal, "Backbar", Vector3(direction * 1.35, 0.55, 0.0), Vector3(0.08, 1.1, 1.7), Color(color, 0.45))
+	_add_goal_post(goal, "TopSideNet", Vector3(direction * 0.675, 0.55, -0.8), Vector3(1.35, 1.1, 0.04), Color(color, 0.2))
+	_add_goal_post(goal, "BottomSideNet", Vector3(direction * 0.675, 0.55, 0.8), Vector3(1.35, 1.1, 0.04), Color(color, 0.2))
 
 
 func _add_goal_post(parent: Node3D, node_name: String, local_position: Vector3, size: Vector3, color: Color) -> void:
@@ -213,6 +245,7 @@ func _build_player() -> void:
 	_add_control_ring(player)
 	_add_aim_arrow(player)
 	_add_dash_streak(player, Color(1.0, 0.32, 0.2, 0.76))
+	_add_player_marker(player)
 	_add_fuego_aura(player, Color("ff7a24"))
 
 
@@ -275,6 +308,35 @@ func _build_support_player(node_name: String, actor_id: StringName, team: String
 	if team == &"red":
 		_add_control_ring(actor)
 		_add_aim_arrow(actor)
+		_add_player_marker(actor)
+
+
+func _add_player_marker(parent: Node3D) -> void:
+	var marker := Node3D.new()
+	marker.name = "PlayerMarker"
+	marker.set_script(load("res://scripts/presentation/active_player_marker.gd"))
+	parent.add_child(marker)
+	var pointer := MeshInstance3D.new()
+	pointer.name = "Pointer"
+	var cone := CylinderMesh.new()
+	cone.top_radius = 0.28
+	cone.bottom_radius = 0.0
+	cone.height = 0.58
+	cone.radial_segments = 14
+	pointer.mesh = cone
+	pointer.material_override = _material(Color("ffe24f"), 0.25, Color("ffd83d"))
+	marker.add_child(pointer)
+	var halo := MeshInstance3D.new()
+	halo.name = "Halo"
+	var ring := TorusMesh.new()
+	ring.inner_radius = 0.3
+	ring.outer_radius = 0.38
+	ring.rings = 20
+	ring.ring_segments = 8
+	halo.mesh = ring
+	halo.position.y = 0.36
+	halo.material_override = _material(Color(1.0, 0.9, 0.3, 0.82), 0.2, Color("ffd83d"))
+	marker.add_child(halo)
 
 
 func _add_control_ring(parent: Node3D) -> void:
@@ -579,4 +641,28 @@ func _material(color: Color, roughness: float, emission: Color = Color.BLACK) ->
 		material.emission_enabled = true
 		material.emission = emission
 		material.emission_energy_multiplier = 0.3
+	return material
+
+
+func _wood_floor_material() -> ShaderMaterial:
+	var shader := Shader.new()
+	shader.code = """
+shader_type spatial;
+render_mode diffuse_burley;
+
+void fragment() {
+	float plank_rows = 32.0;
+	float plank_columns = 12.0;
+	float row = floor(UV.y * plank_rows);
+	float stagger = mod(row, 2.0) * 0.5;
+	vec2 plank_uv = vec2(fract(UV.x * plank_columns + stagger), fract(UV.y * plank_rows));
+	float plank_seam = step(plank_uv.x, 0.018) + step(plank_uv.y, 0.045);
+	float grain = sin((UV.x * 145.0 + sin(UV.y * 39.0) * 0.8) * 6.28318) * 0.025;
+	vec3 wood = vec3(0.67, 0.40, 0.19) + vec3(grain + mod(row, 3.0) * 0.012);
+	ALBEDO = mix(wood, vec3(0.24, 0.12, 0.055), clamp(plank_seam, 0.0, 1.0));
+	ROUGHNESS = 0.54;
+}
+"""
+	var material := ShaderMaterial.new()
+	material.shader = shader
 	return material

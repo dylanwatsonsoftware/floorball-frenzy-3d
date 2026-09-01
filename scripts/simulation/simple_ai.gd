@@ -5,7 +5,7 @@ const STICK_RANGE := 2.25
 const STRIKE_HEIGHT := 0.7
 const MAX_STRIKE_BALL_SPEED := 8.0
 const DASH_RANGE := 10.7
-const LEFT_GOAL := Vector2(-16.0, 0.0)
+const LEFT_GOAL := Vector2(-16.5, 0.0)
 const SHOOT_DISTANCE_TO_GOAL := 16.0
 
 

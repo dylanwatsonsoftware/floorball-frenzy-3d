@@ -60,7 +60,7 @@ func _init() -> void:
 		fail("Ball must bounce inward from the side wall")
 		return
 
-	var post_hit: Dictionary = script.step(Vector3(15.75, 0.5, 1.25), Vector3(10.0, 0.0, 0.0), 0.05)
+	var post_hit: Dictionary = script.step(Vector3(16.25, 0.5, 0.8), Vector3(10.0, 0.0, 0.0), 0.05)
 	if post_hit.velocity.x >= 0.0:
 		fail("Ball simulation must apply goal-frame collisions before scoring")
 		return

@@ -1,8 +1,8 @@
 class_name RinkCollision
 extends RefCounted
 
-const HALF_LENGTH := 18.65
-const HALF_WIDTH := 9.15
+const HALF_LENGTH := 19.65
+const HALF_WIDTH := 9.65
 const CORNER_RADIUS := 1.8
 const BALL_BOUNCE := 0.78
 

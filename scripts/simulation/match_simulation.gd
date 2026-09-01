@@ -2,9 +2,9 @@ class_name MatchSimulation
 extends RefCounted
 
 const WINNING_SCORE := 5
-const GOAL_LINE_X := 16.0
-const GOAL_HALF_WIDTH := 1.25
-const GOAL_HEIGHT := 1.48
+const GOAL_LINE_X := 16.5
+const GOAL_HALF_WIDTH := 0.8
+const GOAL_HEIGHT := 1.15
 
 
 static func detect_goal(previous_position: Vector3, current_position: Vector3, current_velocity: Vector3) -> StringName:
