@@ -578,8 +578,10 @@ func reset_squads_for_faceoff() -> void:
 func _add_stick(parent: Node3D, color: Color) -> void:
 	var rig := Node3D.new()
 	rig.name = "StickRig"
-	rig.position = Vector3(-0.18, -0.18, 0.0)
-	rig.rotation_degrees = Vector3(25.0, -28.0, 5.0)
+	# The blade sits at the player's right-front foot while the grip rises across
+	# their body. The controller owns the Y rotation for slap animations.
+	rig.position = Vector3(0.18, 0.25, 0.0)
+	rig.rotation_degrees = Vector3(55.0, -28.0, 5.0)
 	parent.add_child(rig)
 
 	var shaft := MeshInstance3D.new()
@@ -631,9 +633,9 @@ func _add_floorball_blade(rig: Node3D, color: Color) -> void:
 	var arrays := []
 	arrays.resize(ArrayMesh.ARRAY_MAX)
 	arrays[ArrayMesh.ARRAY_VERTEX] = PackedVector3Array([
-		Vector3(0.02, 0.0, 1.17), Vector3(-0.28, 0.0, 1.14),
-		Vector3(-0.58, 0.0, 1.02), Vector3(-0.79, 0.0, 0.82),
-		Vector3(-0.66, 0.0, 0.71), Vector3(-0.34, 0.0, 0.90),
+		Vector3(0.02, 0.0, 1.17), Vector3(0.28, 0.0, 1.14),
+		Vector3(0.58, 0.0, 1.02), Vector3(0.79, 0.0, 0.82),
+		Vector3(0.66, 0.0, 0.71), Vector3(0.34, 0.0, 0.90),
 		Vector3(0.02, 0.0, 1.00),
 	])
 	arrays[ArrayMesh.ARRAY_INDEX] = PackedInt32Array([0, 1, 6, 1, 5, 6, 1, 2, 5, 2, 4, 5, 2, 3, 4])

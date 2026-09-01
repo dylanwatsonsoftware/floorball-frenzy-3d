@@ -114,7 +114,7 @@ func run_test() -> void:
 	opponent.position = Vector3(5.0, 0.75, 0.0)
 	opponent.velocity = Vector3.ZERO
 	var player_stick := scene.get_node("Arena/Player/StickRig") as Node3D
-	if player_stick.position.x >= 0.0 or player_stick.rotation.y >= -0.2:
+	if player_stick.position.x <= 0.0 or player_stick.rotation.y >= -0.2:
 		fail("The stick must angle across the body toward the player's right")
 		return
 	var dash_streak := scene.get_node("Arena/Player/DashStreak") as Node3D
@@ -174,7 +174,7 @@ func run_test() -> void:
 	var player_blade := scene.get_node("Arena/Player/StickRig/Blade") as MeshInstance3D
 	var blade_bounds := player_blade.get_aabb()
 	var blade_world_center := player_blade.to_global(blade_bounds.get_center())
-	if blade_bounds.end.z <= 0.5 or blade_bounds.position.x >= 0.0 or blade_world_center.y > 0.3:
+	if blade_bounds.end.z <= 0.5 or blade_bounds.end.x <= 0.0 or blade_world_center.y > 0.3:
 		fail("The stick blade must finish grounded, forward, and to the player's right")
 		return
 	if not player.has_method("set_stick_slap_angle"):
