@@ -22,7 +22,7 @@ func run_test() -> void:
 		"Arena/Player/StickRig/Blade",
 		"Arena/Player/StickRig/BladeToe",
 		"Arena/Player/DashStreak",
-		"Arena/Player/DashStreak/CenterTrail",
+		"Arena/Player/DashStreak/DashRing",
 		"Arena/Opponent/StickRig/Shaft",
 		"Arena/Opponent/StickRig/Blade",
 		"Arena/Opponent/StickRig/BladeToe",
@@ -51,7 +51,6 @@ func run_test() -> void:
 	if fullscreen_button.text != "FULLSCREEN":
 		fail("Fullscreen label must use portable web-font characters")
 		return
-
 	var camera := scene.get_node("Arena/BroadcastCamera") as Camera3D
 	if not camera.current:
 		fail("Broadcast camera must be active by default")
@@ -72,12 +71,20 @@ func run_test() -> void:
 	if not player.has_method("get_dash_cooldown_ratio"):
 		fail("The player must expose dash cooldown feedback")
 		return
+	var dash_start: Vector3 = player.position
 	if not player.call("try_dash", Vector2.RIGHT):
 		fail("A ready player dash must start")
 		return
 	if not dash_streak.visible or player.call("get_dash_cooldown_ratio") <= 0.0:
 		fail("Starting a dash must reveal its streak and cooldown feedback; visible=%s cooldown=%s" % [dash_streak.visible, player.call("get_dash_cooldown_ratio")])
 		return
+	for frame in 8:
+		await physics_frame
+	if not player.has_method("is_dashing") or not player.call("is_dashing") or player.position.distance_to(dash_start) < 1.65:
+		fail("Dash movement must sustain its burst speed; displacement=%s" % player.position.distance_to(dash_start))
+		return
+	for frame in 4:
+		await physics_frame
 	var player_blade := scene.get_node("Arena/Player/StickRig/Blade") as MeshInstance3D
 	if player_blade.position.z <= 0.5 or player_blade.position.x >= 0.0 or player_blade.global_position.y > 0.3:
 		fail("The stick blade must finish grounded, forward, and to the player's right")

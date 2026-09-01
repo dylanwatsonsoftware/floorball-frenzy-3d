@@ -11,6 +11,7 @@ var _mobile_controls: Control
 var _dash_cooldown := 0.0
 var _dash_streak_remaining := 0.0
 var _dash_streak: Node3D
+var _dash_direction := Vector3.RIGHT
 
 
 func _ready() -> void:
@@ -28,8 +29,13 @@ func _physics_process(delta: float) -> void:
 	_dash_streak_remaining = maxf(0.0, _dash_streak_remaining - delta)
 	if _dash_streak != null:
 		_dash_streak.visible = _dash_streak_remaining > 0.0
+		if _dash_streak.visible:
+			var burst_progress := 1.0 - _dash_streak_remaining / DASH_STREAK_SECONDS
+			_dash_streak.scale = Vector3.ONE * lerpf(1.0, 1.42, burst_progress)
 	if Input.is_action_just_pressed("dash"):
 		try_dash(input_vector)
+	if is_dashing():
+		velocity = _dash_direction * PlayerMotorScript.DASH_SPEED
 	else:
 		velocity = PlayerMotorScript.step_velocity(velocity, input_vector, delta)
 	move_and_slide()
@@ -51,6 +57,10 @@ func get_dash_cooldown_ratio() -> float:
 	return clampf(_dash_cooldown / PlayerMotorScript.DASH_COOLDOWN, 0.0, 1.0)
 
 
+func is_dashing() -> bool:
+	return _dash_streak_remaining > 0.0
+
+
 func try_dash(input_vector: Vector2 = Vector2.ZERO) -> bool:
 	if _dash_streak == null:
 		_dash_streak = get_node_or_null("DashStreak") as Node3D
@@ -58,9 +68,11 @@ func try_dash(input_vector: Vector2 = Vector2.ZERO) -> bool:
 	if not dash.started:
 		return false
 	velocity = dash.velocity
+	_dash_direction = dash.velocity.normalized()
 	_dash_cooldown = dash.cooldown
 	_dash_streak_remaining = DASH_STREAK_SECONDS
 	if _dash_streak != null:
+		_dash_streak.scale = Vector3.ONE
 		_dash_streak.visible = true
 	return true
 

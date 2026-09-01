@@ -190,23 +190,20 @@ func _add_stick(parent: Node3D, color: Color) -> void:
 func _add_dash_streak(parent: Node3D) -> void:
 	var streak := Node3D.new()
 	streak.name = "DashStreak"
-	streak.position = Vector3(0.0, -0.48, -1.0)
+	streak.position = Vector3(0.0, -0.49, 0.0)
 	streak.visible = false
 	parent.add_child(streak)
-	_add_dash_strip(streak, "CenterTrail", Vector3(0.0, 0.0, -0.25), Vector3(0.18, 0.045, 1.9), Color(1.0, 0.22, 0.34, 0.72))
-	_add_dash_strip(streak, "LeftTrail", Vector3(-0.34, 0.0, 0.0), Vector3(0.09, 0.035, 1.3), Color(1.0, 0.55, 0.24, 0.52))
-	_add_dash_strip(streak, "RightTrail", Vector3(0.34, 0.0, 0.0), Vector3(0.09, 0.035, 1.3), Color(1.0, 0.55, 0.24, 0.52))
-
-
-func _add_dash_strip(parent: Node3D, node_name: String, local_position: Vector3, size: Vector3, color: Color) -> void:
-	var strip := MeshInstance3D.new()
-	strip.name = node_name
-	var mesh := BoxMesh.new()
-	mesh.size = size
-	strip.mesh = mesh
-	strip.position = local_position
-	strip.material_override = _material(color, 0.25, Color(color.r, color.g, color.b))
-	parent.add_child(strip)
+	var ring := MeshInstance3D.new()
+	ring.name = "DashRing"
+	var ring_mesh := TorusMesh.new()
+	ring_mesh.inner_radius = 0.68
+	ring_mesh.outer_radius = 0.82
+	ring_mesh.rings = 24
+	ring_mesh.ring_segments = 8
+	ring.mesh = ring_mesh
+	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	ring.material_override = _material(Color(1.0, 0.32, 0.2, 0.76), 0.2, Color("ff4a25"))
+	streak.add_child(ring)
 
 
 func _build_ball() -> void:
