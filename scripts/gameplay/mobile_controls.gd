@@ -9,6 +9,8 @@ var _movement_touch := -1
 var _shoot_touch := -1
 var _movement_vector := Vector2.ZERO
 var _stick_knob_offset := Vector2.ZERO
+var _stick_origin := Vector2.ZERO
+var _movement_origin := Vector2.ZERO
 
 
 func _ready() -> void:
@@ -35,6 +37,21 @@ static func should_show_mobile_controls(is_web: bool, display_touch_available: b
 	return display_touch_available or (is_web and browser_touch_available)
 
 
+static func can_start_floating_stick(touch_position: Vector2, viewport_size: Vector2) -> bool:
+	return touch_position.x >= 0.0 and touch_position.x < viewport_size.x * 0.55
+
+
+static func clamp_floating_origin(touch_position: Vector2, viewport_size: Vector2, radius: float, margin: float) -> Vector2:
+	var padding := radius + margin
+	var x := viewport_size.x * 0.5 if viewport_size.x < padding * 2.0 else clampf(touch_position.x, padding, viewport_size.x - padding)
+	var y := viewport_size.y * 0.5 if viewport_size.y < padding * 2.0 else clampf(touch_position.y, padding, viewport_size.y - padding)
+	return Vector2(x, y)
+
+
+static func calculate_floating_drag(origin: Vector2, current_position: Vector2, radius: float, deadzone: float) -> Vector2:
+	return calculate_stick_vector(current_position - origin, radius, deadzone)
+
+
 static func _browser_touch_available() -> bool:
 	if not OS.has_feature("web"):
 		return false
@@ -59,14 +76,18 @@ func _handle_touch(event: InputEventScreenTouch) -> void:
 			Input.action_press("shoot")
 			queue_redraw()
 			get_viewport().set_input_as_handled()
-		elif _movement_touch == -1 and event.position.x < size.x * 0.55:
+		elif _movement_touch == -1 and can_start_floating_stick(event.position, size):
 			_movement_touch = event.index
+			_movement_origin = event.position
+			_stick_origin = clamp_floating_origin(event.position, size, STICK_RADIUS, EDGE_MARGIN)
 			_update_stick(event.position)
 			get_viewport().set_input_as_handled()
 	elif event.index == _movement_touch:
 		_movement_touch = -1
 		_movement_vector = Vector2.ZERO
 		_stick_knob_offset = Vector2.ZERO
+		_stick_origin = Vector2.ZERO
+		_movement_origin = Vector2.ZERO
 		queue_redraw()
 		get_viewport().set_input_as_handled()
 	elif event.index == _shoot_touch:
@@ -77,14 +98,14 @@ func _handle_touch(event: InputEventScreenTouch) -> void:
 
 
 func _update_stick(touch_position: Vector2) -> void:
-	var raw_offset := touch_position - _stick_center()
+	var raw_offset := touch_position - _movement_origin
 	_stick_knob_offset = raw_offset.limit_length(STICK_RADIUS)
-	_movement_vector = calculate_stick_vector(raw_offset, STICK_RADIUS, STICK_DEADZONE)
+	_movement_vector = calculate_floating_drag(_movement_origin, touch_position, STICK_RADIUS, STICK_DEADZONE)
 	queue_redraw()
 
 
 func _stick_center() -> Vector2:
-	return Vector2(EDGE_MARGIN + STICK_RADIUS, size.y - EDGE_MARGIN - STICK_RADIUS)
+	return _stick_origin
 
 
 func _shoot_center() -> Vector2:
@@ -92,11 +113,12 @@ func _shoot_center() -> Vector2:
 
 
 func _draw() -> void:
-	var stick_center := _stick_center()
 	var shoot_center := _shoot_center()
-	draw_circle(stick_center, STICK_RADIUS, Color(0.08, 0.12, 0.18, 0.58))
-	draw_arc(stick_center, STICK_RADIUS, 0.0, TAU, 48, Color(0.88, 0.94, 1.0, 0.72), 3.0)
-	draw_circle(stick_center + _stick_knob_offset, 31.0, Color(0.92, 0.97, 1.0, 0.82))
+	if _movement_touch != -1:
+		var stick_center := _stick_center()
+		draw_circle(stick_center, STICK_RADIUS, Color(0.08, 0.12, 0.18, 0.58))
+		draw_arc(stick_center, STICK_RADIUS, 0.0, TAU, 48, Color(0.88, 0.94, 1.0, 0.72), 3.0)
+		draw_circle(stick_center + _stick_knob_offset, 31.0, Color(0.92, 0.97, 1.0, 0.82))
 	var shoot_color := Color(1.0, 0.35, 0.22, 0.92) if _shoot_touch != -1 else Color(0.86, 0.16, 0.28, 0.78)
 	draw_circle(shoot_center, SHOOT_RADIUS, shoot_color)
 	draw_arc(shoot_center, SHOOT_RADIUS, 0.0, TAU, 48, Color.WHITE, 3.0)

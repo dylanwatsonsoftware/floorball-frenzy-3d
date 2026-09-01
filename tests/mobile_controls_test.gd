@@ -32,6 +32,24 @@ func _init() -> void:
 		fail("Native touchscreen builds must show mobile controls")
 		return
 
+	var viewport_size := Vector2(844.0, 390.0)
+	if not controls.can_start_floating_stick(Vector2(200.0, 180.0), viewport_size):
+		fail("Touches on the left side must start the floating joystick")
+		return
+	if controls.can_start_floating_stick(Vector2(700.0, 180.0), viewport_size):
+		fail("Touches on the right side must not start the movement joystick")
+		return
+
+	var clamped_origin: Vector2 = controls.clamp_floating_origin(Vector2(25.0, 370.0), viewport_size, 76.0, 20.0)
+	if not clamped_origin.is_equal_approx(Vector2(96.0, 294.0)):
+		fail("Floating joystick must remain fully visible near screen edges; got %s" % clamped_origin)
+		return
+
+	var initial_touch: Vector2 = controls.calculate_floating_drag(Vector2(25.0, 370.0), Vector2(25.0, 370.0), 76.0, 0.2)
+	if not initial_touch.is_zero_approx():
+		fail("A new floating joystick touch must begin at neutral movement")
+		return
+
 	print("Mobile control math is valid.")
 	quit(0)
 
