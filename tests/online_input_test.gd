@@ -45,6 +45,14 @@ func _init() -> void:
 	if stalled_step.distance_to(Vector3.ONE) > 2.01:
 		fail("Replica prediction must be bounded after a long frame so it cannot create a large visual jump")
 		return
+	var tiny_ball_error: Vector3 = controller.reconcile_ball_position(Vector3.ZERO, Vector3(0.12, 0.0, 0.0))
+	if not tiny_ball_error.is_zero_approx():
+		fail("Small ball prediction errors should stay in a dead zone instead of making the ball wobble")
+		return
+	var moderate_ball_error: Vector3 = controller.reconcile_ball_position(Vector3.ZERO, Vector3(0.8, 0.0, 0.0))
+	if moderate_ball_error.x <= 0.0 or moderate_ball_error.x >= 0.4:
+		fail("Moderate ball errors should correct gently; got %s" % moderate_ball_error)
+		return
 	if controller.next_action_sequence(4, false) != 4 or controller.next_action_sequence(4, true) != 5:
 		fail("Discrete online actions need persistent sequence numbers so unreliable packets can be repeated safely")
 		return

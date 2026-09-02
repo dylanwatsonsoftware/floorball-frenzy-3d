@@ -69,6 +69,13 @@ func run_test() -> void:
 		fail("The guest camera must follow the locally controlled Pirates player")
 		return
 	var client_controller := client_match.get_node("OnlineMatchController")
+	var client_ball = client_arena.get_node("Ball")
+	client_ball.global_position = Vector3(0.0, 1.0, 0.0)
+	client_ball.ball_velocity = Vector3(2.0, 0.0, 0.0)
+	client_controller.call("_predict_replicas", 1.0 / 60.0)
+	if client_ball.global_position.x <= 0.0 or client_ball.global_position.y >= 1.0:
+		fail("A guest must locally simulate loose-ball velocity and gravity between snapshots")
+		return
 	var goal_snapshot: Dictionary = client_controller.call("_capture_snapshot")
 	goal_snapshot.score = {"red": 0, "blue": 1}
 	goal_snapshot.goal_seq = 1

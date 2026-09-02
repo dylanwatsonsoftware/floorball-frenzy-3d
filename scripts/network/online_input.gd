@@ -25,6 +25,14 @@ static func reconcile_position(current: Vector3, authoritative: Vector3, locally
 	return current.lerp(authoritative, weight)
 
 
+static func reconcile_ball_position(current: Vector3, authoritative: Vector3) -> Vector3:
+	var error := current.distance_to(authoritative)
+	if error < 0.18:
+		return current
+	var weight := 0.18 if error < 1.2 else 0.72
+	return current.lerp(authoritative, weight)
+
+
 static func reconcile_rotation(current: float, authoritative: float, locally_predicted: bool, actively_steering: bool) -> float:
 	if locally_predicted and actively_steering:
 		return current

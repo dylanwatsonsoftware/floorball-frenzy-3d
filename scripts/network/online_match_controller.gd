@@ -4,6 +4,7 @@ extends Node
 
 const TransportScript = preload("res://scripts/network/webrtc_transport.gd")
 const OnlineInputScript = preload("res://scripts/network/online_input.gd")
+const BallSimulationScript = preload("res://scripts/simulation/ball_simulation.gd")
 const SNAPSHOT_SECONDS := OnlineInputScript.DEFAULT_SNAPSHOT_SECONDS
 const RINK_HALF_LENGTH := 19.1
 const RINK_HALF_WIDTH := 9.1
@@ -133,7 +134,7 @@ func _apply_snapshot(snapshot: Dictionary) -> void:
 			actor.velocity = _array_to_vector3(state.get("v", []))
 			actor.rotation.y = float(state.get("r", actor.rotation.y)) if is_new_faceoff else OnlineInputScript.reconcile_rotation(actor.rotation.y, float(state.get("r", actor.rotation.y)), is_local_actor, actively_steering)
 	var authoritative_ball := _array_to_vector3(snapshot.get("ball", []))
-	_ball.global_position = authoritative_ball if is_new_faceoff else _ball.global_position.lerp(authoritative_ball, 0.65)
+	_ball.global_position = authoritative_ball if is_new_faceoff else OnlineInputScript.reconcile_ball_position(_ball.global_position, authoritative_ball)
 	_ball.ball_velocity = _array_to_vector3(snapshot.get("ball_velocity", []))
 	if _ball.has_method("apply_network_control_state"):
 		_ball.call("apply_network_control_state", StringName(snapshot.get("owner", "")), StringName(snapshot.get("red_human", "red_1")), StringName(snapshot.get("blue_human", "blue_1")))
@@ -194,7 +195,10 @@ func _predict_replicas(delta: float) -> void:
 		actor.global_position = predicted
 	var locally_controlled_ball := local_actor != null and _ball.has_method("is_controlled_by_actor") and bool(_ball.call("is_controlled_by_actor", local_actor.call("get_actor_id")))
 	if not locally_controlled_ball:
-		_ball.global_position = OnlineInputScript.predict_replica_position(_ball.global_position, _ball.ball_velocity, delta)
+		var prediction_delta := clampf(delta, 0.0, OnlineInputScript.MAX_REPLICA_PREDICTION_STEP)
+		var predicted_ball: Dictionary = BallSimulationScript.step(_ball.global_position, _ball.ball_velocity, prediction_delta)
+		_ball.global_position = predicted_ball.position
+		_ball.ball_velocity = predicted_ball.velocity
 
 
 func _vector_to_array(value: Vector2) -> Array:
