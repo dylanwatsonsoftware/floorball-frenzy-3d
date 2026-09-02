@@ -1,8 +1,12 @@
 import assert from "node:assert/strict";
+import { Readable } from "node:stream";
 import handler, { resetForTests } from "../server/matchmaking.mjs";
 
 function request(method, url, body = undefined) {
   return new Promise((resolve) => {
+	const incoming = body === undefined ? Readable.from([]) : Readable.from([JSON.stringify(body)]);
+	incoming.method = method;
+	incoming.url = url;
     const response = {
       statusCode: 200,
       headers: {},
@@ -10,7 +14,7 @@ function request(method, url, body = undefined) {
       writeHead(code, headers = {}) { this.statusCode = code; Object.assign(this.headers, headers); },
       end(payload = "") { resolve({ status: this.statusCode, headers: this.headers, body: payload ? JSON.parse(payload) : null }); },
     };
-    handler({ method, url, body }, response);
+	handler(incoming, response);
   });
 }
 

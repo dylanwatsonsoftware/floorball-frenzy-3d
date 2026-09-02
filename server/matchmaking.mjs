@@ -28,14 +28,23 @@ function send(response, status, body) {
   response.end(JSON.stringify(body));
 }
 
-function lobby(request, response) {
+async function bodyOf(request) {
+  if (request.body && typeof request.body === "object") return request.body;
+  let raw = "";
+  for await (const chunk of request) raw += chunk.toString();
+  if (!raw) return {};
+  try { return JSON.parse(raw); }
+  catch { return {}; }
+}
+
+async function lobby(request, response) {
   cleanup();
   if (request.method === "GET") {
     const games = [...state.games.values()].sort((a, b) => b.createdAt - a.createdAt);
     send(response, 200, games);
     return;
   }
-  const body = request.body ?? {};
+  const body = await bodyOf(request);
   if (request.method !== "POST" || !body.action || !body.roomId) {
     send(response, 400, { error: "missing action or roomId" });
     return;
@@ -55,7 +64,7 @@ function lobby(request, response) {
   send(response, 200, { ok: true });
 }
 
-function signal(request, response) {
+async function signal(request, response) {
   cleanup();
   if (request.method === "GET") {
     const room = query(request.url, "room");
@@ -70,7 +79,7 @@ function signal(request, response) {
     send(response, 200, messages);
     return;
   }
-  const body = request.body ?? {};
+  const body = await bodyOf(request);
   if (request.method !== "POST" || !body.room || !body.role || !body.msg) {
     send(response, 400, { error: "missing room, role, or msg" });
     return;
@@ -83,15 +92,15 @@ function signal(request, response) {
   send(response, 200, { ok: true });
 }
 
-export default function handler(request, response) {
+export default async function handler(request, response) {
   const endpoint = query(request.url, "endpoint");
   if (request.method === "OPTIONS") {
     response.writeHead(204);
     response.end();
     return;
   }
-  if (endpoint === "lobby") lobby(request, response);
-  else if (endpoint === "signal") signal(request, response);
+  if (endpoint === "lobby") await lobby(request, response);
+  else if (endpoint === "signal") await signal(request, response);
   else send(response, 404, { error: "unknown matchmaking endpoint" });
 }
 
