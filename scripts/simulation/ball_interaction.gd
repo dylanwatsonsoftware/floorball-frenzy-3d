@@ -100,10 +100,14 @@ static func blade_pocket(participant: Dictionary) -> Dictionary:
 		return {}
 	var right := Vector2(-facing.y, facing.x)
 	var player_planar := Vector2(participant.position.x, participant.position.z)
+	var target := player_planar + facing * BLADE_FORWARD_OFFSET + right * BLADE_RIGHT_OFFSET
+	if participant.has("blade_target"):
+		var blade_target: Vector3 = participant.blade_target
+		target = Vector2(blade_target.x, blade_target.z)
 	return {
 		"facing": facing,
 		"right": right,
-		"target": player_planar + facing * BLADE_FORWARD_OFFSET + right * BLADE_RIGHT_OFFSET,
+		"target": target,
 		"player": player_planar,
 	}
 

@@ -29,6 +29,7 @@ var _control_ring: MeshInstance3D
 
 
 func _ready() -> void:
+	rotation.y = atan2(_facing_direction.x, _facing_direction.z)
 	_mobile_controls = get_node_or_null("../../HUD/MobileControls") as Control
 	_dash_streak = get_node_or_null("DashStreak") as Node3D
 	_fuego_aura = get_node_or_null("FuegoAura") as MeshInstance3D

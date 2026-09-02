@@ -25,6 +25,7 @@ func _ready() -> void:
 	_ball = get_parent().get_node("Ball") as Node3D
 	_mobile_controls = get_node_or_null("../../HUD/MobileControls") as Control
 	_facing_direction = Vector3.RIGHT if get_team() == &"red" else Vector3.LEFT
+	rotation.y = atan2(_facing_direction.x, _facing_direction.z)
 	_control_ring = get_node_or_null("ControlRing") as MeshInstance3D
 	_dash_streak = get_node_or_null("DashStreak") as Node3D
 

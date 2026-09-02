@@ -29,6 +29,7 @@ var _opening_grace_remaining := OPENING_GRACE_SECONDS
 
 
 func _ready() -> void:
+	rotation.y = atan2(_facing_direction.x, _facing_direction.z)
 	_ball = get_parent().get_node("Ball") as MeshInstance3D
 	_player = get_parent().get_node("Player") as CharacterBody3D
 	_dash_streak = get_node_or_null("DashStreak") as Node3D

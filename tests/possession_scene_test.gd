@@ -36,6 +36,14 @@ func run_test() -> void:
 	if not ball.has_method("is_controlled_by") or not ball.call("is_controlled_by", &"red"):
 		fail("Live ball gameplay must persist red stick ownership after capture")
 		return
+	for frame in 30:
+		await physics_frame
+	var blade := player.get_node("StickRig/Blade") as MeshInstance3D
+	var blade_world_center := blade.to_global(blade.get_aabb().get_center())
+	var carried_gap := Vector2(ball.global_position.x, ball.global_position.z).distance_to(Vector2(blade_world_center.x, blade_world_center.z))
+	if carried_gap > 0.36:
+		fail("A possessed ball must settle visibly onto the actual blade instead of an obsolete physics offset; gap=%s ball=%s blade=%s" % [carried_gap, ball.global_position, blade_world_center])
+		return
 	ball.position = Vector3(0.0, 0.22, 0.0)
 	ball.ball_velocity = Vector3.ZERO
 
@@ -66,7 +74,8 @@ func run_test() -> void:
 		fail("Reliable-shot setup must begin with real red possession")
 		return
 	ball.call("begin_slap", Vector2.RIGHT, 0.7)
-	ball.position = player.position + Vector3(2.3, -0.53, 0.75)
+	blade_world_center = blade.to_global(blade.get_aabb().get_center())
+	ball.position = Vector3(blade_world_center.x + 0.9, 0.22, blade_world_center.z)
 	await physics_frame
 	if not ball.call("is_controlled_by", &"red"):
 		fail("A ball inside the retained carry zone must remain possessed during backswing")
