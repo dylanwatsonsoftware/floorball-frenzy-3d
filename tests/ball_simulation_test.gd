@@ -36,6 +36,13 @@ func _init() -> void:
 	if pass_speed < 7.0 or pass_speed > 10.0 or pass_velocity.y > 0.5:
 		fail("A floorball pass must stay grounded and catchable instead of behaving like a shot; got %s" % pass_velocity)
 		return
+	if not script.has_method("soft_touch_velocity"):
+		fail("A pass attempt with no forward receiver needs a short push velocity")
+		return
+	var soft_touch: Vector3 = script.soft_touch_velocity(Vector2.RIGHT, Vector3.ZERO)
+	if soft_touch.x < 3.0 or soft_touch.x > 5.0 or absf(soft_touch.z) > 0.01 or soft_touch.y > 0.3:
+		fail("The no-receiver fallback must nudge the ball forward without becoming a full pass; got %s" % soft_touch)
+		return
 	var one_touch_shot: Vector3 = script.shot_velocity(Vector2.RIGHT, 0.5, Vector3.ZERO, true)
 	if not is_equal_approx(one_touch_shot.x, static_shot.x * 1.25) or not is_equal_approx(one_touch_shot.y, static_shot.y):
 		fail("One-touch must preserve lift while applying the original 25% planar power bonus")

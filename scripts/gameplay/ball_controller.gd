@@ -47,6 +47,7 @@ var _pending_slap_direction := Vector2.RIGHT
 var _pending_one_touch := false
 var _pending_bolt := false
 var _pending_pass := false
+var _pending_soft_pass := false
 var _scoop_remaining := 0.0
 var _last_touch_actor: StringName = &""
 var _last_touch_age := INF
@@ -133,13 +134,13 @@ func launch(planar_direction: Vector2, charge: float, inherited_velocity: Vector
 			_award_heat(shooter, 30.0)
 
 
-func _launch_pass(planar_direction: Vector2, inherited_velocity: Vector3, passer: StringName) -> void:
+func _launch_pass(planar_direction: Vector2, inherited_velocity: Vector3, passer: StringName, soft_touch: bool = false) -> void:
 	_pickup_lock_actor_id = _slap_actor.call("get_actor_id") if _slap_actor != null else &""
 	_pickup_lock_seconds = PASSER_PICKUP_LOCK_SECONDS
 	_control_owner = -1
 	_ai_possession_seconds = 0.0
 	_reset_ai_shot()
-	ball_velocity = BallSimulationScript.pass_velocity(planar_direction, inherited_velocity)
+	ball_velocity = BallSimulationScript.soft_touch_velocity(planar_direction, inherited_velocity) if soft_touch else BallSimulationScript.pass_velocity(planar_direction, inherited_velocity)
 	_scoop_remaining = 0.0
 	_set_shot_trail_style(false, false, false)
 	record_touch(passer)
@@ -316,13 +317,13 @@ func pass_to_closest_teammate() -> bool:
 	for actor in _field_players:
 		if actor.call("get_team") == &"red":
 			teammates.append({"actor_id": actor.call("get_actor_id"), "position": actor.global_position})
-	var target: Dictionary = SquadLogicScript.closest_teammate(carrier.call("get_actor_id"), carrier.global_position, teammates)
-	if target.is_empty():
-		return false
+	var facing: Vector3 = carrier.call("get_facing_direction")
+	var target: Dictionary = SquadLogicScript.forward_teammate(carrier.call("get_actor_id"), carrier.global_position, facing, teammates)
 	_cancel_active_charge(false)
 	_slap_actor = carrier
-	var offset := Vector2(target.position.x - carrier.global_position.x, target.position.z - carrier.global_position.z)
+	var offset := Vector2(facing.x, facing.z) if target.is_empty() else Vector2(target.position.x - carrier.global_position.x, target.position.z - carrier.global_position.z)
 	_configure_slap(offset, 0.38, 0.0, true)
+	_pending_soft_pass = target.is_empty()
 	_slap_actor.call("set_stick_slap_angle", StickSlapScript.angle_at(0.0))
 	return true
 
@@ -336,6 +337,7 @@ func _configure_slap(direction: Vector2, charge: float, start_elapsed: float, is
 	_pending_slap_direction = direction.normalized() if not direction.is_zero_approx() else Vector2.RIGHT
 	_pending_slap_charge = clampf(charge, 0.0, 2.0)
 	_pending_pass = is_pass
+	_pending_soft_pass = false
 	_pending_one_touch = not is_pass and is_one_touch_ready(&"red")
 	_pending_bolt = not is_pass and _slap_actor.has_method("has_recent_dash") and bool(_slap_actor.call("has_recent_dash"))
 	if _pending_pass:
@@ -371,7 +373,7 @@ func _advance_slap(delta: float) -> void:
 			_slap_actor.global_position += step_direction.normalized() * step_distance
 	if StickSlapScript.crossed_contact(previous_elapsed, _slap_elapsed) and _ball_in_slap_actor_blade():
 		if _pending_pass:
-			_launch_pass(_pending_slap_direction, _slap_actor.velocity, &"red")
+			_launch_pass(_pending_slap_direction, _slap_actor.velocity, &"red", _pending_soft_pass)
 		else:
 			launch(_pending_slap_direction, _pending_slap_charge, _slap_actor.velocity, _pending_one_touch, &"red", _pending_bolt)
 		_play_contact_feedback(_pending_slap_charge, _pending_bolt)
@@ -386,6 +388,7 @@ func _cancel_slap() -> void:
 	_pending_one_touch = false
 	_pending_bolt = false
 	_pending_pass = false
+	_pending_soft_pass = false
 	if _slap_actor != null:
 		_slap_actor.call("set_stick_slap_angle", 0.0)
 		_slap_actor.call("set_shot_aim_locked", false)
@@ -527,8 +530,15 @@ func _update_ai_pass(delta: float) -> void:
 			teammates.append({"actor_id": actor.call("get_actor_id"), "position": actor.global_position})
 		else:
 			opponents.append(actor.global_position)
-	var decision: Dictionary = SquadLogicScript.pass_plan(carrier.global_position, teammates, opponents, &"blue", _pass_index)
+	var carrier_facing: Vector3 = carrier.call("get_facing_direction")
+	var decision: Dictionary = SquadLogicScript.pass_plan(carrier.global_position, teammates, opponents, &"blue", _pass_index, carrier_facing)
 	if not decision.wants_pass:
+		ball_velocity = BallSimulationScript.soft_touch_velocity(Vector2(carrier_facing.x, carrier_facing.z), carrier.velocity)
+		_pickup_lock_actor_id = carrier.call("get_actor_id")
+		_pickup_lock_seconds = PASSER_PICKUP_LOCK_SECONDS
+		_control_owner = -1
+		_ai_possession_seconds = 0.0
+		_ai_pass_cooldown = 0.8
 		return
 	ball_velocity = BallSimulationScript.pass_velocity(decision.direction, carrier.velocity)
 	_pickup_lock_actor_id = carrier.call("get_actor_id")

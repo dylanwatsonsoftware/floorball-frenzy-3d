@@ -39,6 +39,18 @@ func run_test() -> void:
 	if not ball.call("is_controlled_by_actor", carrier.call("get_actor_id")):
 		fail("Pass test must begin with the human carrier possessing the ball")
 		return
+	for actor in red_players:
+		if actor != carrier:
+			actor.position = Vector3(-4.0, 0.75, float(actor.get_index()) * 0.3)
+	if not ball.call("pass_to_closest_teammate") or ball.get("_pending_soft_pass") != true or ball.get("_pending_slap_direction").x < 0.9:
+		fail("With no teammate in the 160-degree forward view, Pass must prepare a short touch straight ahead")
+		return
+	ball.call("_cancel_slap")
+	nearest.position = Vector3(4.0, 0.75, 0.0)
+	next_nearest.position = Vector3(0.0, 0.75, 7.0)
+	for actor in red_players:
+		if actor != carrier and actor != nearest and actor != next_nearest:
+			actor.position = Vector3(12.0, 0.75, 8.0)
 	if not ball.has_method("pass_to_closest_teammate") or not ball.call("pass_to_closest_teammate"):
 		fail("A possessed human player must be able to start an automatic pass")
 		return

@@ -37,6 +37,12 @@ static func pass_velocity(aim: Vector2, inherited_velocity: Vector3 = Vector3.ZE
 	return Vector3(planar.x, 0.18, planar.y)
 
 
+static func soft_touch_velocity(aim: Vector2, inherited_velocity: Vector3 = Vector3.ZERO) -> Vector3:
+	var direction := aim.normalized() if not aim.is_zero_approx() else Vector2.RIGHT
+	var planar := direction * 4.0 + Vector2(inherited_velocity.x, inherited_velocity.z) * 0.15
+	return Vector3(planar.x, 0.12, planar.y)
+
+
 static func shot_plan(aim: Vector2, charge: float, inherited_velocity: Vector3 = Vector3.ZERO, one_touch: bool = false, bolt: bool = false) -> Dictionary:
 	var direction := aim.normalized() if not aim.is_zero_approx() else Vector2.RIGHT
 	var clamped_charge := clampf(charge, 0.0, 1.0)

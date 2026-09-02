@@ -126,6 +126,28 @@ func _init() -> void:
 	if nearest_teammate.is_empty() or nearest_teammate.actor_id != &"red_3":
 		fail("Human Pass must target the nearest other teammate; got %s" % nearest_teammate)
 		return
+	if not squad.has_method("forward_teammate"):
+		fail("Pass targeting must expose a forward field-of-view filter")
+		return
+	var forward_target: Dictionary = squad.forward_teammate(
+		&"red_1",
+		Vector3.ZERO,
+		Vector3.RIGHT,
+		[
+			{"actor_id": &"behind", "position": Vector3(-1.0, 0.75, 0.0)},
+			{"actor_id": &"inside_edge", "position": Vector3(cos(deg_to_rad(79.0)) * 5.0, 0.75, sin(deg_to_rad(79.0)) * 5.0)},
+			{"actor_id": &"outside_edge", "position": Vector3(cos(deg_to_rad(81.0)) * 3.0, 0.75, sin(deg_to_rad(81.0)) * 3.0)},
+		]
+	)
+	if forward_target.get("actor_id", &"") != &"inside_edge":
+		fail("A 160-degree pass view must include 79 degrees, reject 81 degrees, and never choose behind; target=%s" % forward_target)
+		return
+	var no_forward_target: Dictionary = squad.forward_teammate(&"red_1", Vector3.ZERO, Vector3.RIGHT, [
+		{"actor_id": &"behind", "position": Vector3(-3.0, 0.75, 0.0)},
+	])
+	if not no_forward_target.is_empty():
+		fail("Pass targeting must report no receiver when every teammate is behind the carrier")
+		return
 
 	var pass_decision: Dictionary = squad.pass_plan(
 		Vector3(2.0, 0.75, 0.0),

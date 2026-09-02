@@ -6,6 +6,7 @@ const PRESSURE_DISTANCE := 3.0
 const PASS_ERROR_RADIANS := 0.12
 const ARRIVAL_STOP_RADIUS := 0.18
 const ARRIVAL_SLOW_RADIUS := 2.4
+const PASS_FIELD_OF_VIEW_DEGREES := 160.0
 
 
 static func human_actor_id(owner_actor_id: StringName, owner_team: StringName, human_team: StringName = HUMAN_TEAM) -> StringName:
@@ -118,7 +119,27 @@ static func closest_teammate(carrier_id: StringName, carrier_position: Vector3, 
 	return closest
 
 
-static func pass_plan(carrier_position: Vector3, teammates: Array, opponent_positions: Array, team: StringName, pass_index: int) -> Dictionary:
+static func forward_teammate(carrier_id: StringName, carrier_position: Vector3, facing: Vector3, teammates: Array) -> Dictionary:
+	var planar_facing := Vector2(facing.x, facing.z).normalized()
+	if planar_facing.is_zero_approx():
+		return {}
+	var minimum_dot := cos(deg_to_rad(PASS_FIELD_OF_VIEW_DEGREES * 0.5))
+	var closest: Dictionary = {}
+	var closest_distance := INF
+	for teammate in teammates:
+		if StringName(teammate.actor_id) == carrier_id:
+			continue
+		var offset := _planar(teammate.position) - _planar(carrier_position)
+		var distance := offset.length_squared()
+		if distance <= 0.0001 or planar_facing.dot(offset.normalized()) < minimum_dot:
+			continue
+		if distance < closest_distance:
+			closest_distance = distance
+			closest = teammate
+	return closest
+
+
+static func pass_plan(carrier_position: Vector3, teammates: Array, opponent_positions: Array, team: StringName, pass_index: int, carrier_facing: Vector3 = Vector3.ZERO) -> Dictionary:
 	if teammates.is_empty():
 		return _no_pass()
 	var clockwise := pass_index % 4 == 3
@@ -127,6 +148,11 @@ static func pass_plan(carrier_position: Vector3, teammates: Array, opponent_posi
 	var best_arc := INF
 	for teammate in teammates:
 		var target_position: Vector3 = teammate.position
+		if not carrier_facing.is_zero_approx():
+			var to_target := (_planar(target_position) - _planar(carrier_position)).normalized()
+			var planar_facing := Vector2(carrier_facing.x, carrier_facing.z).normalized()
+			if planar_facing.dot(to_target) < cos(deg_to_rad(PASS_FIELD_OF_VIEW_DEGREES * 0.5)):
+				continue
 		var target_angle := atan2(target_position.z, target_position.x)
 		var arc := fposmod(target_angle - carrier_angle, TAU) if clockwise else fposmod(carrier_angle - target_angle, TAU)
 		if arc < 0.05:
