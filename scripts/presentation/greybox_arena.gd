@@ -10,6 +10,7 @@ const BOARD_CORNER_RADIUS := 2.15
 # below one pixel, so the visual mesh is doubled while retaining exact centres.
 const LINE_WIDTH := 0.10
 const GOAL_LINE_X := 16.5
+const GOAL_DEPTH := 0.81
 
 var _camera_presets: Array[Dictionary] = CameraPresetsScript.all()
 var _camera: Camera3D
@@ -230,9 +231,9 @@ func _build_goal(goal_name: String, x_position: float, color: Color) -> void:
 	_add_goal_post(goal, "TopPost", Vector3(0.0, 0.575, -0.8), Vector3(0.1, 1.15, 0.1), color)
 	_add_goal_post(goal, "BottomPost", Vector3(0.0, 0.575, 0.8), Vector3(0.1, 1.15, 0.1), color)
 	_add_goal_post(goal, "Crossbar", Vector3(0.0, 1.15, 0.0), Vector3(0.1, 0.1, 1.7), color)
-	_add_goal_post(goal, "Backbar", Vector3(direction * 1.35, 0.55, 0.0), Vector3(0.08, 1.1, 1.7), Color(color, 0.45))
-	_add_goal_post(goal, "TopSideNet", Vector3(direction * 0.675, 0.55, -0.8), Vector3(1.35, 1.1, 0.04), Color(color, 0.2))
-	_add_goal_post(goal, "BottomSideNet", Vector3(direction * 0.675, 0.55, 0.8), Vector3(1.35, 1.1, 0.04), Color(color, 0.2))
+	_add_goal_post(goal, "Backbar", Vector3(direction * GOAL_DEPTH, 0.55, 0.0), Vector3(0.08, 1.1, 1.7), Color(color, 0.45))
+	_add_goal_post(goal, "TopSideNet", Vector3(direction * GOAL_DEPTH * 0.5, 0.55, -0.8), Vector3(GOAL_DEPTH, 1.1, 0.04), Color(color, 0.2))
+	_add_goal_post(goal, "BottomSideNet", Vector3(direction * GOAL_DEPTH * 0.5, 0.55, 0.8), Vector3(GOAL_DEPTH, 1.1, 0.04), Color(color, 0.2))
 
 
 func _add_goal_post(parent: Node3D, node_name: String, local_position: Vector3, size: Vector3, color: Color) -> void:

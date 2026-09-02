@@ -56,6 +56,12 @@ func run_test() -> void:
 	if not is_equal_approx(absf(left_post_top.position.z - left_post_bottom.position.z), 1.6):
 		fail("Painted goal-post marks must be 1.6 metres apart on the goal line")
 		return
+	var left_goal := arena.get_node("LeftGoal") as Node3D
+	var left_goal_backbar := left_goal.get_node("Backbar") as MeshInstance3D
+	var left_goal_side_net := left_goal.get_node("TopSideNet") as MeshInstance3D
+	if not is_equal_approx(absf(left_goal_backbar.position.x), 0.81) or not is_equal_approx((left_goal_side_net.mesh as BoxMesh).size.x, 0.81):
+		fail("Goal presentation should be only 0.81 metres deep; backbar=%s net=%s" % [left_goal_backbar.position.x, (left_goal_side_net.mesh as BoxMesh).size.x])
+		return
 
 	var red_players: Array = arena.call("get_team_players", &"red")
 	var lamb_variants := {}

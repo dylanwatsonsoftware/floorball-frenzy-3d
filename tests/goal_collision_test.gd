@@ -9,6 +9,9 @@ func _init() -> void:
 	if not is_equal_approx(goals.GOAL_LINE_X, 16.5) or not is_equal_approx(goals.GOAL_HALF_WIDTH, 0.8) or not is_equal_approx(goals.CROSSBAR_HEIGHT, 1.15):
 		fail("Goal collision must match the official floorball cage dimensions and goal line")
 		return
+	if not is_equal_approx(goals.CAGE_DEPTH, 0.81):
+		fail("Goal cages should use the shallower 0.81 metre gameplay depth; got %s" % goals.CAGE_DEPTH)
+		return
 
 	var post_hit: Dictionary = goals.resolve(
 		Vector3(16.25, 0.5, 0.8),
@@ -29,8 +32,8 @@ func _init() -> void:
 		return
 
 	var cage_back_hit: Dictionary = goals.resolve(
-		Vector3(17.6, 0.4, 0.0),
-		Vector3(18.1, 0.4, 0.0),
+		Vector3(17.1, 0.4, 0.0),
+		Vector3(17.5, 0.4, 0.0),
 		Vector3(10.0, 0.0, 0.0)
 	)
 	if cage_back_hit.velocity.x >= 0.0:
