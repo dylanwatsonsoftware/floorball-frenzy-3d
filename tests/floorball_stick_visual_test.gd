@@ -93,7 +93,7 @@ func run_test() -> void:
 		if grip_distance >= blade_distance:
 			fail("The stick must point across the player's body with its grip closer than its blade; grip=%s blade=%s" % [grip_center, blade_center])
 			return
-		if rig.scale.x < 1.1:
+		if rig.scale.x < 1.18:
 			fail("The authored stick needs a slightly larger, readable gameplay scale; scale=%s" % rig.scale)
 			return
 		if blade_center.y < -0.75 or blade_center.y > -0.42 or absf(blade_center.x) < 0.35 or absf(blade_center.z) < 0.35:
