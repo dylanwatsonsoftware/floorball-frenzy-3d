@@ -7,15 +7,21 @@ func _init() -> void:
 	var GoalkeeperAI = load("res://scripts/simulation/goalkeeper_ai.gd")
 	var red_home: Vector2 = GoalkeeperAI.target(&"red", Vector3(4.0, 0.22, 7.5), false)
 	var blue_home: Vector2 = GoalkeeperAI.target(&"blue", Vector3(-4.0, 0.22, -7.5), false)
-	if red_home.x < -17.4 or red_home.x > -14.4 or absf(red_home.y) > 2.25:
-		fail("Lambs goalkeeper must track the ball while remaining in the left crease; target=%s" % red_home)
+	var red_goal_center := Vector2(-16.5, 0.0)
+	var blue_goal_center := Vector2(16.5, 0.0)
+	if absf(red_home.distance_to(red_goal_center) - GoalkeeperAI.ARC_RADIUS) > 0.01 or red_home.x <= red_goal_center.x:
+		fail("Lambs goalkeeper must track play along the inward-facing semicircle; target=%s" % red_home)
 		return
-	if blue_home.x < 14.4 or blue_home.x > 17.4 or absf(blue_home.y) > 2.25:
-		fail("Pirates goalkeeper must track the ball while remaining in the right crease; target=%s" % blue_home)
+	if absf(blue_home.distance_to(blue_goal_center) - GoalkeeperAI.ARC_RADIUS) > 0.01 or blue_home.x >= blue_goal_center.x:
+		fail("Pirates goalkeeper must mirror the inward-facing semicircle; target=%s" % blue_home)
 		return
-	var red_intercept: Vector2 = GoalkeeperAI.target(&"red", Vector3(-15.4, 0.22, 1.4), true)
-	if red_intercept.distance_to(Vector2(-15.4, 1.4)) > 0.8:
-		fail("A nearby loose ball must pull the goalkeeper forward for a save; target=%s" % red_intercept)
+	var red_outside: Vector2 = GoalkeeperAI.constrain_to_goal_area(&"red", Vector2(-12.0, 4.0))
+	if not red_outside.is_equal_approx(Vector2(-13.83, 1.82)):
+		fail("The entire Lambs goalkeeper body must remain inside the large 4 x 5 metre goal area; position=%s" % red_outside)
+		return
+	var blue_outside: Vector2 = GoalkeeperAI.constrain_to_goal_area(&"blue", Vector2(12.0, -4.0))
+	if not blue_outside.is_equal_approx(Vector2(13.83, -1.82)):
+		fail("The entire Pirates goalkeeper body must remain inside the large 4 x 5 metre goal area; position=%s" % blue_outside)
 		return
 	print("Goalkeeper AI tracks play and protects its crease.")
 	quit(0)

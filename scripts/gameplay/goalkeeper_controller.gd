@@ -28,7 +28,7 @@ func _physics_process(delta: float) -> void:
 	var movement := _human_movement() if is_human_controlled() else _ai_movement()
 	velocity = PlayerMotorScript.step_velocity(velocity, movement, delta, KEEPER_SPEED_MULTIPLIER)
 	move_and_slide()
-	_constrain_to_crease()
+	_constrain_to_goal_area()
 	if not movement.is_zero_approx():
 		_facing_direction = Vector3(movement.x, 0.0, movement.y).normalized()
 		rotation.y = lerp_angle(rotation.y, atan2(_facing_direction.x, _facing_direction.z), minf(1.0, delta * 10.0))
@@ -49,10 +49,10 @@ func _ai_movement() -> Vector2:
 	return SquadLogicScript.arrival_movement(Vector2(global_position.x, global_position.z), target)
 
 
-func _constrain_to_crease() -> void:
-	var target := GoalkeeperAIScript.target(get_team(), global_position, true)
-	global_position.x = target.x
-	global_position.z = target.y
+func _constrain_to_goal_area() -> void:
+	var constrained := GoalkeeperAIScript.constrain_to_goal_area(get_team(), Vector2(global_position.x, global_position.z))
+	global_position.x = constrained.x
+	global_position.z = constrained.y
 	global_position.y = float(get_meta("faceoff_position", global_position).y)
 
 
