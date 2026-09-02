@@ -685,6 +685,7 @@ func _add_stick(parent: Node3D, _color: Color) -> void:
 	rig.name = "StickRig"
 	rig.position = Vector3.ZERO
 	rig.rotation_degrees.y = 208.0
+	rig.rotation_degrees.z = 20.0
 	rig.scale = Vector3.ONE * 1.12
 	rig.set_meta("authored_stick", true)
 	parent.add_child(rig)

@@ -103,6 +103,9 @@ func set_stick_slap_angle(angle_degrees: float) -> void:
 	var stick_rig := get_node_or_null("StickRig") as Node3D
 	if stick_rig != null:
 		stick_rig.rotation_degrees.y = STICK_BASE_Y_ANGLE + angle_degrees
+	var body_rig := get_node_or_null("BodyRig") as Node3D
+	if body_rig != null and body_rig.has_method("set_swing_pose"):
+		body_rig.call("set_swing_pose", angle_degrees)
 
 
 func get_actor_id() -> StringName:

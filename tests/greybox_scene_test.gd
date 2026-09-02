@@ -1,5 +1,7 @@
 extends SceneTree
 
+const StickSlapScript = preload("res://scripts/simulation/stick_slap.gd")
+
 
 func _init() -> void:
 	call_deferred("run_test")
@@ -275,7 +277,8 @@ func run_test() -> void:
 	if ball.ball_velocity.length() >= 10.0:
 		fail("The ball must not receive its shot impulse during backswing")
 		return
-	for frame in 12:
+	var contact_frames := ceili(StickSlapScript.CONTACT_SECONDS * float(Engine.physics_ticks_per_second)) + 2
+	for frame in contact_frames - 5:
 		await physics_frame
 	if ball.ball_velocity.x <= 10.0 or ball.position.y <= 0.22:
 		fail("Forward blade contact must launch the ball with lift; velocity=%s position=%s" % [ball.ball_velocity, ball.position])

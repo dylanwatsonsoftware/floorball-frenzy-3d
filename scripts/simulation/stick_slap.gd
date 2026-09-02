@@ -1,13 +1,13 @@
 class_name StickSlap
 extends RefCounted
 
-const BACKSWING_SECONDS := 0.14
-const FORWARD_SECONDS := 0.13
-const RECOVERY_SECONDS := 0.12
+const BACKSWING_SECONDS := 0.20
+const FORWARD_SECONDS := 0.16
+const RECOVERY_SECONDS := 0.16
 const CONTACT_SECONDS := BACKSWING_SECONDS + FORWARD_SECONDS * 0.72
 const TOTAL_SECONDS := BACKSWING_SECONDS + FORWARD_SECONDS + RECOVERY_SECONDS
-const BACKSWING_ANGLE := -55.0
-const CONTACT_ANGLE := 35.0
+const BACKSWING_ANGLE := -78.0
+const CONTACT_ANGLE := 42.0
 
 
 static func phase_at(elapsed: float) -> StringName:

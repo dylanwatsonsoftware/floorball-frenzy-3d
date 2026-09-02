@@ -21,6 +21,9 @@ func _init() -> void:
 	if slap.angle_at(0.0) >= 0.0 or absf(slap.angle_at(slap.CONTACT_SECONDS)) > 0.01 or slap.angle_at(slap.CONTACT_SECONDS + 0.02) <= 0.0:
 		fail("The stick must meet the carried ball at neutral angle before following through")
 		return
+	if slap.BACKSWING_SECONDS < 0.18 or slap.BACKSWING_ANGLE > -70.0:
+		fail("The backswing must be long and deep enough to read clearly in gameplay")
+		return
 	print("Stick slap timing is valid.")
 	quit(0)
 

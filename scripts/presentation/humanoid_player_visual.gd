@@ -4,6 +4,7 @@ const RUN_CYCLE_RATE := 1.15
 const MAX_RUN_SWING := 0.72
 
 var _run_time := 0.0
+var _swing_angle := 0.0
 
 
 func _process(delta: float) -> void:
@@ -39,6 +40,19 @@ func apply_movement_pose(speed: float, cycle_time: float, dashing: bool) -> void
 	var bob := absf(sin(cycle_time)) * 0.045 * movement_ratio
 	position.y = bob - (0.05 if dashing else 0.0)
 	rotation.x = -0.12 if dashing else 0.0
+	_apply_swing_pose()
+
+
+func set_swing_pose(stick_angle_degrees: float) -> void:
+	_swing_angle = stick_angle_degrees
+	_apply_swing_pose()
+
+
+func _apply_swing_pose() -> void:
+	rotation.y = deg_to_rad(clampf(_swing_angle * 0.24, -18.0, 12.0))
+	var shoulder_turn := deg_to_rad(clampf(-_swing_angle * 0.12, -7.0, 10.0))
+	(get_node("LeftArm") as Node3D).rotation.y = shoulder_turn
+	(get_node("RightArm") as Node3D).rotation.y = shoulder_turn
 
 
 func apply_goalkeeper_pose() -> void:

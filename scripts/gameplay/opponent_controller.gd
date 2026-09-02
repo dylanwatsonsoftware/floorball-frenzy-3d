@@ -12,6 +12,7 @@ const DASH_STREAK_SECONDS := 0.18
 const PARRY_WINDOW_SECONDS := 0.15
 const OPENING_GRACE_SECONDS := 2.0
 const ACTIVE_PLAYER_GRACE_SECONDS := 0.5
+const STICK_BASE_Y_ANGLE := 208.0
 
 var _facing_direction := Vector3.LEFT
 var _ball: MeshInstance3D
@@ -119,6 +120,15 @@ func _resolve_player_contact() -> void:
 
 func get_facing_direction() -> Vector3:
 	return _facing_direction
+
+
+func set_stick_slap_angle(angle_degrees: float) -> void:
+	var stick_rig := get_node_or_null("StickRig") as Node3D
+	if stick_rig != null:
+		stick_rig.rotation_degrees.y = STICK_BASE_Y_ANGLE + angle_degrees
+	var body_rig := get_node_or_null("BodyRig") as Node3D
+	if body_rig != null and body_rig.has_method("set_swing_pose"):
+		body_rig.call("set_swing_pose", angle_degrees)
 
 
 func get_actor_id() -> StringName:

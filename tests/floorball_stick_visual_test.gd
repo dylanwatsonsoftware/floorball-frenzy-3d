@@ -76,6 +76,18 @@ func run_test() -> void:
 			return
 		var blade_center: Vector3 = actor.to_local(blade.to_global(blade.get_aabb().get_center()))
 		var grip_center: Vector3 = actor.to_local(grip.to_global(grip.get_aabb().get_center()))
+		if grip_center.y > 0.4 or Vector2(grip_center.x, grip_center.z).length() > 0.65:
+			fail("The resting grip must sit in the player's hands instead of floating in front; center=%s" % grip_center)
+			return
+		var body_rig := actor.get_node("BodyRig") as Node3D
+		actor.call("set_stick_slap_angle", -75.0)
+		if absf(body_rig.rotation.y) < 0.15:
+			fail("A real backswing must visibly twist the player's torso with the stick")
+			return
+		actor.call("set_stick_slap_angle", 0.0)
+		if absf(body_rig.rotation.y) > 0.01:
+			fail("The torso must recover to its neutral pose after the swing")
+			return
 		var blade_distance := Vector2(blade_center.x, blade_center.z).length()
 		var grip_distance := Vector2(grip_center.x, grip_center.z).length()
 		if grip_distance >= blade_distance:
@@ -86,9 +98,6 @@ func run_test() -> void:
 			return
 		if blade_center.y < -0.75 or blade_center.y > -0.42 or absf(blade_center.x) < 0.35 or absf(blade_center.z) < 0.35:
 			fail("The authored blade must sit grounded at the player's right-front foot; center=%s" % blade_center)
-			return
-		if grip_center.y < 0.25:
-			fail("The authored grip must rise into the player's hands; center=%s" % grip_center)
 			return
 	if variants[&"red"].size() != 5 or variants[&"blue"].size() != 5:
 		fail("All five field players per team need distinct stick variants; variants=%s" % variants)
