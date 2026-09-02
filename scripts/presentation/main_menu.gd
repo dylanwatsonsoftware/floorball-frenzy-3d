@@ -114,7 +114,7 @@ func _on_lobby_loaded(_result: int, response_code: int, _headers: PackedStringAr
 	var compatible: Array = (parsed as Array).filter(func(entry: Variant) -> bool:
 		return entry is Dictionary and String(entry.get("hostName", "")).begins_with("[G2] ")
 	)
-	_lobby_status.text = "No open Godot games yet — create one!" if compatible.is_empty() else "OPEN GAMES"
+	_lobby_status.text = "No open games yet — create one!" if compatible.is_empty() else "OPEN GAMES"
 	for entry: Dictionary in compatible:
 		var row := Button.new()
 		row.text = "%s     JOIN" % String(entry.get("hostName", "Game")).trim_prefix("[G2] ")

@@ -6,6 +6,10 @@ func _init() -> void:
 
 
 func run_test() -> void:
+	var menu_source := FileAccess.get_file_as_string("res://scripts/presentation/main_menu.gd")
+	if "No open Godot games" in menu_source:
+		fail("Player-facing matchmaking copy must not expose the engine name")
+		return
 	var menu := (load("res://scenes/app/main_menu.tscn") as PackedScene).instantiate()
 	root.add_child(menu)
 	current_scene = menu
