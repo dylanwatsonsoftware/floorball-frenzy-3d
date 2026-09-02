@@ -224,6 +224,13 @@ func run_test() -> void:
 	if shot_trail.visible:
 		fail("The ball trail must remain hidden at faceoff")
 		return
+	if not shot_trail.mesh is ArrayMesh or shot_trail.get_node_or_null("TrailCore") == null:
+		fail("Fast balls need a tapered, layered graphic streak instead of a solid box or cylinder")
+		return
+	var aim_arrow := player.get_node("AimArrow") as Node3D
+	if not (aim_arrow.get_node("Shaft") as MeshInstance3D).mesh is QuadMesh or not (aim_arrow.get_node("Head") as MeshInstance3D).mesh is ArrayMesh:
+		fail("The charged-shot guide must use flat 2D-style shaft and arrowhead geometry")
+		return
 	if scene.get_node_or_null("HUD/ChargeLabel") == null:
 		fail("HUD must expose shot charging feedback")
 		return

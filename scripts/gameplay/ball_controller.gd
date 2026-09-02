@@ -213,14 +213,13 @@ func _show_aim_arrow(actor: CharacterBody3D, normalized_charge: float) -> void:
 		return
 	var presentation: Dictionary = ShotAimIndicatorScript.for_charge(normalized_charge)
 	var shaft := arrow.get_node("Shaft") as MeshInstance3D
-	var shaft_mesh := shaft.mesh as BoxMesh
-	shaft_mesh.size = Vector3(presentation.width, 0.035, presentation.length)
+	var shaft_mesh := shaft.mesh as QuadMesh
+	shaft_mesh.size = Vector2(presentation.width, presentation.length)
 	shaft.position.z = 0.85 + presentation.length * 0.5
 	var head := arrow.get_node("Head") as MeshInstance3D
-	var head_mesh := head.mesh as CylinderMesh
-	head_mesh.bottom_radius = float(presentation.width) * 1.7
-	head_mesh.height = 0.46 + float(presentation.width) * 0.7
-	head.position.z = 0.85 + float(presentation.length) + head_mesh.height * 0.5
+	var head_length := 0.46 + float(presentation.width) * 0.7
+	head.scale = Vector3(float(presentation.width) * 3.4, 1.0, head_length)
+	head.position.z = 0.85 + float(presentation.length) + head_length * 0.5
 	for mesh_instance in [shaft, head]:
 		var material := mesh_instance.material_override as StandardMaterial3D
 		material.albedo_color = presentation.color
@@ -678,8 +677,7 @@ func _update_shot_trail() -> void:
 		return
 	var direction := ball_velocity.normalized()
 	var trail_length := clampf(speed * 0.065, TRAIL_MIN_LENGTH, TRAIL_MAX_LENGTH)
-	var trail_mesh := _shot_trail.mesh as BoxMesh
-	trail_mesh.size.z = trail_length
+	_shot_trail.scale = Vector3(1.0, 1.0, trail_length)
 	_shot_trail.global_position = global_position - direction * trail_length * 0.5
 	var up := Vector3.FORWARD if absf(direction.dot(Vector3.UP)) > 0.94 else Vector3.UP
 	_shot_trail.global_basis = Basis.looking_at(-direction, up)
@@ -699,8 +697,15 @@ func _set_shot_trail_style(bolt: bool, scoop: bool = false, parry: bool = false)
 	if _shot_trail == null:
 		return
 	var material := _shot_trail.material_override as StandardMaterial3D
-	material.albedo_color = PARRY_TRAIL_COLOR if parry else BOLT_TRAIL_COLOR if bolt else SCOOP_TRAIL_COLOR if scoop else NORMAL_TRAIL_COLOR
-	material.emission = PARRY_TRAIL_EMISSION if parry else BOLT_TRAIL_EMISSION if bolt else SCOOP_TRAIL_EMISSION if scoop else NORMAL_TRAIL_EMISSION
+	var trail_color: Color = PARRY_TRAIL_COLOR if parry else BOLT_TRAIL_COLOR if bolt else SCOOP_TRAIL_COLOR if scoop else NORMAL_TRAIL_COLOR
+	var trail_emission: Color = PARRY_TRAIL_EMISSION if parry else BOLT_TRAIL_EMISSION if bolt else SCOOP_TRAIL_EMISSION if scoop else NORMAL_TRAIL_EMISSION
+	material.albedo_color = trail_color
+	material.emission = trail_emission
+	var core := _shot_trail.get_node_or_null("TrailCore") as MeshInstance3D
+	if core != null:
+		var core_material := core.material_override as StandardMaterial3D
+		core_material.albedo_color = Color(trail_color.lerp(Color.WHITE, 0.62), minf(0.92, trail_color.a + 0.2))
+		core_material.emission = trail_emission.lerp(Color.WHITE, 0.42)
 
 
 func _apply_charge_feedback(normalized_charge: float) -> void:

@@ -642,23 +642,20 @@ func _add_aim_arrow(parent: Node3D) -> void:
 	parent.add_child(arrow)
 	var shaft := MeshInstance3D.new()
 	shaft.name = "Shaft"
-	var shaft_mesh := BoxMesh.new()
-	shaft_mesh.size = Vector3(0.1, 0.035, 1.15)
+	var shaft_mesh := QuadMesh.new()
+	shaft_mesh.size = Vector2(0.1, 1.15)
 	shaft.mesh = shaft_mesh
 	shaft.position.z = 1.425
+	shaft.rotation_degrees.x = -90.0
 	shaft.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	shaft.material_override = _material(Color(0.86, 0.82, 0.2, 0.38), 0.2, Color("d9b72d"))
 	arrow.add_child(shaft)
 	var head := MeshInstance3D.new()
 	head.name = "Head"
-	var head_mesh := CylinderMesh.new()
-	head_mesh.top_radius = 0.0
-	head_mesh.bottom_radius = 0.2
-	head_mesh.height = 0.52
-	head_mesh.radial_segments = 12
+	var head_mesh := _flat_triangle_mesh()
 	head.mesh = head_mesh
 	head.position.z = 2.25
-	head.rotation_degrees.x = 90.0
+	head.scale = Vector3(0.4, 1.0, 0.52)
 	head.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	head.material_override = _material(Color(0.86, 0.82, 0.2, 0.38), 0.2, Color("d9b72d"))
 	arrow.add_child(head)
@@ -812,15 +809,48 @@ func _build_ball() -> void:
 	imported_ball.queue_free()
 	var trail := MeshInstance3D.new()
 	trail.name = "ShotTrail"
-	var trail_mesh := BoxMesh.new()
-	trail_mesh.size = Vector3(0.11, 0.11, 1.0)
-	trail.mesh = trail_mesh
-	trail.material_override = _material(Color(1.0, 0.3, 0.04, 0.58), 0.2, Color("ff5a00"))
+	trail.mesh = _tapered_ribbon_mesh()
+	var trail_material := _material(Color(1.0, 0.3, 0.04, 0.58), 0.2, Color("ff5a00"))
+	trail_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	trail.material_override = trail_material
 	trail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	trail.visible = false
 	trail.top_level = true
+	var core := MeshInstance3D.new()
+	core.name = "TrailCore"
+	core.mesh = trail.mesh
+	core.position.y = 0.006
+	core.scale = Vector3(0.38, 1.0, 0.72)
+	core.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var core_material := _material(Color(1.0, 0.82, 0.42, 0.82), 0.15, Color("ffd28a"))
+	core_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	core.material_override = core_material
+	trail.add_child(core)
 	ball.add_child(trail)
 	add_child(ball)
+
+
+func _flat_triangle_mesh() -> ArrayMesh:
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = PackedVector3Array([
+		Vector3(-0.5, 0.0, -0.5), Vector3(0.0, 0.0, 0.5), Vector3(0.5, 0.0, -0.5),
+	])
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return mesh
+
+
+func _tapered_ribbon_mesh() -> ArrayMesh:
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = PackedVector3Array([
+		Vector3(-0.12, 0.0, 0.5), Vector3(0.12, 0.0, 0.5), Vector3(0.035, 0.0, -0.5),
+		Vector3(-0.12, 0.0, 0.5), Vector3(0.035, 0.0, -0.5), Vector3(-0.035, 0.0, -0.5),
+	])
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return mesh
 
 
 func _find_first_mesh(node: Node) -> MeshInstance3D:
