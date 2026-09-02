@@ -713,6 +713,19 @@ func _add_stick(parent: Node3D, color: Color) -> void:
 	grip.material_override = _material(Color("f2f4f7"), 0.82)
 	rig.add_child(grip)
 
+	var end_cap := MeshInstance3D.new()
+	end_cap.name = "EndCap"
+	var end_cap_mesh := CylinderMesh.new()
+	end_cap_mesh.top_radius = 0.06
+	end_cap_mesh.bottom_radius = 0.068
+	end_cap_mesh.height = 0.09
+	end_cap_mesh.radial_segments = 10
+	end_cap.mesh = end_cap_mesh
+	end_cap.position = Vector3(0.0, 0.0, -0.775)
+	end_cap.rotation_degrees.x = 90.0
+	end_cap.material_override = _material(Color("e3e8ee"), 0.76)
+	rig.add_child(end_cap)
+
 	var neck := MeshInstance3D.new()
 	neck.name = "BladeNeck"
 	var neck_mesh := CylinderMesh.new()
@@ -734,12 +747,12 @@ func _add_floorball_blade(rig: Node3D, color: Color) -> void:
 	var blade := MeshInstance3D.new()
 	blade.name = "Blade"
 	var left_rail := PackedVector2Array([
-		Vector2(-0.055, 1.02), Vector2(-0.12, 1.20), Vector2(-0.18, 1.45),
-		Vector2(-0.16, 1.70), Vector2(-0.06, 1.96),
+		Vector2(-0.075, 1.04), Vector2(-0.08, 1.18), Vector2(-0.075, 1.34),
+		Vector2(-0.055, 1.51), Vector2(0.0, 1.66),
 	])
 	var right_rail := PackedVector2Array([
-		Vector2(0.065, 1.02), Vector2(0.13, 1.20), Vector2(0.21, 1.45),
-		Vector2(0.31, 1.69), Vector2(0.35, 1.91),
+		Vector2(0.07, 1.04), Vector2(0.085, 1.18), Vector2(0.105, 1.34),
+		Vector2(0.13, 1.50), Vector2(0.12, 1.63),
 	])
 	var centre_rail := PackedVector2Array()
 	for index in left_rail.size():
@@ -752,8 +765,8 @@ func _add_floorball_blade(rig: Node3D, color: Color) -> void:
 	# This outer silhouette is the defining curved end of a floorball blade.
 	_append_blade_strip(vertices, PackedVector2Array([left_rail[0], right_rail[0]]), 0.045)
 	_append_blade_strip(vertices, PackedVector2Array([
-		left_rail[4], Vector2(-0.03, 2.04), Vector2(0.08, 2.10),
-		Vector2(0.22, 2.08), Vector2(0.32, 2.02), right_rail[4],
+		left_rail[4], Vector2(-0.01, 1.70), Vector2(0.04, 1.73),
+		Vector2(0.09, 1.70), right_rail[4],
 	]), 0.045)
 	# Diagonal webbing reads as a lightweight molded floorball lattice without
 	# reverting to the previous repeated H-shaped blade.
@@ -765,6 +778,13 @@ func _add_floorball_blade(rig: Node3D, color: Color) -> void:
 		PackedVector2Array([left_rail[3], right_rail[4]]),
 	]:
 		_append_blade_strip(vertices, web, 0.03)
+	# Bend the open plastic face gently sideways toward the toe. The depth stays
+	# shallow, but keeps the ball on the playable front face like a real blade.
+	for index in vertices.size():
+		var vertex := vertices[index]
+		var hook_ratio := clampf((vertex.z - 1.04) / 0.69, 0.0, 1.0)
+		vertex.y = -0.095 * hook_ratio * hook_ratio
+		vertices[index] = vertex
 	var arrays := []
 	arrays.resize(ArrayMesh.ARRAY_MAX)
 	arrays[ArrayMesh.ARRAY_VERTEX] = vertices
@@ -790,7 +810,7 @@ func _add_floorball_blade(rig: Node3D, color: Color) -> void:
 	pocket.name = "BladePocket"
 	# The pocket lies just inside the curled toe, where the concave front face
 	# cups a floorball in the supplied stick reference.
-	pocket.position = blade.position + blade.basis * Vector3(-0.02, 0.0, 1.98)
+	pocket.position = blade.position + blade.basis * Vector3(0.0, -0.085, 1.68)
 	rig.add_child(pocket)
 
 

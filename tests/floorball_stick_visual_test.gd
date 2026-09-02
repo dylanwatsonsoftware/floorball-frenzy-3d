@@ -22,8 +22,9 @@ func run_test() -> void:
 			return
 		var shaft := rig.get_node_or_null("Shaft") as MeshInstance3D
 		var grip := rig.get_node_or_null("Grip") as MeshInstance3D
-		if shaft == null or not shaft.mesh is CylinderMesh or grip == null:
-			fail("The stick must use a round shaft with a distinct hand grip")
+		var end_cap := rig.get_node_or_null("EndCap") as MeshInstance3D
+		if shaft == null or not shaft.mesh is CylinderMesh or grip == null or end_cap == null:
+			fail("The stick must use a round shaft with a taped grip and capped top")
 			return
 		if (shaft.mesh as CylinderMesh).height < 1.65:
 			fail("The floorball shaft must be visibly long enough to reach from the hands to the rink")
@@ -51,8 +52,12 @@ func run_test() -> void:
 		if blade_size.z < blade_size.x * 1.6:
 			fail("The blade's long axis must continue along the shaft rather than sit across it at right angles; size=%s" % blade_size)
 			return
-		if blade_size.x < 0.42 or blade_size.z < 0.85:
-			fail("The blade must widen into the recognisable scooped floorball silhouette; size=%s" % blade_size)
+		var shaft_length := (shaft.mesh as CylinderMesh).height
+		if blade_size.x < 0.16 or blade_size.x > 0.32 or blade_size.z < 0.48 or blade_size.z > shaft_length * 0.43:
+			fail("The blade must be a short, shallow 25–35 cm-equivalent head rather than a rake-sized paddle; shaft=%.3f blade=%s" % [shaft_length, blade_size])
+			return
+		if blade_size.y < 0.055 or blade_size.y > 0.16:
+			fail("The plastic blade must hook gently sideways like a shallow spoon; depth=%.3f" % blade_size.y)
 			return
 		var pocket_in_blade := blade.to_local(blade_pocket.global_position)
 		if pocket_in_blade.z < blade.get_aabb().end.z - 0.18:
@@ -72,11 +77,18 @@ func run_test() -> void:
 					var corner_y := blade.to_global(Vector3(x, y, z)).y
 					blade_min_y = minf(blade_min_y, corner_y)
 					blade_max_y = maxf(blade_max_y, corner_y)
-		if blade_min_y < 0.035 or blade_max_y > 0.78 or blade_max_y - blade_min_y < 0.38:
+		if blade_min_y < 0.035 or blade_max_y > 0.46 or blade_max_y - blade_min_y < 0.16:
 			fail("The blade must stand above the rink without passing through it; min_y=%.3f max_y=%.3f" % [blade_min_y, blade_max_y])
 			return
-		if blade_bounds.end.z < 2.03:
-			fail("The outer frame must continue into a visibly rounded toe instead of ending as an open angular lattice; end_z=%.3f" % blade_bounds.end.z)
+		var blade_vertices := (blade.mesh as ArrayMesh).surface_get_arrays(0)[ArrayMesh.ARRAY_VERTEX] as PackedVector3Array
+		var toe_min_x := INF
+		var toe_max_x := -INF
+		for vertex in blade_vertices:
+			if vertex.z > blade_bounds.end.z - 0.075:
+				toe_min_x = minf(toe_min_x, vertex.x)
+				toe_max_x = maxf(toe_max_x, vertex.x)
+		if toe_max_x - toe_min_x < 0.10:
+			fail("The outer frame must sweep around a visibly rounded toe instead of ending in a point; toe_span=%.3f" % (toe_max_x - toe_min_x))
 			return
 		var blade_center_in_actor: Vector3 = rig.transform * blade.transform * blade.get_aabb().get_center()
 		var grip_center_in_actor: Vector3 = rig.transform * grip.position
