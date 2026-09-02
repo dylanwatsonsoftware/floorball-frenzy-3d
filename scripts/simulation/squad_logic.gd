@@ -12,7 +12,7 @@ static func human_actor_id(owner_actor_id: StringName, owner_team: StringName, h
 	return owner_actor_id if owner_team == human_team else &""
 
 
-static func support_target(team: StringName, slot: int, ball_position: Vector3, team_has_possession: bool, ball_velocity: Vector3 = Vector3.ZERO) -> Vector2:
+static func support_target(team: StringName, slot: int, ball_position: Vector3, team_has_possession: bool, ball_velocity: Vector3 = Vector3.ZERO, opponents: Array = []) -> Vector2:
 	var attack_direction := 1.0 if team == &"red" else -1.0
 	if team_has_possession:
 		var depth: float = float([2.2, 5.8, 4.1, -1.8, -3.6][clampi(slot, 0, 4)])
@@ -24,14 +24,29 @@ static func support_target(team: StringName, slot: int, ball_position: Vector3, 
 			clampf(lane + lead.y, -7.2, 7.2)
 		)
 	var own_goal_x := -17.0 if team == &"red" else 17.0
-	var shell_center_x := lerpf(own_goal_x, ball_position.x, 0.5)
+	var shell_center_x := lerpf(own_goal_x, ball_position.x, 0.62)
 	var shell_center_z := clampf(ball_position.z * 0.22, -1.4, 1.4)
 	var shell_depth: float = float([0.0, 2.0, 1.4, -2.4, -1.7][clampi(slot, 0, 4)])
 	var shell_lane: float = float([0.2, -4.8, 4.1, -3.3, 3.8][clampi(slot, 0, 4)])
-	return Vector2(
-		clampf(shell_center_x + attack_direction * shell_depth, -14.5, 14.5),
+	var shell_target := Vector2(
+		clampf(shell_center_x + attack_direction * shell_depth, -13.8, 13.8),
 		clampf(shell_center_z + shell_lane, -7.2, 7.2)
 	)
+	if opponents.is_empty():
+		return shell_target
+	var ranked_opponents := opponents.duplicate()
+	ranked_opponents.sort_custom(func(a: Variant, b: Variant) -> bool: return _entry_planar(a).y < _entry_planar(b).y)
+	var matchup_order := [2, 0, 4, 1, 3]
+	var matchup_index: int = matchup_order[clampi(slot, 0, 4)]
+	matchup_index = mini(matchup_index, ranked_opponents.size() - 1)
+	var opponent := _entry_planar(ranked_opponents[matchup_index])
+	var own_goal := Vector2(own_goal_x, 0.0)
+	var goal_side := opponent + (own_goal - opponent).normalized() * 1.6
+	var marking_weight: float = float([0.38, 0.42, 0.42, 0.28, 0.28][clampi(slot, 0, 4)])
+	var marked_target := shell_target.lerp(goal_side, marking_weight)
+	marked_target.x = clampf(marked_target.x, -13.8, 13.8)
+	marked_target.y = clampf(marked_target.y, -7.2, 7.2)
+	return marked_target
 
 
 static func pressure_target(team: StringName, ball_position: Vector3, ball_velocity: Vector3) -> Vector2:
@@ -148,3 +163,8 @@ static func _no_pass() -> Dictionary:
 
 static func _planar(value: Vector3) -> Vector2:
 	return Vector2(value.x, value.z)
+
+
+static func _entry_planar(entry: Variant) -> Vector2:
+	var value: Vector3 = entry.position if entry is Dictionary else entry
+	return _planar(value)

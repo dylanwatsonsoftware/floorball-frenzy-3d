@@ -3,7 +3,7 @@ extends CharacterBody3D
 const PlayerMotorScript = preload("res://scripts/gameplay/player_motor.gd")
 const GoalkeeperAIScript = preload("res://scripts/simulation/goalkeeper_ai.gd")
 const SquadLogicScript = preload("res://scripts/simulation/squad_logic.gd")
-const KEEPER_SPEED_MULTIPLIER := 0.72
+const KEEPER_SPEED_MULTIPLIER := 0.62
 
 var _ball: Node3D
 var _mobile_controls: Control

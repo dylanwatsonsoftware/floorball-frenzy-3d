@@ -5,6 +5,10 @@ func _init() -> void:
 		fail("Dedicated goalkeeper AI is missing")
 		return
 	var GoalkeeperAI = load("res://scripts/simulation/goalkeeper_ai.gd")
+	var GoalkeeperController = load("res://scripts/gameplay/goalkeeper_controller.gd")
+	if GoalkeeperController.KEEPER_SPEED_MULTIPLIER > 0.65:
+		fail("Goalkeepers must react a little slower so well-placed shots remain scoreable")
+		return
 	var red_home: Vector2 = GoalkeeperAI.target(&"red", Vector3(4.0, 0.22, 7.5), false)
 	var blue_home: Vector2 = GoalkeeperAI.target(&"blue", Vector3(-4.0, 0.22, -7.5), false)
 	var red_goal_center := Vector2(-16.5, 0.0)

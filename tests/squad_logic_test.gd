@@ -23,8 +23,8 @@ func _init() -> void:
 		fail("Red off-ball players must spread into distinct forward support lanes")
 		return
 	var defensive_support: Vector2 = squad.support_target(&"red", 1, Vector3.ZERO, false)
-	if defensive_support.x > -5.5 or defensive_support.y > -4.5:
-		fail("Off-ball defenders must hold a genuinely separated lane instead of swarming the ball; target=%s" % defensive_support)
+	if defensive_support.x < -8.0 or defensive_support.x > -3.0 or defensive_support.y > -4.5:
+		fail("Off-ball defenders must hold a separated midfield lane instead of swarming the ball or crease; target=%s" % defensive_support)
 		return
 	var attacking_targets := []
 	var attacking_depths := {}
@@ -46,6 +46,28 @@ func _init() -> void:
 	if _minimum_separation(defensive_targets) < 2.0:
 		fail("The five field defenders must occupy a loose, asymmetric dice-five shell; targets=%s" % defensive_targets)
 		return
+	var opponents := [
+		{"position": Vector3(-1.0, 0.0, -6.0)},
+		{"position": Vector3(0.0, 0.0, -3.0)},
+		{"position": Vector3(2.0, 0.0, 0.0)},
+		{"position": Vector3(1.0, 0.0, 3.0)},
+		{"position": Vector3(-2.0, 0.0, 6.0)},
+	]
+	var marked_targets := []
+	for slot in 5:
+		marked_targets.append(squad.support_target(&"red", slot, Vector3(-10.0, 0.0, 0.0), false, Vector3.ZERO, opponents))
+	if _minimum_separation(marked_targets) < 1.5:
+		fail("Man-marking must preserve the loose dice-five spacing instead of collapsing defenders; targets=%s" % [marked_targets])
+		return
+	var matchup_indices := [2, 0, 4, 1, 3]
+	for slot in 5:
+		var target: Vector2 = marked_targets[slot]
+		var matchup_index: int = matchup_indices[slot]
+		var assigned := Vector2(opponents[matchup_index].position.x, opponents[matchup_index].position.z)
+		var unmarked: Vector2 = squad.support_target(&"red", slot, Vector3(-10.0, 0.0, 0.0), false)
+		if target.distance_to(assigned) >= unmarked.distance_to(assigned) or target.x < -14.0:
+			fail("Each defender must stay goal-side of a distinct matchup without crowding the crease; slot=%d target=%s" % [slot, target])
+			return
 	var danger_ball := Vector3(-12.0, 0.0, 3.0)
 	var block_target: Vector2 = squad.pressure_target(&"red", danger_ball, Vector3(-3.0, 0.0, 0.0))
 	if block_target.x >= danger_ball.x or absf(block_target.y) >= absf(danger_ball.z):

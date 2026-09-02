@@ -27,6 +27,14 @@ func _init() -> void:
 	if carrier_capped.length() >= capped.length() or carrier_capped.length() < capped.length() * 0.8:
 		fail("Ball carriers must be slightly slower so defenders can realistically close them down; carrier=%s free=%s" % [carrier_capped.length(), capped.length()])
 		return
+	if script.OFF_BALL_SPEED_MULTIPLIER <= 1.0 or script.AI_SPEED_MULTIPLIER >= 1.0:
+		fail("Off-ball skaters must gain pace while AI receives a modest global handicap")
+		return
+	var ai_support_speed: float = script.MAX_SPEED * script.AI_SPEED_MULTIPLIER * script.OFF_BALL_SPEED_MULTIPLIER
+	var ai_carrier_speed: float = script.MAX_SPEED * script.AI_SPEED_MULTIPLIER * script.BALL_CARRIER_SPEED_MULTIPLIER
+	if ai_support_speed <= ai_carrier_speed * 1.15 or ai_support_speed >= script.MAX_SPEED:
+		fail("AI support must outrun its carrier without matching full human pace")
+		return
 
 	var slowed: Vector3 = script.step_velocity(Vector3(5.0, 0.0, 0.0), Vector2.ZERO, 0.1)
 	if slowed.length() >= 5.0:

@@ -62,8 +62,12 @@ func _physics_process(delta: float) -> void:
 		velocity = _dash_direction * PlayerMotorScript.DASH_SPEED
 	else:
 		var speed_multiplier := HeatSystemScript.speed_multiplier(_fuego_remaining)
+		if not is_human_controlled():
+			speed_multiplier *= PlayerMotorScript.AI_SPEED_MULTIPLIER
 		if _ball != null and _ball.has_method("is_controlled_by_actor") and bool(_ball.call("is_controlled_by_actor", get_actor_id())):
 			speed_multiplier *= PlayerMotorScript.BALL_CARRIER_SPEED_MULTIPLIER
+		else:
+			speed_multiplier *= PlayerMotorScript.OFF_BALL_SPEED_MULTIPLIER
 		velocity = PlayerMotorScript.step_velocity(velocity, input_vector, delta, speed_multiplier)
 	move_and_slide()
 	var boundary := RinkCollisionScript.constrain_body(global_position, velocity, RINK_HALF_LENGTH, RINK_HALF_WIDTH, 1.8)
@@ -99,7 +103,12 @@ func _ai_movement() -> Vector2:
 		teammates.append({"actor_id": actor.call("get_actor_id"), "position": actor.global_position})
 	var owner_team: StringName = _ball.call("get_control_owner_team") if _ball.has_method("get_control_owner_team") else &""
 	var team_has_possession := owner_team == get_team()
-	var target := SquadLogicScript.support_target(get_team(), get_squad_slot(), _ball.global_position, team_has_possession, _ball.ball_velocity)
+	var opposition_team := &"blue" if get_team() == &"red" else &"red"
+	var opponents: Array = []
+	for actor in get_parent().call("get_team_players", opposition_team):
+		if StringName(actor.get_meta("role", &"field")) != &"goalkeeper":
+			opponents.append({"position": actor.global_position})
+	var target := SquadLogicScript.support_target(get_team(), get_squad_slot(), _ball.global_position, team_has_possession, _ball.ball_velocity, opponents)
 	if not team_has_possession and SquadLogicScript.is_closest_to_ball(get_actor_id(), global_position, teammates, _ball.global_position):
 		target = SquadLogicScript.pressure_target(get_team(), _ball.global_position, _ball.ball_velocity)
 	return SquadLogicScript.arrival_movement(Vector2(global_position.x, global_position.z), target)

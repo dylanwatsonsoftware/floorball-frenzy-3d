@@ -71,11 +71,15 @@ func _physics_process(delta: float) -> void:
 		if StringName(actor.get_meta("role", &"field")) == &"goalkeeper":
 			continue
 		teammates.append({"actor_id": actor.call("get_actor_id"), "position": actor.global_position})
+	var opponents: Array = []
+	for actor in get_parent().call("get_team_players", &"red"):
+		if StringName(actor.get_meta("role", &"field")) != &"goalkeeper":
+			opponents.append({"position": actor.global_position})
 	var owner_team: StringName = _ball.call("get_control_owner_team") if _ball.has_method("get_control_owner_team") else &""
 	var owner_actor: StringName = _ball.call("get_control_owner_actor_id") if _ball.has_method("get_control_owner_actor_id") else &""
 	var should_press := owner_team != &"blue" and SquadLogicScript.is_closest_to_ball(get_actor_id(), global_position, teammates, _ball.global_position)
 	if owner_actor != get_actor_id() and not should_press:
-		var support_target := SquadLogicScript.support_target(&"blue", get_squad_slot(), _ball.global_position, owner_team == &"blue", _ball.ball_velocity)
+		var support_target := SquadLogicScript.support_target(&"blue", get_squad_slot(), _ball.global_position, owner_team == &"blue", _ball.ball_velocity, opponents)
 		decision.movement = SquadLogicScript.arrival_movement(Vector2(global_position.x, global_position.z), support_target)
 		decision.wants_dash = false
 	elif should_press:
@@ -86,9 +90,11 @@ func _physics_process(delta: float) -> void:
 	if is_dashing():
 		velocity = _dash_direction * PlayerMotorScript.DASH_SPEED
 	else:
-		var speed_multiplier := HeatSystemScript.speed_multiplier(_fuego_remaining)
+		var speed_multiplier := HeatSystemScript.speed_multiplier(_fuego_remaining) * PlayerMotorScript.AI_SPEED_MULTIPLIER
 		if _ball.has_method("is_controlled_by_actor") and bool(_ball.call("is_controlled_by_actor", get_actor_id())):
 			speed_multiplier *= PlayerMotorScript.BALL_CARRIER_SPEED_MULTIPLIER
+		else:
+			speed_multiplier *= PlayerMotorScript.OFF_BALL_SPEED_MULTIPLIER
 		velocity = PlayerMotorScript.step_velocity(velocity, decision.movement, delta, speed_multiplier)
 	move_and_slide()
 	var boundary := RinkCollisionScript.constrain_body(global_position, velocity, RINK_HALF_LENGTH, RINK_HALF_WIDTH, 1.8)

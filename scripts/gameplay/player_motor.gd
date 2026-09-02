@@ -7,6 +7,8 @@ const DECELERATION := 24.0
 const DASH_SPEED := 15.0
 const DASH_COOLDOWN := 1.1
 const BALL_CARRIER_SPEED_MULTIPLIER := 0.88
+const OFF_BALL_SPEED_MULTIPLIER := 1.08
+const AI_SPEED_MULTIPLIER := 0.88
 
 
 static func combine_inputs(primary: Vector2, secondary: Vector2) -> Vector2:

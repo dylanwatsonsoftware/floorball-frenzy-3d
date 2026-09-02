@@ -98,6 +98,10 @@ func run_test() -> void:
 		return
 	var carrier_rest_angle := carrier_stick.rotation.y
 	var captain_rest_angle := captain_stick.rotation.y
+	red_two_pocket.force_update_transform()
+	ball.position = Vector3(red_two_pocket.global_position.x, 0.22, red_two_pocket.global_position.z)
+	ball.ball_velocity = Vector3.ZERO
+	await physics_frame
 	Input.action_press("shoot")
 	await physics_frame
 	var early_shaft := carrier_arrow.get_node("Shaft") as MeshInstance3D
