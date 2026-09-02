@@ -167,11 +167,11 @@ func _update_shot_charge(delta: float) -> void:
 	elif Input.is_action_just_released("shoot"):
 		_charge_cancelled_until_release = false
 		_hide_aim_arrow()
-		if _charge_seconds > 0.0:
+		if _charge_seconds > 0.0 and _slap_actor != null:
 			var facing: Vector3 = _slap_actor.call("get_facing_direction")
 			_release_charged_slap(Vector2(facing.x, facing.z), _charge_seconds / MAX_CHARGE_SECONDS)
 		_charge_seconds = 0.0
-		if _slap_elapsed < 0.0:
+		if _slap_elapsed < 0.0 and _slap_actor != null:
 			_clear_charge_feedback()
 			_slap_actor.call("set_stick_slap_angle", 0.0)
 	elif not Input.is_action_pressed("shoot"):

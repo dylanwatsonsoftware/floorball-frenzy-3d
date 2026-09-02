@@ -23,8 +23,6 @@ func start_solo_match() -> void:
 	var ball := _arena.get_node_or_null("Ball")
 	if ball != null and ball.has_method("reset_for_faceoff"):
 		ball.call("reset_for_faceoff")
-	Input.action_release("shoot")
-	Input.action_release("dash")
 
 
 func _set_gameplay_enabled(enabled: bool) -> void:

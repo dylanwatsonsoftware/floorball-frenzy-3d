@@ -29,9 +29,30 @@ func run_test() -> void:
 	if solo_button.disabled:
 		fail("Solo Match must be the active path into the current 6v6 game")
 		return
+	menu.call("_set_gameplay_enabled", false)
 	menu.call("start_solo_match")
+	if Input.is_action_just_released("shoot") or Input.is_action_just_released("dash"):
+		fail("Starting Solo must not synthesize gameplay release edges before the first resumed physics frame")
+		return
 	if menu.visible or not (scene.get_node("HUD") as CanvasLayer).visible:
 		fail("Starting a solo match must dismiss the menu and reveal the gameplay HUD")
+		return
+	var ball := scene.get_node("Arena/Ball")
+	if not ball.is_physics_processing():
+		fail("Starting Solo after the menu freeze must resume ball physics")
+		return
+	for actor in scene.get_node("Arena").call("get_field_players"):
+		if not actor.is_physics_processing():
+			fail("Starting Solo must resume every player controller; frozen actor=%s mode=%s" % [actor.name, actor.process_mode])
+			return
+	var player := scene.get_node("Arena/Player") as CharacterBody3D
+	var start_position := player.position
+	Input.action_press("move_right")
+	for frame in 8:
+		await physics_frame
+	Input.action_release("move_right")
+	if player.position.distance_to(start_position) < 0.08:
+		fail("The resumed Solo match must advance real player physics after leaving the menu")
 		return
 	print("Responsive original-style main menu is valid.")
 	scene.queue_free()
