@@ -73,6 +73,10 @@ static func calculate_floating_drag(origin: Vector2, current_position: Vector2, 
 	return calculate_stick_vector(current_position - origin, radius, deadzone)
 
 
+static func centered_text_baseline(center: Vector2, text_width: float, ascent: float, descent: float) -> Vector2:
+	return Vector2(center.x - text_width * 0.5, center.y + (ascent - descent) * 0.5)
+
+
 static func action_at_position(touch_position: Vector2, viewport_size: Vector2) -> StringName:
 	var shoot_center := Vector2(viewport_size.x - EDGE_MARGIN - SHOOT_RADIUS, viewport_size.y - EDGE_MARGIN - SHOOT_RADIUS)
 	if touch_position.distance_to(shoot_center) <= SHOOT_RADIUS * 1.35:
@@ -190,21 +194,24 @@ func _draw() -> void:
 	var font := get_theme_default_font()
 	var font_size := 20
 	var label := "SHOOT"
-	var label_size := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
-	draw_string(font, shoot_center - label_size * 0.5 + Vector2(0.0, label_size.y), label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color.WHITE)
+	_draw_centered_label(font, label, shoot_center, font_size)
 	var pass_color := Color(0.25, 0.72, 1.0, 0.96) if _pass_touch != -1 else Color(0.12, 0.48, 0.78, 0.8)
 	draw_circle(pass_center, PASS_RADIUS, pass_color)
 	draw_arc(pass_center, PASS_RADIUS, 0.0, TAU, 48, Color.WHITE, 3.0)
 	var pass_label := "PASS"
-	var pass_label_size := font.get_string_size(pass_label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
-	draw_string(font, pass_center - pass_label_size * 0.5 + Vector2(0.0, pass_label_size.y), pass_label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color.WHITE)
+	_draw_centered_label(font, pass_label, pass_center, font_size)
 	var switch_color := Color(0.94, 0.68, 0.18, 0.96) if _switch_touch != -1 else Color(0.72, 0.44, 0.12, 0.82)
 	draw_circle(switch_center, SWITCH_RADIUS, switch_color)
 	draw_arc(switch_center, SWITCH_RADIUS, 0.0, TAU, 40, Color.WHITE, 3.0)
 	var switch_label := "SWITCH"
 	var switch_font_size := 15
-	var switch_label_size := font.get_string_size(switch_label, HORIZONTAL_ALIGNMENT_LEFT, -1, switch_font_size)
-	draw_string(font, switch_center - switch_label_size * 0.5 + Vector2(0.0, switch_label_size.y), switch_label, HORIZONTAL_ALIGNMENT_LEFT, -1, switch_font_size, Color.WHITE)
+	_draw_centered_label(font, switch_label, switch_center, switch_font_size)
+
+
+func _draw_centered_label(font: Font, label: String, center: Vector2, font_size: int) -> void:
+	var text_width := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	var baseline := centered_text_baseline(center, text_width, font.get_ascent(font_size), font.get_descent(font_size))
+	draw_string(font, baseline, label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color.WHITE)
 
 
 func _exit_tree() -> void:

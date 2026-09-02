@@ -61,6 +61,15 @@ func _init() -> void:
 		fail("A new floating joystick touch must begin at neutral movement")
 		return
 
+	if not controls.has_method("centered_text_baseline"):
+		fail("Mobile action labels need a font-metric centering helper")
+		return
+	var button_center := Vector2(300.0, 180.0)
+	var baseline: Vector2 = controls.centered_text_baseline(button_center, 50.0, 15.0, 5.0)
+	if not baseline.is_equal_approx(Vector2(275.0, 185.0)):
+		fail("Button text must be centred using font ascent and descent; got %s" % baseline)
+		return
+
 	print("Mobile control math is valid.")
 	quit(0)
 
