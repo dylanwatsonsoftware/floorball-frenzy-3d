@@ -150,8 +150,7 @@ mouse_default_cursor_shape = 8
 theme_override_colors/font_disabled_color = Color(0.7, 0.85, 0.72, 0.72)
 theme_override_font_sizes/font_size = 23
 theme_override_styles/disabled = SubResource("StyleBox_online_disabled")
-disabled = true
-text = "🌐  ONLINE MATCH · COMING SOON\nCREATE OR JOIN A GAME"
+text = "🌐  ONLINE MATCH\nCREATE OR JOIN A GAME"
 
 [node name="Footer" type="Label" parent="Screen/Content"]
 anchor_left = 0.5

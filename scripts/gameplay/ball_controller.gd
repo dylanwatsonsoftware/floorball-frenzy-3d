@@ -62,6 +62,9 @@ var _ai_pass_cooldown := 0.0
 var _aim_arrow_actor: CharacterBody3D
 var _charge_cancelled_until_release := false
 var _human_control_actor_id: StringName = &"red_1"
+var _blue_human_control_actor_id: StringName = &"blue_1"
+var _network_blue_charge := 0.0
+var _network_blue_was_shooting := false
 var _pickup_lock_actor_id: StringName = &""
 var _pickup_lock_seconds := 0.0
 
@@ -76,6 +79,8 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if OnlineMatch.enabled and OnlineMatch.is_authority():
+		_update_network_blue_actions(delta)
 	_pickup_lock_seconds = maxf(0.0, _pickup_lock_seconds - delta)
 	if _pickup_lock_seconds <= 0.0:
 		_pickup_lock_actor_id = &""
@@ -372,10 +377,11 @@ func _advance_slap(delta: float) -> void:
 		if not step_direction.is_zero_approx():
 			_slap_actor.global_position += step_direction.normalized() * step_distance
 	if StickSlapScript.crossed_contact(previous_elapsed, _slap_elapsed) and _ball_in_slap_actor_blade():
+		var slap_team: StringName = _slap_actor.call("get_team")
 		if _pending_pass:
-			_launch_pass(_pending_slap_direction, _slap_actor.velocity, &"red", _pending_soft_pass)
+			_launch_pass(_pending_slap_direction, _slap_actor.velocity, slap_team, _pending_soft_pass)
 		else:
-			launch(_pending_slap_direction, _pending_slap_charge, _slap_actor.velocity, _pending_one_touch, &"red", _pending_bolt)
+			launch(_pending_slap_direction, _pending_slap_charge, _slap_actor.velocity, _pending_one_touch, slap_team, _pending_bolt)
 		_play_contact_feedback(_pending_slap_charge, _pending_bolt)
 	if _slap_elapsed >= StickSlapScript.TOTAL_SECONDS:
 		_cancel_slap()
@@ -463,13 +469,21 @@ func get_human_control_actor_id() -> StringName:
 	return _human_control_actor_id
 
 
+func get_human_control_actor_id_for_team(team: StringName) -> StringName:
+	return get_human_control_actor_id() if team == &"red" else _blue_human_control_actor_id
+
+
 func _update_human_control_from_possession(previous_controller: int) -> void:
 	if _control_owner == previous_controller:
 		return
 	var new_owner := _actor_for_controller(_control_owner)
-	if new_owner == null or new_owner.call("get_team") != &"red":
+	if new_owner == null:
 		return
 	var new_actor_id: StringName = new_owner.call("get_actor_id")
+	var team: StringName = new_owner.call("get_team")
+	if team == &"blue":
+		_blue_human_control_actor_id = new_actor_id
+		return
 	if new_actor_id == _human_control_actor_id:
 		return
 	_human_control_actor_id = new_actor_id
@@ -478,19 +492,79 @@ func _update_human_control_from_possession(previous_controller: int) -> void:
 
 
 func switch_human_player() -> StringName:
+	return switch_human_player_for_team(&"red")
+
+
+func switch_human_player_for_team(team: StringName) -> StringName:
 	_refresh_field_players()
-	var current := get_human_control_actor_id()
-	var red_players := []
+	var current := get_human_control_actor_id_for_team(team)
+	var team_players := []
 	for actor in _field_players:
-		if actor.call("get_team") == &"red":
-			red_players.append({"actor_id": actor.call("get_actor_id"), "position": actor.global_position})
-	var next_actor: StringName = SquadLogicScript.next_human_actor_id(current, red_players, global_position)
+		if actor.call("get_team") == team:
+			team_players.append({"actor_id": actor.call("get_actor_id"), "position": actor.global_position})
+	var next_actor: StringName = SquadLogicScript.next_human_actor_id(current, team_players, global_position)
 	if next_actor == &"":
 		return current
-	_human_control_actor_id = next_actor
+	if team == &"red":
+		_human_control_actor_id = next_actor
+	else:
+		_blue_human_control_actor_id = next_actor
 	if _charge_seconds > 0.0:
 		_cancel_active_charge(true)
-	return get_human_control_actor_id()
+	return get_human_control_actor_id_for_team(team)
+
+
+func apply_network_control_state(owner_id: StringName, red_human: StringName, blue_human: StringName) -> void:
+	_human_control_actor_id = red_human
+	_blue_human_control_actor_id = blue_human
+	_control_owner = -1
+	for index in _field_players.size():
+		if _field_players[index].call("get_actor_id") == owner_id:
+			_control_owner = index
+			break
+
+
+func _update_network_blue_actions(delta: float) -> void:
+	var actor := _actor_by_id(_blue_human_control_actor_id)
+	if actor == null or _slap_elapsed >= 0.0:
+		_network_blue_was_shooting = OnlineMatch.remote_shoot
+		return
+	if OnlineMatch.remote_pass:
+		_start_network_pass(actor)
+		OnlineMatch.remote_pass = false
+	if OnlineMatch.remote_shoot:
+		_network_blue_charge = minf(MAX_CHARGE_SECONDS * 2.0, _network_blue_charge + delta)
+		actor.call("set_shot_aim_locked", true)
+		actor.call("set_stick_slap_angle", lerpf(-2.0, StickSlapScript.BACKSWING_ANGLE, pow(minf(1.0, _network_blue_charge / MAX_CHARGE_SECONDS), 2.0)))
+	elif _network_blue_was_shooting and _network_blue_charge > 0.0:
+		_slap_actor = actor
+		var facing: Vector3 = actor.call("get_facing_direction")
+		_configure_slap(Vector2(facing.x, facing.z), _network_blue_charge / MAX_CHARGE_SECONDS, StickSlapScript.BACKSWING_SECONDS)
+		_network_blue_charge = 0.0
+	_network_blue_was_shooting = OnlineMatch.remote_shoot
+
+
+func _start_network_pass(actor: CharacterBody3D) -> void:
+	if _control_owner < 0 or _actor_for_controller(_control_owner) != actor:
+		return
+	var teammates := []
+	for candidate in _field_players:
+		if candidate.call("get_team") == &"blue":
+			teammates.append({"actor_id": candidate.call("get_actor_id"), "position": candidate.global_position})
+	var facing: Vector3 = actor.call("get_facing_direction")
+	var target: Dictionary = SquadLogicScript.forward_teammate(actor.call("get_actor_id"), actor.global_position, facing, teammates)
+	var direction := Vector2(facing.x, facing.z) if target.is_empty() else Vector2(target.position.x - actor.global_position.x, target.position.z - actor.global_position.z)
+	_slap_actor = actor
+	_configure_slap(direction, 0.38, 0.0, true)
+	_pending_soft_pass = target.is_empty()
+
+
+func _actor_by_id(actor_id: StringName) -> CharacterBody3D:
+	_refresh_field_players()
+	for actor in _field_players:
+		if actor.call("get_actor_id") == actor_id:
+			return actor
+	return null
 
 
 func get_shot_charge_ratio() -> float:

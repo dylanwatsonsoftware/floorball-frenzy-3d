@@ -89,6 +89,12 @@ func _update_score_label() -> void:
 	_score_label.text = "%d  —  %d" % [score.red, score.blue]
 
 
+func apply_network_score(red_score: int, blue_score: int) -> void:
+	score.red = red_score
+	score.blue = blue_score
+	_update_score_label()
+
+
 func _team_name(team: StringName) -> String:
 	return "LAMBS" if team == &"red" else "PIRATES"
 

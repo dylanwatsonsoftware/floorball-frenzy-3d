@@ -66,6 +66,9 @@ func _physics_process(delta: float) -> void:
 		has_possession,
 		_opening_grace_remaining > 0.0
 	)
+	if is_human_controlled():
+		decision.movement = OnlineMatch.remote_input if OnlineMatch.is_authority() else Input.get_vector("move_left", "move_right", "move_up", "move_down")
+		decision.wants_dash = OnlineMatch.remote_dash if OnlineMatch.is_authority() else Input.is_action_just_pressed("dash")
 	var teammates := []
 	for actor in get_parent().call("get_team_players", &"blue"):
 		if StringName(actor.get_meta("role", &"field")) == &"goalkeeper":
@@ -85,6 +88,9 @@ func _physics_process(delta: float) -> void:
 	elif should_press:
 		var pressure_target := SquadLogicScript.pressure_target(&"blue", _ball.global_position, _ball.ball_velocity)
 		decision.movement = SquadLogicScript.arrival_movement(Vector2(global_position.x, global_position.z), pressure_target)
+	if is_human_controlled():
+		decision.movement = OnlineMatch.remote_input if OnlineMatch.is_authority() else Input.get_vector("move_left", "move_right", "move_up", "move_down")
+		decision.wants_dash = OnlineMatch.remote_dash if OnlineMatch.is_authority() else Input.is_action_just_pressed("dash")
 	if decision.wants_dash:
 		try_dash(decision.movement)
 	if is_dashing():
@@ -160,11 +166,14 @@ func get_squad_slot() -> int:
 
 
 func is_human_controlled() -> bool:
-	return false
+	if not OnlineMatch.enabled:
+		return false
+	var ball := get_parent().get_node_or_null("Ball")
+	return ball != null and ball.has_method("get_human_control_actor_id_for_team") and ball.call("get_human_control_actor_id_for_team", &"blue") == get_actor_id()
 
 
 func is_ai_controlled() -> bool:
-	return true
+	return not is_human_controlled()
 
 
 func reset_for_faceoff() -> void:

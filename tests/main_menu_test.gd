@@ -19,8 +19,11 @@ func run_test() -> void:
 		fail("The ported menu must display the original Floorball Frenzy identity")
 		return
 	var online_button := menu.get_node("Screen/Content/OnlineButton") as Button
-	if not online_button.disabled or "COMING SOON" not in online_button.text:
-		fail("Online play must be presented honestly as unavailable until networking is ported")
+	if online_button.disabled or "COMING SOON" in online_button.text:
+		fail("Online play must open the ported matchmaking lobby")
+		return
+	if not menu.has_method("show_online_lobby"):
+		fail("The main menu must expose the online matchmaking flow")
 		return
 	var solo_button := menu.get_node("Screen/Content/SoloButton") as Button
 	if solo_button.disabled:
