@@ -9,6 +9,15 @@ func run_test() -> void:
 	if not ResourceLoader.exists("res://assets/models/whiffle_ball.glb"):
 		fail("The white whiffle ball must be exported as an authored game asset")
 		return
+	var authored_scene := (load("res://assets/models/whiffle_ball.glb") as PackedScene).instantiate()
+	var authored_mesh := _find_mesh(authored_scene)
+	if authored_mesh == null or authored_mesh.get_aabb().size.x < 0.071 or authored_mesh.get_aabb().size.x > 0.073:
+		fail("The authored source ball must retain its real 72 mm diameter")
+		return
+	if authored_mesh.mesh.get_surface_count() < 3:
+		fail("The simplified ball needs separate shell, rounded hole, and recessed opening surfaces")
+		return
+	authored_scene.free()
 	var scene := (load("res://scenes/match/match.tscn") as PackedScene).instantiate()
 	root.add_child(scene)
 	await process_frame
@@ -20,9 +29,19 @@ func run_test() -> void:
 	if vertices.size() < 500:
 		fail("The whiffle ball needs modeled perforations rather than a primitive sphere")
 		return
-	var material := ball.material_override as StandardMaterial3D
-	if material.albedo_color.get_luminance() < 0.85 or material.albedo_color.a < 0.99:
-		fail("The floorball must be opaque white; color=%s" % material.albedo_color)
+	if ball.material_override != null:
+		fail("The runtime ball must preserve its authored shell, rim, recess, and dimple materials")
+		return
+	var light_surfaces := 0
+	var dark_surfaces := 0
+	for surface in ball.mesh.get_surface_count():
+		var material := ball.mesh.surface_get_material(surface) as StandardMaterial3D
+		if material != null and material.albedo_color.get_luminance() > 0.8:
+			light_surfaces += 1
+		elif material != null and material.albedo_color.get_luminance() < 0.22:
+			dark_surfaces += 1
+	if light_surfaces < 1 or dark_surfaces < 1:
+		fail("The ball must read as an opaque white shell with recessed dark openings")
 		return
 	var displayed_size := ball.get_aabb().size * ball.scale
 	if displayed_size.x < 0.40 or displayed_size.x > 0.46:
@@ -39,3 +58,13 @@ func run_test() -> void:
 func fail(message: String) -> void:
 	push_error(message)
 	quit(1)
+
+
+func _find_mesh(node: Node) -> MeshInstance3D:
+	if node is MeshInstance3D:
+		return node as MeshInstance3D
+	for child in node.get_children():
+		var result := _find_mesh(child)
+		if result != null:
+			return result
+	return null
