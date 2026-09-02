@@ -748,6 +748,13 @@ func _add_floorball_blade(rig: Node3D, color: Color) -> void:
 	_append_blade_strip(vertices, left_rail, 0.045)
 	_append_blade_strip(vertices, right_rail, 0.045)
 	_append_blade_strip(vertices, centre_rail, 0.034)
+	# Close the frame around the shaft heel and sweep it around a rounded toe.
+	# This outer silhouette is the defining curved end of a floorball blade.
+	_append_blade_strip(vertices, PackedVector2Array([left_rail[0], right_rail[0]]), 0.045)
+	_append_blade_strip(vertices, PackedVector2Array([
+		left_rail[4], Vector2(-0.03, 2.04), Vector2(0.08, 2.10),
+		Vector2(0.22, 2.08), Vector2(0.32, 2.02), right_rail[4],
+	]), 0.045)
 	# Diagonal webbing reads as a lightweight molded floorball lattice without
 	# reverting to the previous repeated H-shaped blade.
 	for web in [
@@ -769,21 +776,21 @@ func _add_floorball_blade(rig: Node3D, color: Color) -> void:
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	blade.material_override = material
 	rig.add_child(blade)
-	# The shaft rig is pitched across the player's body, but a floorball blade's
-	# broad face rests almost flat on the rink. Counter-rotate the blade into a
-	# horizontal actor-space basis while retaining the rig's yaw, so slap motion
-	# still carries the entire stick without turning the blade into a rake.
+	# The shaft rig is pitched across the player's body, while a floorball blade
+	# stands on its narrow lower edge. Counter-rotate the lattice into a vertical
+	# actor-space basis while retaining the stick's yaw and slap motion.
 	var blade_center := mesh.get_aabb().get_center()
-	var flat_actor_basis := Basis(Vector3.UP, deg_to_rad(-28.0))
-	blade.basis = rig.basis.inverse() * flat_actor_basis
+	var yaw_basis := Basis(Vector3.UP, deg_to_rad(-28.0))
+	var vertical_actor_basis := Basis(yaw_basis.y, -yaw_basis.x, yaw_basis.z)
 	var old_actor_center := rig.transform * blade_center
-	old_actor_center.y = -0.64
-	blade.position = rig.transform.affine_inverse() * old_actor_center - blade.basis * blade_center
+	var actor_origin := old_actor_center - vertical_actor_basis * blade_center
+	actor_origin.y = -0.69 - mesh.get_aabb().position.x
+	blade.transform = rig.transform.affine_inverse() * Transform3D(vertical_actor_basis, actor_origin)
 	var pocket := Marker3D.new()
 	pocket.name = "BladePocket"
 	# The pocket lies just inside the curled toe, where the concave front face
 	# cups a floorball in the supplied stick reference.
-	pocket.position = blade.position + blade.basis * Vector3(0.24, 0.0, 1.87)
+	pocket.position = blade.position + blade.basis * Vector3(-0.02, 0.0, 1.98)
 	rig.add_child(pocket)
 
 

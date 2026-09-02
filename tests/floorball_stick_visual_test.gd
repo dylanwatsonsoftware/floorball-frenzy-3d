@@ -58,9 +58,10 @@ func run_test() -> void:
 		if pocket_in_blade.z < blade.get_aabb().end.z - 0.18:
 			fail("The ball pocket must sit at the curled blade toe rather than near the shaft or blade centre; pocket=%s blade_end=%s" % [pocket_in_blade, blade.get_aabb().end])
 			return
-		var blade_up := blade.global_basis.y.normalized()
-		if blade_up.dot(Vector3.UP) < 0.94:
-			fail("The broad blade face must lie almost flat over the rink instead of standing up like a broom; up=%s" % blade_up)
+		var blade_face_normal := blade.global_basis.y.normalized()
+		var blade_height_axis := blade.global_basis.x.normalized()
+		if absf(blade_face_normal.dot(Vector3.UP)) > 0.16 or blade_height_axis.dot(Vector3.UP) < 0.94:
+			fail("The lattice face must stand vertically on its narrow lower edge; normal=%s height_axis=%s" % [blade_face_normal, blade_height_axis])
 			return
 		var blade_bounds := blade.get_aabb()
 		var blade_min_y := INF
@@ -71,8 +72,11 @@ func run_test() -> void:
 					var corner_y := blade.to_global(Vector3(x, y, z)).y
 					blade_min_y = minf(blade_min_y, corner_y)
 					blade_max_y = maxf(blade_max_y, corner_y)
-		if blade_min_y < 0.035 or blade_max_y > 0.28 or blade_max_y - blade_min_y > 0.10:
-			fail("The complete blade must clear and hug the rink surface; min_y=%.3f max_y=%.3f" % [blade_min_y, blade_max_y])
+		if blade_min_y < 0.035 or blade_max_y > 0.78 or blade_max_y - blade_min_y < 0.38:
+			fail("The blade must stand above the rink without passing through it; min_y=%.3f max_y=%.3f" % [blade_min_y, blade_max_y])
+			return
+		if blade_bounds.end.z < 2.03:
+			fail("The outer frame must continue into a visibly rounded toe instead of ending as an open angular lattice; end_z=%.3f" % blade_bounds.end.z)
 			return
 		var blade_center_in_actor: Vector3 = rig.transform * blade.transform * blade.get_aabb().get_center()
 		var grip_center_in_actor: Vector3 = rig.transform * grip.position

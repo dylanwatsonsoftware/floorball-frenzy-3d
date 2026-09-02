@@ -174,7 +174,7 @@ func run_test() -> void:
 	var player_blade := scene.get_node("Arena/Player/StickRig/Blade") as MeshInstance3D
 	var blade_bounds := player_blade.get_aabb()
 	var blade_world_center := player_blade.to_global(blade_bounds.get_center())
-	if blade_bounds.end.z <= 0.5 or blade_bounds.end.x <= 0.0 or blade_world_center.y > 0.3:
+	if blade_bounds.end.z <= 0.5 or blade_bounds.end.x <= 0.0 or blade_world_center.y > 0.65:
 		fail("The stick blade must finish grounded, forward, and to the player's right")
 		return
 	if not player.has_method("set_stick_slap_angle"):
