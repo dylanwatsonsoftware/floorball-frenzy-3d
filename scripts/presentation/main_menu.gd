@@ -90,6 +90,7 @@ func _refresh_lobby() -> void:
 		return
 	_lobby_status.text = "Loading open games…"
 	var request := HTTPRequest.new()
+	request.timeout = 10.0
 	add_child(request)
 	request.request_completed.connect(_on_lobby_loaded.bind(request))
 	var error := request.request(ApiEndpointScript.current_base() + "/lobby")
@@ -126,22 +127,40 @@ func _on_lobby_loaded(_result: int, response_code: int, _headers: PackedStringAr
 
 func _create_online_game(game_name: String) -> void:
 	var room_id := OnlineSessionScript.new().make_room_id()
-	OnlineMatch.start(&"host", room_id, game_name.strip_edges())
-	_post_lobby({"action": "register", "roomId": room_id, "hostName": "[G2] %s" % (game_name.strip_edges() if not game_name.strip_edges().is_empty() else "Game")})
-	get_tree().change_scene_to_file(MATCH_SCENE)
+	var clean_name := game_name.strip_edges() if not game_name.strip_edges().is_empty() else "Game"
+	_lobby_status.text = "Creating game…"
+	_post_lobby(
+		{"action": "register", "roomId": room_id, "hostName": "[G2] %s" % clean_name},
+		&"host",
+		room_id,
+		clean_name
+	)
 
 
 func _join_online_game(room_id: String) -> void:
-	OnlineMatch.start(&"client", room_id)
-	_post_lobby({"action": "join", "roomId": room_id})
-	get_tree().change_scene_to_file(MATCH_SCENE)
+	_lobby_status.text = "Joining game…"
+	_post_lobby({"action": "join", "roomId": room_id}, &"client", room_id)
 
 
-func _post_lobby(payload: Dictionary) -> void:
+func _post_lobby(payload: Dictionary, role: StringName, room_id: String, host_name: String = "") -> void:
 	var request := HTTPRequest.new()
+	request.timeout = 10.0
 	add_child(request)
-	request.request_completed.connect(func(_a: int, _b: int, _c: PackedStringArray, _d: PackedByteArray) -> void: request.queue_free())
-	request.request(ApiEndpointScript.current_base() + "/lobby", ["Content-Type: application/json"], HTTPClient.METHOD_POST, JSON.stringify(payload))
+	request.request_completed.connect(_on_lobby_posted.bind(request, role, room_id, host_name))
+	var error := request.request(ApiEndpointScript.current_base() + "/lobby", ["Content-Type: application/json"], HTTPClient.METHOD_POST, JSON.stringify(payload))
+	if error != OK:
+		request.queue_free()
+		_lobby_status.text = "Could not reach matchmaking. Try again."
+
+
+func _on_lobby_posted(_result: int, response_code: int, _headers: PackedStringArray, _body: PackedByteArray, request: HTTPRequest, role: StringName, room_id: String, host_name: String) -> void:
+	request.queue_free()
+	if response_code < 200 or response_code >= 300:
+		if _lobby_status != null and is_instance_valid(_lobby_status):
+			_lobby_status.text = "Could not %s game. Try again." % ("create" if role == &"host" else "join")
+		return
+	OnlineMatch.start(role, room_id, host_name)
+	get_tree().change_scene_to_file(MATCH_SCENE)
 
 
 func _close_lobby() -> void:

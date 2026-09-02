@@ -10,6 +10,9 @@ func run_test() -> void:
 	if "No open Godot games" in menu_source:
 		fail("Player-facing matchmaking copy must not expose the engine name")
 		return
+	if "func _on_lobby_posted" not in menu_source:
+		fail("Online scene transition must wait for lobby registration to complete")
+		return
 	var menu := (load("res://scenes/app/main_menu.tscn") as PackedScene).instantiate()
 	root.add_child(menu)
 	current_scene = menu
