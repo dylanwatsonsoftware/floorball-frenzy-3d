@@ -7,6 +7,7 @@ const PASS_ERROR_RADIANS := 0.12
 const ARRIVAL_STOP_RADIUS := 0.18
 const ARRIVAL_SLOW_RADIUS := 2.4
 const PASS_FIELD_OF_VIEW_DEGREES := 160.0
+const PASS_ANGLE_PENALTY_METRES_PER_RADIAN := 4.0
 
 
 static func human_actor_id(owner_actor_id: StringName, owner_team: StringName, human_team: StringName = HUMAN_TEAM) -> StringName:
@@ -124,19 +125,24 @@ static func forward_teammate(carrier_id: StringName, carrier_position: Vector3, 
 	if planar_facing.is_zero_approx():
 		return {}
 	var minimum_dot := cos(deg_to_rad(PASS_FIELD_OF_VIEW_DEGREES * 0.5))
-	var closest: Dictionary = {}
-	var closest_distance := INF
+	var best: Dictionary = {}
+	var best_score := INF
 	for teammate in teammates:
 		if StringName(teammate.actor_id) == carrier_id:
 			continue
 		var offset := _planar(teammate.position) - _planar(carrier_position)
-		var distance := offset.length_squared()
-		if distance <= 0.0001 or planar_facing.dot(offset.normalized()) < minimum_dot:
+		var distance := offset.length()
+		if distance <= 0.01:
 			continue
-		if distance < closest_distance:
-			closest_distance = distance
-			closest = teammate
-	return closest
+		var alignment := planar_facing.dot(offset.normalized())
+		if alignment < minimum_dot:
+			continue
+		var angle := acos(clampf(alignment, -1.0, 1.0))
+		var score := distance + angle * PASS_ANGLE_PENALTY_METRES_PER_RADIAN
+		if score < best_score:
+			best_score = score
+			best = teammate
+	return best
 
 
 static func pass_plan(carrier_position: Vector3, teammates: Array, opponent_positions: Array, team: StringName, pass_index: int, carrier_facing: Vector3 = Vector3.ZERO) -> Dictionary:

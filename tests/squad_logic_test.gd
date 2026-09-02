@@ -142,6 +142,20 @@ func _init() -> void:
 	if forward_target.get("actor_id", &"") != &"inside_edge":
 		fail("A 160-degree pass view must include 79 degrees, reject 81 degrees, and never choose behind; target=%s" % forward_target)
 		return
+	var forward_priority: Dictionary = squad.forward_teammate(&"red_1", Vector3.ZERO, Vector3.RIGHT, [
+		{"actor_id": &"straight", "position": Vector3(8.0, 0.75, 0.0)},
+		{"actor_id": &"wide_closer", "position": Vector3(cos(deg_to_rad(60.0)) * 5.0, 0.75, sin(deg_to_rad(60.0)) * 5.0)},
+	])
+	if forward_priority.get("actor_id", &"") != &"straight":
+		fail("A clearly forward receiver should beat a merely closer wide option; target=%s" % forward_priority)
+		return
+	var proximity_priority: Dictionary = squad.forward_teammate(&"red_1", Vector3.ZERO, Vector3.RIGHT, [
+		{"actor_id": &"straight_far", "position": Vector3(8.0, 0.75, 0.0)},
+		{"actor_id": &"slight_close", "position": Vector3(cos(deg_to_rad(25.0)) * 3.0, 0.75, sin(deg_to_rad(25.0)) * 3.0)},
+	])
+	if proximity_priority.get("actor_id", &"") != &"slight_close":
+		fail("A substantially closer teammate only slightly off-axis should remain the better pass; target=%s" % proximity_priority)
+		return
 	var no_forward_target: Dictionary = squad.forward_teammate(&"red_1", Vector3.ZERO, Vector3.RIGHT, [
 		{"actor_id": &"behind", "position": Vector3(-3.0, 0.75, 0.0)},
 	])
