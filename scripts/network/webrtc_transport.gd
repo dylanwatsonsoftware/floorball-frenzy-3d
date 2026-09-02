@@ -2,7 +2,7 @@ class_name FloorballWebRTCTransport
 extends Node
 
 
-const API_BASE := "https://floorball-frenzy.vercel.app/api"
+const API_BASE := "/api"
 const POLL_SECONDS := 0.25
 
 signal connected

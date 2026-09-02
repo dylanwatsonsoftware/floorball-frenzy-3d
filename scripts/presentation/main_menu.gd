@@ -2,7 +2,7 @@ extends CanvasLayer
 
 
 const MATCH_SCENE := "res://scenes/match/match.tscn"
-const API_BASE := "https://floorball-frenzy.vercel.app/api"
+const API_BASE := "/api"
 const OnlineSessionScript = preload("res://scripts/network/online_session.gd")
 
 

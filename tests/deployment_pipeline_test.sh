@@ -13,6 +13,15 @@ grep -Fq '"version": 3' scripts/package-vercel-output
 grep -Fq '"routes"' scripts/package-vercel-output
 grep -Fq 'application/wasm' scripts/package-vercel-output
 grep -Fq '.vercel/output/static' scripts/package-vercel-output
+grep -Fq 'https://floorball-frenzy.vercel.app/api/ice-servers' scripts/package-vercel-output
+grep -Fq '"src": "/api/(lobby|signal)"' scripts/package-vercel-output
+grep -Fq '.vercel/output/functions/api/matchmaking.func' scripts/package-vercel-output
+grep -Fq 'server/matchmaking.mjs' scripts/package-vercel-output
+
+if grep -R -Fq 'const API_BASE := "https://floorball-frenzy.vercel.app/api"' scripts; then
+	echo "Browser networking must use same-origin /api routes so CORS cannot block matchmaking." >&2
+	exit 1
+fi
 
 test -f .github/workflows/deploy-vercel.yml
 grep -Fq 'actions/cache@v4' .github/workflows/deploy-vercel.yml

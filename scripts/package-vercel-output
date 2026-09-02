@@ -9,11 +9,29 @@ fi
 rm -rf .vercel/output
 mkdir -p .vercel/output/static
 cp -R build/web/. .vercel/output/static/
+mkdir -p .vercel/output/functions/api/matchmaking.func
+cp server/matchmaking.mjs .vercel/output/functions/api/matchmaking.func/index.mjs
+
+cat > .vercel/output/functions/api/matchmaking.func/.vc-config.json <<'JSON'
+{
+  "runtime": "nodejs24.x",
+  "handler": "index.mjs",
+  "launcherType": "Nodejs"
+}
+JSON
 
 cat > .vercel/output/config.json <<'JSON'
 {
   "version": 3,
   "routes": [
+    {
+      "src": "/api/ice-servers",
+      "dest": "https://floorball-frenzy.vercel.app/api/ice-servers"
+    },
+    {
+      "src": "/api/(lobby|signal)",
+      "dest": "/api/matchmaking?endpoint=$1"
+    },
     {
       "src": "/.*\\.wasm$",
       "headers": {
