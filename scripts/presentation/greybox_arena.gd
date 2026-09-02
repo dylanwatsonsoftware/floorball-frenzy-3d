@@ -798,6 +798,8 @@ func _build_ball() -> void:
 	var packed_ball := load("res://assets/models/whiffle_ball.glb") as PackedScene
 	var imported_ball := packed_ball.instantiate() as Node3D
 	var authored_ball := imported_ball.find_child("WhiffleBall", true, false) as MeshInstance3D
+	if authored_ball == null:
+		authored_ball = _find_first_mesh(imported_ball)
 	ball.mesh = authored_ball.mesh
 	var authored_diameter := authored_ball.get_aabb().size.x
 	ball.scale = Vector3.ONE * (0.44 / authored_diameter)
@@ -817,6 +819,16 @@ func _build_ball() -> void:
 	trail.top_level = true
 	ball.add_child(trail)
 	add_child(ball)
+
+
+func _find_first_mesh(node: Node) -> MeshInstance3D:
+	if node is MeshInstance3D:
+		return node as MeshInstance3D
+	for child in node.get_children():
+		var result := _find_first_mesh(child)
+		if result != null:
+			return result
+	return null
 
 
 func _build_shot_impact() -> void:

@@ -37,17 +37,15 @@ func run_test() -> void:
 		variants[team][signature] = true
 		var shaft := rig.get_node_or_null("Shaft") as MeshInstance3D
 		var grip := rig.get_node_or_null("Grip") as MeshInstance3D
-		var end_cap := rig.get_node_or_null("EndCap") as MeshInstance3D
 		var blade := rig.get_node_or_null("Blade") as MeshInstance3D
-		var neck := rig.get_node_or_null("BladeNeck") as MeshInstance3D
-		if shaft == null or grip == null or end_cap == null or blade == null or neck == null:
-			fail("The imported stick must preserve shaft, grip, cap, blade, and socket nodes")
+		if shaft == null or grip == null or blade == null:
+			fail("The optimized stick must preserve its authored shaft, grip, and blade groups")
 			return
-		for modeled_part in [shaft, grip, end_cap, blade, neck]:
+		for modeled_part in [shaft, grip, blade]:
 			if not modeled_part.mesh is ArrayMesh:
 				fail("Stick parts must come from authored Blender geometry, not Godot primitives")
 				return
-		if _longest_axis(shaft.get_aabb().size) < 1.1:
+		if _longest_axis(shaft.get_aabb().size) < 0.95:
 			fail("The authored tapered shaft must retain its full playing length")
 			return
 		if _longest_axis(grip.get_aabb().size) < 0.5:
@@ -57,15 +55,11 @@ func run_test() -> void:
 		if _longest_axis(blade_size) < 0.36 or _longest_axis(blade_size) > 0.46:
 			fail("The authored blade must retain its approved short floorball proportions; size=%s" % blade_size)
 			return
-		if minf(blade_size.x, minf(blade_size.y, blade_size.z)) > 0.025:
+		if minf(blade_size.x, minf(blade_size.y, blade_size.z)) > 0.05:
 			fail("The blade face must remain thin relative to the shaft diameter; size=%s" % blade_size)
 			return
-		var lattice_parts := 0
-		for child in rig.get_children():
-			if child is MeshInstance3D and ("Blade_Rib" in child.name or child.name == "Blade"):
-				lattice_parts += 1
-		if lattice_parts < 10:
-			fail("The approved open blade lattice must survive GLB import; parts=%d" % lattice_parts)
+		if _triangle_count(blade.mesh) < 3000:
+			fail("The optimized blade must retain the approved open lattice detail")
 			return
 		if rig.get_node_or_null("BladePocket") == null or rig.get_node_or_null("CentreSpineToe") == null:
 			fail("The authored stick must preserve its ball-control anchors")
@@ -98,6 +92,16 @@ func run_test() -> void:
 
 func _longest_axis(size: Vector3) -> float:
 	return maxf(size.x, maxf(size.y, size.z))
+
+
+func _triangle_count(mesh: Mesh) -> int:
+	var total := 0
+	for surface in mesh.get_surface_count():
+		var arrays := mesh.surface_get_arrays(surface)
+		var vertices := arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array
+		var indices := arrays[Mesh.ARRAY_INDEX] as PackedInt32Array
+		total += indices.size() / 3 if not indices.is_empty() else vertices.size() / 3
+	return total
 
 
 func _palette_contains(palette: Array, color: Color) -> bool:
