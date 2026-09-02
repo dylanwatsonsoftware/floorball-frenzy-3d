@@ -28,6 +28,19 @@ func run_test() -> void:
 	if live_label == null or "LIVE" not in live_label.text:
 		fail("The broadcast score bug must clearly identify the live match presentation")
 		return
+	if not live_label.text.begins_with("LIVE"):
+		fail("The live row must not include an unsupported icon or badge before its text: %s" % live_label.text)
+		return
+	var match_label := score_bug.get_node("CentrePanel/MatchLabel") as Label
+	var live_rect := live_label.get_global_rect()
+	var score_rect := score_label.get_global_rect()
+	var match_rect := match_label.get_global_rect()
+	if live_rect.end.y > score_rect.position.y or score_rect.end.y > match_rect.position.y:
+		fail("Scoreboard rows must be vertically aligned without overlap: live=%s score=%s title=%s" % [live_rect, score_rect, match_rect])
+		return
+	if absf(live_rect.get_center().x - score_rect.get_center().x) > 1.0 or absf(score_rect.get_center().x - match_rect.get_center().x) > 1.0:
+		fail("The live row, score, and title must share one horizontal center line")
+		return
 	var lambs_name := score_bug.get_node_or_null("LambsPanel/LambsName") as Label
 	var pirates_name := score_bug.get_node_or_null("PiratesPanel/PiratesName") as Label
 	if lambs_name == null or pirates_name == null or lambs_name.text != "LAMBS" or pirates_name.text != "PIRATES":

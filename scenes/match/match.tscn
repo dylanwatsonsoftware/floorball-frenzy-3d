@@ -212,14 +212,14 @@ offset_right = 188.0
 offset_bottom = 22.0
 theme_override_colors/font_color = Color(1, 0.32, 0.28, 1)
 theme_override_font_sizes/font_size = 11
-text = "●  LIVE · 6v6 FLOORBALL"
+text = "LIVE · 6v6 FLOORBALL"
 horizontal_alignment = 1
 
 [node name="MatchLabel" type="Label" parent="HUD/BroadcastScoreBug/CentrePanel"]
 offset_left = 8.0
-offset_top = 57.0
+offset_top = 61.0
 offset_right = 188.0
-offset_bottom = 73.0
+offset_bottom = 76.0
 theme_override_colors/font_color = Color(0.73, 0.78, 0.86, 0.95)
 theme_override_font_sizes/font_size = 10
 text = "FLOORBALL FRENZY"
@@ -260,14 +260,14 @@ horizontal_alignment = 1
 [node name="ScoreLabel" type="Label" parent="HUD"]
 anchors_preset = 10
 anchor_right = 1.0
-offset_top = 42.0
-offset_bottom = 76.0
+offset_top = 38.0
+offset_bottom = 77.0
 grow_horizontal = 2
 theme_override_colors/font_color = Color(0.95, 0.98, 1, 1)
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.85)
 theme_override_constants/shadow_offset_x = 2
 theme_override_constants/shadow_offset_y = 2
-theme_override_font_sizes/font_size = 32
+theme_override_font_sizes/font_size = 28
 text = "0  —  0"
 horizontal_alignment = 1
 
