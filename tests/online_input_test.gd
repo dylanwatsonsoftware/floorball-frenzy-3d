@@ -65,6 +65,18 @@ func _init() -> void:
 	if not replayed_position.is_equal_approx(Vector3(0.0, 0.0, 0.9)):
 		fail("Unacknowledged guest inputs must replay over the host position; got %s" % replayed_position)
 		return
+	var clock_offset_ms: float = controller.estimate_clock_offset_ms(1120, 1000, 80.0)
+	if not is_equal_approx(clock_offset_ms, 80.0):
+		fail("Snapshot timing must account for half the measured round trip when aligning host and guest clocks")
+		return
+	var packet_age: float = controller.snapshot_age_seconds(1160, 1000, clock_offset_ms)
+	if not is_equal_approx(packet_age, 0.08):
+		fail("Snapshot age should be derived from its host timestamp and estimated clock offset; got %s" % packet_age)
+		return
+	var capped_age: float = controller.snapshot_age_seconds(2000, 1000, clock_offset_ms)
+	if capped_age > 0.1501:
+		fail("Old packet projection must be capped so delay spikes cannot launch replicas ahead")
+		return
 	if controller.next_action_sequence(4, false) != 4 or controller.next_action_sequence(4, true) != 5:
 		fail("Discrete online actions need persistent sequence numbers so unreliable packets can be repeated safely")
 		return

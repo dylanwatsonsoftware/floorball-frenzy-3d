@@ -24,6 +24,11 @@ var _last_remote_pass_sequence := 0
 var _last_remote_switch_sequence := 0
 var _last_faceoff_sequence := -1
 var _pending_inputs: Array = []
+var _last_remote_input_sent_ms := -1
+var _estimated_rtt_ms := 0.0
+var _host_clock_offset_ms := 0.0
+var _has_clock_offset := false
+var _snapshot_age_seconds := 0.0
 
 
 func _ready() -> void:
@@ -72,7 +77,7 @@ func _physics_process(delta: float) -> void:
 		var movement := _movement_input()
 		_pass_sequence = OnlineInputScript.next_action_sequence(_pass_sequence, Input.is_action_just_pressed("pass"))
 		_switch_sequence = OnlineInputScript.next_action_sequence(_switch_sequence, Input.is_action_just_pressed("switch_player"))
-		_transport.send({"type": "input", "seq": _sequence, "move": _vector_to_array(movement), "dash": Input.is_action_pressed("dash"), "shoot": Input.is_action_pressed("shoot"), "pass_seq": _pass_sequence, "switch_seq": _switch_sequence})
+		_transport.send({"type": "input", "seq": _sequence, "sent_ms": Time.get_ticks_msec(), "move": _vector_to_array(movement), "dash": Input.is_action_pressed("dash"), "shoot": Input.is_action_pressed("shoot"), "pass_seq": _pass_sequence, "switch_seq": _switch_sequence})
 		_record_pending_input(_sequence, movement, delta)
 		_predict_local_player(movement, delta)
 		_predict_replicas(delta)
@@ -91,6 +96,7 @@ func _on_message(message: Dictionary) -> void:
 		if seq <= _last_snapshot:
 			return
 		_last_snapshot = seq
+		_last_remote_input_sent_ms = int(message.get("sent_ms", -1))
 		OnlineMatch.remote_input = _array_to_vector(message.get("move", [0.0, 0.0]))
 		OnlineMatch.remote_dash = bool(message.get("dash", false))
 		OnlineMatch.remote_shoot = bool(message.get("shoot", false))
@@ -115,10 +121,11 @@ func _capture_snapshot() -> Dictionary:
 	for actor in _arena.call("get_field_players"):
 		actors.append({"id": String(actor.call("get_actor_id")), "p": _vector3_to_array(actor.global_position), "v": _vector3_to_array(actor.velocity), "r": actor.rotation.y})
 	var match_state: Dictionary = _match_flow.call("get_network_state") if _match_flow.has_method("get_network_state") else {}
-	return {"type": "snapshot", "seq": _sequence, "input_ack": _last_snapshot, "actors": actors, "ball": _vector3_to_array(_ball.global_position), "ball_velocity": _vector3_to_array(_ball.ball_velocity), "owner": String(_ball.call("get_control_owner_actor_id")), "red_human": String(_ball.call("get_human_control_actor_id_for_team", &"red")), "blue_human": String(_ball.call("get_human_control_actor_id_for_team", &"blue")), "score": _match_flow.score.duplicate(), "goal_seq": int(match_state.get("goal_seq", 0)), "faceoff_seq": int(match_state.get("faceoff_seq", 0)), "scorer": String(match_state.get("scorer", "")), "phase": String(match_state.get("phase", "play"))}
+	return {"type": "snapshot", "seq": _sequence, "host_time_ms": Time.get_ticks_msec(), "input_ack": _last_snapshot, "input_echo_ms": _last_remote_input_sent_ms, "actors": actors, "ball": _vector3_to_array(_ball.global_position), "ball_velocity": _vector3_to_array(_ball.ball_velocity), "owner": String(_ball.call("get_control_owner_actor_id")), "red_human": String(_ball.call("get_human_control_actor_id_for_team", &"red")), "blue_human": String(_ball.call("get_human_control_actor_id_for_team", &"blue")), "score": _match_flow.score.duplicate(), "goal_seq": int(match_state.get("goal_seq", 0)), "faceoff_seq": int(match_state.get("faceoff_seq", 0)), "scorer": String(match_state.get("scorer", "")), "phase": String(match_state.get("phase", "play"))}
 
 
 func _apply_snapshot(snapshot: Dictionary) -> void:
+	_update_snapshot_timing(snapshot)
 	var actor_by_id := {}
 	var local_actor := _arena.call("get_local_human_actor") as CharacterBody3D
 	var faceoff_sequence := int(snapshot.get("faceoff_seq", 0))
@@ -133,16 +140,25 @@ func _apply_snapshot(snapshot: Dictionary) -> void:
 			var is_local_actor := actor == local_actor
 			var actively_steering := is_local_actor and Vector2(actor.velocity.x, actor.velocity.z).length_squared() > 0.01
 			var authoritative_position := _array_to_vector3(state.get("p", []))
+			var authoritative_velocity := _array_to_vector3(state.get("v", []))
 			if is_local_actor and not is_new_faceoff:
 				authoritative_position = OnlineInputScript.replay_inputs(authoritative_position, _pending_inputs)
 				authoritative_position.x = clampf(authoritative_position.x, -RINK_HALF_LENGTH, RINK_HALF_LENGTH)
 				authoritative_position.z = clampf(authoritative_position.z, -RINK_HALF_WIDTH, RINK_HALF_WIDTH)
+			elif not is_new_faceoff:
+				authoritative_position = OnlineInputScript.project_snapshot_position(authoritative_position, authoritative_velocity, _snapshot_age_seconds)
 			actor.global_position = authoritative_position if is_new_faceoff else OnlineInputScript.reconcile_position(actor.global_position, authoritative_position, is_local_actor)
-			actor.velocity = _array_to_vector3(state.get("v", []))
+			actor.velocity = authoritative_velocity
 			actor.rotation.y = float(state.get("r", actor.rotation.y)) if is_new_faceoff else OnlineInputScript.reconcile_rotation(actor.rotation.y, float(state.get("r", actor.rotation.y)), is_local_actor, actively_steering)
 	var authoritative_ball := _array_to_vector3(snapshot.get("ball", []))
+	var authoritative_ball_velocity := _array_to_vector3(snapshot.get("ball_velocity", []))
+	var local_actor_id := String(local_actor.call("get_actor_id")) if local_actor != null else ""
+	if not is_new_faceoff and String(snapshot.get("owner", "")) != local_actor_id:
+		var aged_ball: Dictionary = BallSimulationScript.step(authoritative_ball, authoritative_ball_velocity, _snapshot_age_seconds)
+		authoritative_ball = aged_ball.position
+		authoritative_ball_velocity = aged_ball.velocity
 	_ball.global_position = authoritative_ball if is_new_faceoff else OnlineInputScript.reconcile_ball_position(_ball.global_position, authoritative_ball)
-	_ball.ball_velocity = _array_to_vector3(snapshot.get("ball_velocity", []))
+	_ball.ball_velocity = authoritative_ball_velocity
 	if _ball.has_method("apply_network_control_state"):
 		_ball.call("apply_network_control_state", StringName(snapshot.get("owner", "")), StringName(snapshot.get("red_human", "red_1")), StringName(snapshot.get("blue_human", "blue_1")))
 	var score: Dictionary = snapshot.get("score", {})
@@ -158,6 +174,19 @@ func _set_client_replica_mode() -> void:
 	for actor in _arena.call("get_field_players"):
 		actor.set_physics_process(false)
 		actor.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
+
+
+func _update_snapshot_timing(snapshot: Dictionary) -> void:
+	var received_at_ms := Time.get_ticks_msec()
+	var echoed_input_ms := int(snapshot.get("input_echo_ms", -1))
+	if echoed_input_ms >= 0:
+		var rtt_sample := maxf(0.0, float(received_at_ms - echoed_input_ms))
+		_estimated_rtt_ms = rtt_sample if _estimated_rtt_ms <= 0.0 else lerpf(_estimated_rtt_ms, rtt_sample, 0.15)
+	var host_time_ms := int(snapshot.get("host_time_ms", received_at_ms))
+	var offset_sample := OnlineInputScript.estimate_clock_offset_ms(received_at_ms, host_time_ms, _estimated_rtt_ms)
+	_host_clock_offset_ms = offset_sample if not _has_clock_offset else lerpf(_host_clock_offset_ms, offset_sample, 0.1)
+	_has_clock_offset = true
+	_snapshot_age_seconds = OnlineInputScript.snapshot_age_seconds(received_at_ms, host_time_ms, _host_clock_offset_ms)
 
 
 func _set_authority_waiting(waiting: bool) -> void:

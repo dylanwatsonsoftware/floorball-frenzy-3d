@@ -3,6 +3,7 @@ extends RefCounted
 
 const DEFAULT_SNAPSHOT_SECONDS := 1.0 / 30.0
 const MAX_REPLICA_PREDICTION_STEP := 0.05
+const MAX_SNAPSHOT_AGE_SECONDS := 0.15
 
 
 static func compose_movement_input(keyboard_or_controller: Vector2, mobile_joystick: Vector2) -> Vector2:
@@ -46,6 +47,19 @@ static func replay_inputs(authoritative_position: Vector3, inputs: Array) -> Vec
 	for input: Dictionary in inputs:
 		replayed = predict_position(replayed, input.get("move", Vector2.ZERO), float(input.get("delta", 0.0)), float(input.get("speed", 0.0)))
 	return replayed
+
+
+static func estimate_clock_offset_ms(received_at_ms: int, host_sent_at_ms: int, round_trip_ms: float) -> float:
+	return float(received_at_ms - host_sent_at_ms) - maxf(0.0, round_trip_ms) * 0.5
+
+
+static func snapshot_age_seconds(received_at_ms: int, host_sent_at_ms: int, host_to_local_offset_ms: float) -> float:
+	var age_ms := float(received_at_ms - host_sent_at_ms) - host_to_local_offset_ms
+	return clampf(age_ms / 1000.0, 0.0, MAX_SNAPSHOT_AGE_SECONDS)
+
+
+static func project_snapshot_position(position: Vector3, velocity: Vector3, age_seconds: float) -> Vector3:
+	return position + velocity * clampf(age_seconds, 0.0, MAX_SNAPSHOT_AGE_SECONDS)
 
 
 static func reconcile_rotation(current: float, authoritative: float, locally_predicted: bool, actively_steering: bool) -> float:

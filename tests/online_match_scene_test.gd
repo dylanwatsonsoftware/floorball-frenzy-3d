@@ -32,6 +32,9 @@ func run_test() -> void:
 	if not authority_snapshot.has("input_ack"):
 		fail("Authority snapshots must acknowledge the newest processed guest input")
 		return
+	if not authority_snapshot.has("host_time_ms") or not authority_snapshot.has("input_echo_ms"):
+		fail("Authority snapshots must carry host time and echo guest send-time for packet-age estimation")
+		return
 	match_scene.queue_free()
 	await process_frame
 	root.get_node("OnlineMatch").call("stop")
