@@ -733,15 +733,34 @@ func _add_stick(parent: Node3D, color: Color) -> void:
 func _add_floorball_blade(rig: Node3D, color: Color) -> void:
 	var blade := MeshInstance3D.new()
 	blade.name = "Blade"
+	var left_rail := PackedVector2Array([
+		Vector2(-0.055, 1.02), Vector2(-0.12, 1.20), Vector2(-0.18, 1.45),
+		Vector2(-0.16, 1.70), Vector2(-0.06, 1.96),
+	])
+	var right_rail := PackedVector2Array([
+		Vector2(0.065, 1.02), Vector2(0.13, 1.20), Vector2(0.21, 1.45),
+		Vector2(0.31, 1.69), Vector2(0.35, 1.91),
+	])
+	var centre_rail := PackedVector2Array()
+	for index in left_rail.size():
+		centre_rail.append(left_rail[index].lerp(right_rail[index], 0.53))
+	var vertices := PackedVector3Array()
+	_append_blade_strip(vertices, left_rail, 0.045)
+	_append_blade_strip(vertices, right_rail, 0.045)
+	_append_blade_strip(vertices, centre_rail, 0.034)
+	# Diagonal webbing reads as a lightweight molded floorball lattice without
+	# reverting to the previous repeated H-shaped blade.
+	for web in [
+		PackedVector2Array([left_rail[1], right_rail[2]]),
+		PackedVector2Array([right_rail[1], left_rail[2]]),
+		PackedVector2Array([left_rail[2], right_rail[3]]),
+		PackedVector2Array([right_rail[2], left_rail[3]]),
+		PackedVector2Array([left_rail[3], right_rail[4]]),
+	]:
+		_append_blade_strip(vertices, web, 0.03)
 	var arrays := []
 	arrays.resize(ArrayMesh.ARRAY_MAX)
-	arrays[ArrayMesh.ARRAY_VERTEX] = PackedVector3Array([
-		Vector3(-0.04, 0.0, 1.04), Vector3(0.08, 0.0, 1.06),
-		Vector3(0.14, 0.0, 1.26), Vector3(0.24, 0.0, 1.52),
-		Vector3(0.18, 0.0, 1.66), Vector3(0.05, 0.0, 1.72),
-		Vector3(-0.06, 0.0, 1.55), Vector3(-0.08, 0.0, 1.25),
-	])
-	arrays[ArrayMesh.ARRAY_INDEX] = PackedInt32Array([0, 1, 2, 0, 2, 7, 2, 6, 7, 2, 3, 6, 3, 5, 6, 3, 4, 5])
+	arrays[ArrayMesh.ARRAY_VERTEX] = vertices
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	blade.mesh = mesh
@@ -750,6 +769,25 @@ func _add_floorball_blade(rig: Node3D, color: Color) -> void:
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	blade.material_override = material
 	rig.add_child(blade)
+	var pocket := Marker3D.new()
+	pocket.name = "BladePocket"
+	# The pocket lies just inside the curled toe, where the concave front face
+	# cups a floorball in the supplied stick reference.
+	pocket.position = Vector3(0.24, 0.0, 1.87)
+	rig.add_child(pocket)
+
+
+func _append_blade_strip(vertices: PackedVector3Array, points: PackedVector2Array, width: float) -> void:
+	for index in points.size() - 1:
+		var start := points[index]
+		var finish := points[index + 1]
+		var direction := (finish - start).normalized()
+		var normal := Vector2(-direction.y, direction.x) * width * 0.5
+		var a := Vector3(start.x + normal.x, 0.0, start.y + normal.y)
+		var b := Vector3(start.x - normal.x, 0.0, start.y - normal.y)
+		var c := Vector3(finish.x - normal.x, 0.0, finish.y - normal.y)
+		var d := Vector3(finish.x + normal.x, 0.0, finish.y + normal.y)
+		vertices.append_array(PackedVector3Array([a, b, c, a, c, d]))
 
 
 func _add_dash_streak(parent: Node3D, color: Color) -> void:

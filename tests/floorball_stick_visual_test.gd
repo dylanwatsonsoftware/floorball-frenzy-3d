@@ -34,7 +34,7 @@ func run_test() -> void:
 			return
 		var blade_parts := []
 		for child in rig.get_children():
-			if child.name.begins_with("Blade"):
+			if child is MeshInstance3D and child.name.begins_with("Blade"):
 				blade_parts.append(child)
 		if blade_parts.size() > 2:
 			fail("The blade must read as one clean curved silhouette rather than repeated H-shaped rails and ribs; parts=%d" % blade_parts.size())
@@ -43,9 +43,19 @@ func run_test() -> void:
 		if not blade.mesh is ArrayMesh or (blade.mesh as ArrayMesh).get_surface_count() != 1:
 			fail("The floorball blade must use a single lightweight curved mesh")
 			return
+		var blade_pocket := rig.get_node_or_null("BladePocket") as Marker3D
+		if blade_pocket == null:
+			fail("The modeled blade needs an authored toe pocket shared with ball possession")
+			return
 		var blade_size: Vector3 = blade.get_aabb().size
 		if blade_size.z < blade_size.x * 1.6:
 			fail("The blade's long axis must continue along the shaft rather than sit across it at right angles; size=%s" % blade_size)
+			return
+		if blade_size.x < 0.42 or blade_size.z < 0.85:
+			fail("The blade must widen into the recognisable scooped floorball silhouette; size=%s" % blade_size)
+			return
+		if blade_pocket.position.z < blade.get_aabb().end.z - 0.18:
+			fail("The ball pocket must sit at the curled blade toe rather than near the shaft or blade centre; pocket=%s blade_end=%s" % [blade_pocket.position, blade.get_aabb().end])
 			return
 		var blade_center_in_actor: Vector3 = rig.transform * blade.get_aabb().get_center()
 		var grip_center_in_actor: Vector3 = rig.transform * grip.position

@@ -39,7 +39,8 @@ func run_test() -> void:
 	for frame in 30:
 		await physics_frame
 	var blade := player.get_node("StickRig/Blade") as MeshInstance3D
-	var blade_world_center := blade.to_global(blade.get_aabb().get_center())
+	var blade_pocket := player.get_node("StickRig/BladePocket") as Marker3D
+	var blade_world_center := blade_pocket.global_position
 	var carried_gap := Vector2(ball.global_position.x, ball.global_position.z).distance_to(Vector2(blade_world_center.x, blade_world_center.z))
 	if carried_gap > 0.36:
 		fail("A possessed ball must settle visibly onto the actual blade instead of an obsolete physics offset; gap=%s ball=%s blade=%s" % [carried_gap, ball.global_position, blade_world_center])

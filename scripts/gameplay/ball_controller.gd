@@ -257,9 +257,9 @@ func _interaction_participants() -> Array:
 			"actor_id": actor.call("get_actor_id"),
 			"team": actor.call("get_team"),
 		}
-		var blade := actor.get_node_or_null("StickRig/Blade") as MeshInstance3D
-		if blade != null:
-			participant.blade_target = blade.to_global(blade.get_aabb().get_center())
+		var blade_pocket := actor.get_node_or_null("StickRig/BladePocket") as Marker3D
+		if blade_pocket != null:
+			participant.blade_target = blade_pocket.global_position
 		participants.append(participant)
 	return participants
 
@@ -345,9 +345,9 @@ func _ball_in_slap_actor_blade() -> bool:
 		"velocity": _slap_actor.velocity,
 		"facing": _slap_actor.call("get_facing_direction"),
 	}
-	var blade := _slap_actor.get_node_or_null("StickRig/Blade") as MeshInstance3D
-	if blade != null:
-		participant.blade_target = blade.to_global(blade.get_aabb().get_center())
+	var blade_pocket := _slap_actor.get_node_or_null("StickRig/BladePocket") as Marker3D
+	if blade_pocket != null:
+		participant.blade_target = blade_pocket.global_position
 	return BallInteractionScript.is_in_blade_pocket(global_position, participant)
 
 

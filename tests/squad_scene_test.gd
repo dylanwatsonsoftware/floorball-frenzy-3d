@@ -44,7 +44,8 @@ func run_test() -> void:
 		actor.set_physics_process(false)
 	red_two.position = Vector3(-2.0, 0.75, 0.0)
 	red_two.velocity = Vector3.ZERO
-	ball.position = red_two.position + Vector3(0.9, -0.53, 0.75)
+	var red_two_pocket := red_two.get_node("StickRig/BladePocket") as Marker3D
+	ball.position = Vector3(red_two_pocket.global_position.x, 0.22, red_two_pocket.global_position.z)
 	ball.ball_velocity = Vector3.ZERO
 	await physics_frame
 	await physics_frame
@@ -116,7 +117,7 @@ func run_test() -> void:
 	blue_two.set_physics_process(false)
 	blue_two.position = Vector3(2.0, 0.75, 0.0)
 	var blue_two_blade := blue_two.get_node("StickRig/Blade") as MeshInstance3D
-	var blue_two_blade_center := blue_two_blade.to_global(blue_two_blade.get_aabb().get_center())
+	var blue_two_blade_center := (blue_two.get_node("StickRig/BladePocket") as Marker3D).global_position
 	ball.position = Vector3(blue_two_blade_center.x, 0.22, blue_two_blade_center.z)
 	ball.ball_velocity = Vector3.ZERO
 	await physics_frame
