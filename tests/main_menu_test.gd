@@ -29,6 +29,9 @@ func run_test() -> void:
 	if solo_button.disabled:
 		fail("Solo Match must be the active path into the current 6v6 game")
 		return
+	if "⚡" in solo_button.text or "🌐" in online_button.text:
+		fail("Menu buttons must not use emoji glyphs that render as codepoint boxes in the web font")
+		return
 	if "AI" in solo_button.text or "6v6" in solo_button.text:
 		fail("The Solo button should stay clean without the awkward AI/6v6 subtitle; text=%s" % solo_button.text)
 		return
