@@ -32,7 +32,7 @@ func _init() -> void:
 		var target: Vector2 = squad.support_target(&"red", slot, Vector3.ZERO, true, Vector3(5.0, 0.0, 2.0))
 		attacking_targets.append(target)
 		attacking_depths[snappedf(target.x, 0.1)] = true
-	if attacking_depths.size() < 4 or _minimum_separation(attacking_targets) < 1.5:
+	if attacking_depths.size() < 4 or _minimum_separation(attacking_targets) < 4.0:
 		fail("Attackers need distinct lanes and depths so they move as individuals; targets=%s" % attacking_targets)
 		return
 	var static_runner: Vector2 = squad.support_target(&"red", 1, Vector3.ZERO, true, Vector3.ZERO)
@@ -43,8 +43,8 @@ func _init() -> void:
 	var defensive_targets := []
 	for slot in 5:
 		defensive_targets.append(squad.support_target(&"red", slot, Vector3(3.0, 0.0, 1.0), false))
-	if _minimum_separation(defensive_targets) < 2.0:
-		fail("The five field defenders must occupy a loose, asymmetric dice-five shell; targets=%s" % defensive_targets)
+	if _minimum_separation(defensive_targets) < 3.5:
+		fail("The five field defenders must occupy a loose, asymmetric dice-five shell; targets=%s" % [defensive_targets])
 		return
 	var opponents := [
 		{"position": Vector3(-1.0, 0.0, -6.0)},
@@ -144,6 +144,16 @@ func _init() -> void:
 	if absf(pass_decision.direction.cross(exact_direction)) < 0.01:
 		fail("AI passes must include small deterministic error instead of being mechanically perfect")
 		return
+	var circulation_teammates := [
+		{"actor_id": &"blue_top", "position": Vector3(0.0, 0.75, -6.0)},
+		{"actor_id": &"blue_left", "position": Vector3(-6.0, 0.75, 0.0)},
+		{"actor_id": &"blue_bottom", "position": Vector3(0.0, 0.75, 6.0)},
+	]
+	var anticlockwise: Dictionary = squad.pass_plan(Vector3(6.0, 0.75, 0.0), circulation_teammates, [], &"blue", 0)
+	var occasional_clockwise: Dictionary = squad.pass_plan(Vector3(6.0, 0.75, 0.0), circulation_teammates, [], &"blue", 3)
+	if anticlockwise.target_actor != &"blue_top" or occasional_clockwise.target_actor != &"blue_bottom":
+		fail("AI passing must usually circulate anti-clockwise and occasionally reverse; anti=%s reverse=%s" % [anticlockwise, occasional_clockwise])
+		return
 
 	var unpressured: Dictionary = squad.pass_plan(
 		Vector3(2.0, 0.75, 0.0),
@@ -152,8 +162,8 @@ func _init() -> void:
 		&"blue",
 		0
 	)
-	if unpressured.wants_pass:
-		fail("An unpressured carrier must be allowed to keep dribbling instead of always passing")
+	if not unpressured.wants_pass:
+		fail("An unpressured carrier must keep the wide passing circuit moving")
 		return
 
 	print("6v6 squad decisions are valid.")

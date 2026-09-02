@@ -6,7 +6,7 @@ const STRIKE_HEIGHT := 0.7
 const MAX_STRIKE_BALL_SPEED := 8.0
 const DASH_RANGE := 10.7
 const LEFT_GOAL := Vector2(-16.5, 0.0)
-const SHOOT_DISTANCE_TO_GOAL := 16.0
+const SHOOT_DISTANCE_TO_GOAL := 7.0
 
 
 static func decide(ai_position: Vector3, ball_position: Vector3, opponent_position: Vector3, ball_velocity: Vector3, dash_ready: bool = true, has_possession: bool = false, opening_grace: bool = false) -> Dictionary:

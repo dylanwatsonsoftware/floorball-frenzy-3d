@@ -15,8 +15,8 @@ static func human_actor_id(owner_actor_id: StringName, owner_team: StringName, h
 static func support_target(team: StringName, slot: int, ball_position: Vector3, team_has_possession: bool, ball_velocity: Vector3 = Vector3.ZERO, opponents: Array = []) -> Vector2:
 	var attack_direction := 1.0 if team == &"red" else -1.0
 	if team_has_possession:
-		var depth: float = float([2.2, 5.8, 4.1, -1.8, -3.6][clampi(slot, 0, 4)])
-		var lane: float = float([0.4, -5.0, 4.6, -3.2, 3.8][clampi(slot, 0, 4)])
+		var depth: float = float([7.0, 3.0, 3.0, -4.0, -6.0][clampi(slot, 0, 4)])
+		var lane: float = float([0.0, -7.0, 7.0, -5.0, 5.0][clampi(slot, 0, 4)])
 		var lead_factor: float = float([0.15, 0.75, 0.58, 0.30, 0.42][clampi(slot, 0, 4)])
 		var lead := Vector2(ball_velocity.x, ball_velocity.z) * lead_factor
 		return Vector2(
@@ -26,8 +26,8 @@ static func support_target(team: StringName, slot: int, ball_position: Vector3, 
 	var own_goal_x := -17.0 if team == &"red" else 17.0
 	var shell_center_x := lerpf(own_goal_x, ball_position.x, 0.62)
 	var shell_center_z := clampf(ball_position.z * 0.22, -1.4, 1.4)
-	var shell_depth: float = float([0.0, 2.0, 1.4, -2.4, -1.7][clampi(slot, 0, 4)])
-	var shell_lane: float = float([0.2, -4.8, 4.1, -3.3, 3.8][clampi(slot, 0, 4)])
+	var shell_depth: float = float([4.0, 1.0, 1.0, -5.0, -5.0][clampi(slot, 0, 4)])
+	var shell_lane: float = float([0.0, -7.0, 7.0, -5.5, 5.5][clampi(slot, 0, 4)])
 	var shell_target := Vector2(
 		clampf(shell_center_x + attack_direction * shell_depth, -13.8, 13.8),
 		clampf(shell_center_z + shell_lane, -7.2, 7.2)
@@ -119,24 +119,20 @@ static func closest_teammate(carrier_id: StringName, carrier_position: Vector3, 
 
 
 static func pass_plan(carrier_position: Vector3, teammates: Array, opponent_positions: Array, team: StringName, pass_index: int) -> Dictionary:
-	var nearest_pressure := INF
-	for opponent_position in opponent_positions:
-		nearest_pressure = minf(nearest_pressure, _planar(carrier_position).distance_to(_planar(opponent_position)))
-	if nearest_pressure > PRESSURE_DISTANCE or teammates.is_empty():
+	if teammates.is_empty():
 		return _no_pass()
-
-	var attack_direction := 1.0 if team == &"red" else -1.0
+	var clockwise := pass_index % 4 == 3
+	var carrier_angle := atan2(carrier_position.z, carrier_position.x)
 	var best_teammate: Dictionary = {}
-	var best_score := -INF
+	var best_arc := INF
 	for teammate in teammates:
 		var target_position: Vector3 = teammate.position
-		var forward_progress := (target_position.x - carrier_position.x) * attack_direction
-		var openness := INF
-		for opponent_position in opponent_positions:
-			openness = minf(openness, _planar(target_position).distance_to(_planar(opponent_position)))
-		var score := forward_progress * 0.7 + minf(openness, 6.0) * 0.5
-		if score > best_score:
-			best_score = score
+		var target_angle := atan2(target_position.z, target_position.x)
+		var arc := fposmod(target_angle - carrier_angle, TAU) if clockwise else fposmod(carrier_angle - target_angle, TAU)
+		if arc < 0.05:
+			arc += TAU
+		if arc < best_arc:
+			best_arc = arc
 			best_teammate = teammate
 	if best_teammate.is_empty():
 		return _no_pass()

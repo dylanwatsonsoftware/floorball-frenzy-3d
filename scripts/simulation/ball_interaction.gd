@@ -23,8 +23,14 @@ static func step(ball_position: Vector3, ball_velocity: Vector3, participants: A
 		return _result(next_position, next_velocity, -1, -1)
 
 	var body_controller := -1
+	var previous_team: StringName = &""
+	if previous_controller >= 0 and previous_controller < participants.size():
+		previous_team = StringName(participants[previous_controller].get("team", &""))
 	for body_index in participants.size():
 		var participant: Dictionary = participants[body_index]
+		var participant_team := StringName(participant.get("team", &""))
+		if body_index != previous_controller and previous_team != &"" and participant_team == previous_team:
+			continue
 		var player_position: Vector3 = participant.position
 		var player_velocity: Vector3 = participant.velocity
 		var planar_offset := Vector2(next_position.x - player_position.x, next_position.z - player_position.z)
@@ -65,6 +71,9 @@ static func step(ball_position: Vector3, ball_velocity: Vector3, participants: A
 		if controller >= 0 or index == blocked_controller:
 			continue
 		var participant: Dictionary = participants[index]
+		var participant_team := StringName(participant.get("team", &""))
+		if index != previous_controller and previous_team != &"" and participant_team == previous_team:
+			continue
 		var pocket := blade_pocket(participant)
 		if pocket.is_empty() or not is_in_blade_pocket(next_position, participant):
 			continue

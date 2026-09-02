@@ -6,6 +6,9 @@ func _init() -> void:
 	if ai == null:
 		fail("Simple AI script is missing")
 		return
+	if ai.SHOOT_DISTANCE_TO_GOAL > 7.5:
+		fail("AI should circulate possession until it is genuinely close to goal")
+		return
 
 	var chase: Dictionary = ai.decide(
 		Vector3(5.0, 0.75, 0.0),
@@ -48,8 +51,8 @@ func _init() -> void:
 		fail("Blue AI must not remotely shoot merely because the ball is near its body")
 		return
 	var possessed: Dictionary = ai.decide(
-		Vector3(-2.0, 0.75, 0.0),
-		Vector3(-3.0, 0.22, 0.0),
+		Vector3(-11.5, 0.75, 0.0),
+		Vector3(-12.5, 0.22, 0.0),
 		Vector3(-5.0, 0.75, 0.0),
 		Vector3.ZERO,
 		true,

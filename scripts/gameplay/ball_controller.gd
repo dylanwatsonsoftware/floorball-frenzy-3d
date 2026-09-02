@@ -29,7 +29,7 @@ const STEAL_FEEDBACK_SECONDS := 0.38
 const STEAL_COLOR := Color("7dff6a")
 const BLUE_STEAL_COLOR := Color("58a8ff")
 const AI_GOAL := Vector2(-16.5, 0.0)
-const AI_SHOOT_DISTANCE := 16.0
+const AI_SHOOT_DISTANCE := 7.0
 const AI_SHOT_CHARGE_SECONDS := 0.55
 
 var ball_velocity := Vector3.ZERO

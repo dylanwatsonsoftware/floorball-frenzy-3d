@@ -88,6 +88,20 @@ func _init() -> void:
 	if bumped.controller == 0:
 		fail("Opponent body contact must still knock the ball out of retained stick possession")
 		return
+	var team_owner := player.duplicate()
+	team_owner.team = &"red"
+	var teammate := challenger.duplicate()
+	teammate.team = &"red"
+	var friendly_overlap: Dictionary = interaction.step(
+		Vector3(0.9, 0.22, 0.75),
+		Vector3.ZERO,
+		[team_owner, teammate],
+		0.1,
+		0
+	)
+	if friendly_overlap.controller != 0:
+		fail("A teammate crossing the carrier's stick must not steal or knock away possession; got %s" % friendly_overlap)
+		return
 
 	var wrong_side: Dictionary = interaction.step(Vector3(0.9, 0.22, -0.75), Vector3.ZERO, [player], 0.1)
 	if wrong_side.controller != -1:

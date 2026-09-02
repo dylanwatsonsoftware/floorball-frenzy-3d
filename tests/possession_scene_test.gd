@@ -47,7 +47,7 @@ func run_test() -> void:
 	if carried_gap > 0.36:
 		fail("A possessed ball must settle visibly onto the actual blade instead of an obsolete physics offset; gap=%s ball=%s blade=%s" % [carried_gap, ball.global_position, blade_world_center])
 		return
-	ball.position = Vector3(0.0, 0.22, 0.0)
+	ball.position = Vector3(0.0, 4.0, 0.0)
 	ball.ball_velocity = Vector3.ZERO
 
 	Input.action_press("shoot")
