@@ -136,7 +136,7 @@ theme_override_font_sizes/font_size = 26
 theme_override_styles/normal = SubResource("StyleBox_solo_button")
 theme_override_styles/hover = SubResource("StyleBox_solo_hover")
 theme_override_styles/pressed = SubResource("StyleBox_solo_hover")
-text = "⚡  SOLO MATCH\nVS PIRATES AI · 6v6"
+text = "⚡  SOLO MATCH"
 
 [node name="OnlineButton" type="Button" parent="Screen/Content"]
 anchor_left = 0.5

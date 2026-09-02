@@ -26,6 +26,9 @@ func run_test() -> void:
 	if solo_button.disabled:
 		fail("Solo Match must be the active path into the current 6v6 game")
 		return
+	if "AI" in solo_button.text or "6v6" in solo_button.text:
+		fail("The Solo button should stay clean without the awkward AI/6v6 subtitle; text=%s" % solo_button.text)
+		return
 	menu.call("start_solo_match")
 	await process_frame
 	await process_frame
