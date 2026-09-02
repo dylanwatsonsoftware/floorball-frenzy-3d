@@ -1,3 +1,5 @@
+import { redisCommands } from "./redis_client.mjs";
+
 const LOBBY_TTL_MS = 5 * 60 * 1000;
 const SIGNAL_TTL_MS = 30 * 1000;
 
@@ -5,6 +7,12 @@ const state = globalThis.__floorballMatchmaking ??= {
   games: new Map(),
   signals: new Map(),
 };
+
+export function backendForEnvironment(environment) {
+  return environment.REDIS_URL ? "redis" : "memory";
+}
+
+const usesRedis = () => backendForEnvironment(process.env) === "redis";
 
 function cleanup(now = Date.now()) {
   for (const [roomId, entry] of state.games) {
@@ -40,7 +48,20 @@ async function bodyOf(request) {
 async function lobby(request, response) {
   cleanup();
   if (request.method === "GET") {
-    const games = [...state.games.values()].sort((a, b) => b.createdAt - a.createdAt);
+    let games;
+    if (usesRedis()) {
+      const cutoff = Date.now() - LOBBY_TTL_MS;
+      const [, roomIds] = await redisCommands([
+        ["ZREMRANGEBYSCORE", "floorball:lobby:index", "-inf", cutoff],
+        ["ZREVRANGE", "floorball:lobby:index", 0, -1],
+      ]);
+      if (roomIds.length) {
+        const [entries] = await redisCommands([["MGET", ...roomIds.map((roomId) => `floorball:lobby:game:${roomId}`)]]);
+        games = entries.filter(Boolean).map((entry) => JSON.parse(entry));
+      } else games = [];
+    } else {
+      games = [...state.games.values()].sort((a, b) => b.createdAt - a.createdAt);
+    }
     send(response, 200, games);
     return;
   }
@@ -50,13 +71,24 @@ async function lobby(request, response) {
     return;
   }
   if (body.action === "register") {
-    state.games.set(String(body.roomId), {
+    const entry = {
       roomId: String(body.roomId).slice(0, 12),
       hostName: String(body.hostName || "Game").trim().slice(0, 35),
       createdAt: Date.now(),
-    });
+    };
+    if (usesRedis()) {
+      await redisCommands([
+        ["ZADD", "floorball:lobby:index", entry.createdAt, entry.roomId],
+        ["SET", `floorball:lobby:game:${entry.roomId}`, JSON.stringify(entry), "PX", LOBBY_TTL_MS],
+      ]);
+    } else state.games.set(entry.roomId, entry);
   } else if (body.action === "join") {
-    state.games.delete(String(body.roomId));
+    const roomId = String(body.roomId);
+    if (usesRedis()) await redisCommands([
+      ["ZREM", "floorball:lobby:index", roomId],
+      ["DEL", `floorball:lobby:game:${roomId}`],
+    ]);
+    else state.games.delete(roomId);
   } else {
     send(response, 400, { error: "unknown action" });
     return;
@@ -74,8 +106,15 @@ async function signal(request, response) {
       return;
     }
     const key = `${room}:${role}`;
-    const messages = (state.signals.get(key) ?? []).map((entry) => entry.message);
-    state.signals.delete(key);
+    let messages;
+    if (usesRedis()) {
+      const script = "local v=redis.call('LRANGE',KEYS[1],0,-1); redis.call('DEL',KEYS[1]); return v";
+      const [values] = await redisCommands([["EVAL", script, 1, `floorball:signal:${key}`]]);
+      messages = values.map((value) => JSON.parse(value));
+    } else {
+      messages = (state.signals.get(key) ?? []).map((entry) => entry.message);
+      state.signals.delete(key);
+    }
     send(response, 200, messages);
     return;
   }
@@ -86,9 +125,18 @@ async function signal(request, response) {
   }
   const recipient = body.role === "host" ? "client" : "host";
   const key = `${body.room}:${recipient}`;
-  const queue = state.signals.get(key) ?? [];
-  queue.push({ message: body.msg, createdAt: Date.now() });
-  state.signals.set(key, queue.slice(-64));
+  if (usesRedis()) {
+    const redisKey = `floorball:signal:${key}`;
+    await redisCommands([
+      ["RPUSH", redisKey, JSON.stringify(body.msg)],
+      ["LTRIM", redisKey, -64, -1],
+      ["PEXPIRE", redisKey, SIGNAL_TTL_MS],
+    ]);
+  } else {
+    const queue = state.signals.get(key) ?? [];
+    queue.push({ message: body.msg, createdAt: Date.now() });
+    state.signals.set(key, queue.slice(-64));
+  }
   send(response, 200, { ok: true });
 }
 

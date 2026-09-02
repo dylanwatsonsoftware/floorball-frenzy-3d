@@ -11,6 +11,7 @@ mkdir -p .vercel/output/static
 cp -R build/web/. .vercel/output/static/
 mkdir -p .vercel/output/functions/api/matchmaking.func
 cp server/matchmaking.mjs .vercel/output/functions/api/matchmaking.func/index.mjs
+cp server/redis_client.mjs .vercel/output/functions/api/matchmaking.func/redis_client.mjs
 
 cat > .vercel/output/functions/api/matchmaking.func/.vc-config.json <<'JSON'
 {

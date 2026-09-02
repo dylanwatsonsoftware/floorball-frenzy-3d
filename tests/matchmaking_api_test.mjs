@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { Readable } from "node:stream";
-import handler, { resetForTests } from "../server/matchmaking.mjs";
+import handler, { backendForEnvironment, resetForTests } from "../server/matchmaking.mjs";
+
+assert.equal(backendForEnvironment({ REDIS_URL: "rediss://default:secret@example.com:6380" }), "redis");
+assert.equal(backendForEnvironment({}), "memory");
 
 function request(method, url, body = undefined) {
   return new Promise((resolve) => {
