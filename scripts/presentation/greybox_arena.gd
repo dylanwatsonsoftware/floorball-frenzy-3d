@@ -769,11 +769,21 @@ func _add_floorball_blade(rig: Node3D, color: Color) -> void:
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	blade.material_override = material
 	rig.add_child(blade)
+	# The shaft rig is pitched across the player's body, but a floorball blade's
+	# broad face rests almost flat on the rink. Counter-rotate the blade into a
+	# horizontal actor-space basis while retaining the rig's yaw, so slap motion
+	# still carries the entire stick without turning the blade into a rake.
+	var blade_center := mesh.get_aabb().get_center()
+	var flat_actor_basis := Basis(Vector3.UP, deg_to_rad(-28.0))
+	blade.basis = rig.basis.inverse() * flat_actor_basis
+	var old_actor_center := rig.transform * blade_center
+	old_actor_center.y = -0.64
+	blade.position = rig.transform.affine_inverse() * old_actor_center - blade.basis * blade_center
 	var pocket := Marker3D.new()
 	pocket.name = "BladePocket"
 	# The pocket lies just inside the curled toe, where the concave front face
 	# cups a floorball in the supplied stick reference.
-	pocket.position = Vector3(0.24, 0.0, 1.87)
+	pocket.position = blade.position + blade.basis * Vector3(0.24, 0.0, 1.87)
 	rig.add_child(pocket)
 
 
