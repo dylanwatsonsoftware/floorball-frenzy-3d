@@ -14,6 +14,18 @@ func _init() -> void:
 	if not is_equal_approx(combined.length(), 1.0) or combined.x <= 0.0 or combined.y <= 0.0:
 		fail("Combined guest inputs must retain both directions and clamp to unit length; got %s" % combined)
 		return
+	var predicted: Vector3 = controller.predict_position(Vector3(2.0, 0.75, 3.0), Vector2.RIGHT, 0.1, 9.0)
+	if not predicted.is_equal_approx(Vector3(2.9, 0.75, 3.0)):
+		fail("Guest movement should be predicted immediately while awaiting the host; got %s" % predicted)
+		return
+	var local_reconciled: Vector3 = controller.reconcile_position(Vector3.ZERO, Vector3(1.0, 0.0, 0.0), true)
+	var remote_reconciled: Vector3 = controller.reconcile_position(Vector3.ZERO, Vector3(1.0, 0.0, 0.0), false)
+	if local_reconciled.x >= remote_reconciled.x or local_reconciled.x <= 0.0:
+		fail("Local prediction must receive gentler correction than remote interpolation; local=%s remote=%s" % [local_reconciled, remote_reconciled])
+		return
+	if controller.next_action_sequence(4, false) != 4 or controller.next_action_sequence(4, true) != 5:
+		fail("Discrete online actions need persistent sequence numbers so unreliable packets can be repeated safely")
+		return
 	print("Online movement packets include keyboard and mobile joystick input.")
 	quit(0)
 

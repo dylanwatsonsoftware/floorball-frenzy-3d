@@ -5,6 +5,9 @@ extends Node
 const TransportScript = preload("res://scripts/network/webrtc_transport.gd")
 const OnlineInputScript = preload("res://scripts/network/online_input.gd")
 const SNAPSHOT_SECONDS := 1.0 / 20.0
+const CLIENT_PREDICTION_SPEED := 9.0
+const RINK_HALF_LENGTH := 19.1
+const RINK_HALF_WIDTH := 9.1
 
 var _transport: FloorballWebRTCTransport
 var _arena: Node3D
@@ -15,6 +18,10 @@ var _last_snapshot := -1
 var _status: Label
 var _match_flow: Node
 var _mobile_controls: Control
+var _pass_sequence := 0
+var _switch_sequence := 0
+var _last_remote_pass_sequence := 0
+var _last_remote_switch_sequence := 0
 
 
 func _ready() -> void:
@@ -60,7 +67,11 @@ func _on_disconnected() -> void:
 func _physics_process(delta: float) -> void:
 	if OnlineMatch.role == &"client":
 		_sequence += 1
-		_transport.send({"type": "input", "seq": _sequence, "move": _vector_to_array(_movement_input()), "dash": Input.is_action_pressed("dash"), "shoot": Input.is_action_pressed("shoot"), "pass": Input.is_action_just_pressed("pass"), "switch": Input.is_action_just_pressed("switch_player")})
+		var movement := _movement_input()
+		_pass_sequence = OnlineInputScript.next_action_sequence(_pass_sequence, Input.is_action_just_pressed("pass"))
+		_switch_sequence = OnlineInputScript.next_action_sequence(_switch_sequence, Input.is_action_just_pressed("switch_player"))
+		_transport.send({"type": "input", "seq": _sequence, "move": _vector_to_array(movement), "dash": Input.is_action_pressed("dash"), "shoot": Input.is_action_pressed("shoot"), "pass_seq": _pass_sequence, "switch_seq": _switch_sequence})
+		_predict_local_player(movement, delta)
 		return
 	_snapshot_elapsed += delta
 	if _snapshot_elapsed >= SNAPSHOT_SECONDS:
@@ -79,8 +90,13 @@ func _on_message(message: Dictionary) -> void:
 		OnlineMatch.remote_input = _array_to_vector(message.get("move", [0.0, 0.0]))
 		OnlineMatch.remote_dash = bool(message.get("dash", false))
 		OnlineMatch.remote_shoot = bool(message.get("shoot", false))
-		OnlineMatch.remote_pass = bool(message.get("pass", false))
-		if bool(message.get("switch", false)) and _ball.has_method("switch_human_player_for_team"):
+		var pass_sequence := int(message.get("pass_seq", 0))
+		if pass_sequence > _last_remote_pass_sequence:
+			_last_remote_pass_sequence = pass_sequence
+			OnlineMatch.remote_pass = true
+		var switch_sequence := int(message.get("switch_seq", 0))
+		if switch_sequence > _last_remote_switch_sequence and _ball.has_method("switch_human_player_for_team"):
+			_last_remote_switch_sequence = switch_sequence
 			_ball.call("switch_human_player_for_team", &"blue")
 	elif OnlineMatch.role == &"client" and type == "snapshot":
 		var seq := int(message.get("seq", -1))
@@ -99,12 +115,13 @@ func _capture_snapshot() -> Dictionary:
 
 func _apply_snapshot(snapshot: Dictionary) -> void:
 	var actor_by_id := {}
+	var local_actor := _arena.call("get_local_human_actor") as CharacterBody3D
 	for actor in _arena.call("get_field_players"):
 		actor_by_id[String(actor.call("get_actor_id"))] = actor
 	for state: Dictionary in snapshot.get("actors", []):
 		var actor: CharacterBody3D = actor_by_id.get(String(state.get("id", "")))
 		if actor != null:
-			actor.global_position = actor.global_position.lerp(_array_to_vector3(state.get("p", [])), 0.55)
+			actor.global_position = OnlineInputScript.reconcile_position(actor.global_position, _array_to_vector3(state.get("p", [])), actor == local_actor)
 			actor.velocity = _array_to_vector3(state.get("v", []))
 			actor.rotation.y = lerp_angle(actor.rotation.y, float(state.get("r", actor.rotation.y)), 0.55)
 	_ball.global_position = _ball.global_position.lerp(_array_to_vector3(snapshot.get("ball", [])), 0.65)
@@ -133,6 +150,19 @@ func _movement_input() -> Vector2:
 	if _mobile_controls != null and _mobile_controls.has_method("get_movement_vector"):
 		mobile = _mobile_controls.call("get_movement_vector")
 	return OnlineInputScript.compose_movement_input(Input.get_vector("move_left", "move_right", "move_up", "move_down"), mobile)
+
+
+func _predict_local_player(movement: Vector2, delta: float) -> void:
+	var actor := _arena.call("get_local_human_actor") as CharacterBody3D
+	if actor == null:
+		return
+	var predicted := OnlineInputScript.predict_position(actor.global_position, movement, delta, CLIENT_PREDICTION_SPEED)
+	predicted.x = clampf(predicted.x, -RINK_HALF_LENGTH, RINK_HALF_LENGTH)
+	predicted.z = clampf(predicted.z, -RINK_HALF_WIDTH, RINK_HALF_WIDTH)
+	actor.global_position = predicted
+	actor.velocity = Vector3(movement.x, 0.0, movement.y) * CLIENT_PREDICTION_SPEED
+	if not movement.is_zero_approx():
+		actor.rotation.y = atan2(movement.x, movement.y)
 
 
 func _vector_to_array(value: Vector2) -> Array:
