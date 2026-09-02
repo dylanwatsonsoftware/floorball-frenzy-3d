@@ -46,6 +46,17 @@ func _init() -> void:
 	if authored_pickup.controller != 0:
 		fail("An authored 3D blade-front anchor must remain catchable even when the stick is mirrored around the player")
 		return
+	var network_player := authored_player.duplicate()
+	network_player.network_pickup_assist = true
+	var latency_assisted_pickup: Dictionary = interaction.step(
+		Vector3(0.9, 0.22, -1.72),
+		Vector3.ZERO,
+		[network_player],
+		0.1
+	)
+	if latency_assisted_pickup.controller != 0:
+		fail("The remote human needs a modest blade-pocket allowance to compensate for network delay")
+		return
 
 	var turned_player := player.duplicate()
 	turned_player.facing = Vector3.FORWARD

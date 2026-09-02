@@ -287,6 +287,7 @@ func _interaction_participants() -> Array:
 			"team": actor.call("get_team"),
 			"pickup_blocked": actor.call("get_actor_id") == _pickup_lock_actor_id and _pickup_lock_seconds > 0.0,
 			"shot_protected": actor == _slap_actor and _current_slap_phase() in [&"backswing", &"forward"],
+			"network_pickup_assist": OnlineMatch.enabled and OnlineMatch.is_authority() and actor.call("get_team") == &"blue" and actor.call("get_actor_id") == get_human_control_actor_id_for_team(&"blue"),
 		}
 		var blade_pocket := actor.get_node_or_null("StickRig/BladePocket") as Marker3D
 		if blade_pocket != null:

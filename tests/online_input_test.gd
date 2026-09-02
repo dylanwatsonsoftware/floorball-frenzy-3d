@@ -26,6 +26,9 @@ func _init() -> void:
 	if controller.next_action_sequence(4, false) != 4 or controller.next_action_sequence(4, true) != 5:
 		fail("Discrete online actions need persistent sequence numbers so unreliable packets can be repeated safely")
 		return
+	if not is_equal_approx(controller.prediction_speed(false), 9.0) or not is_equal_approx(controller.prediction_speed(true), 7.92):
+		fail("Guest prediction must use the same carrier speed penalty as the host simulation")
+		return
 	print("Online movement packets include keyboard and mobile joystick input.")
 	quit(0)
 

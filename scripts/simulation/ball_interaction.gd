@@ -5,7 +5,9 @@ const BODY_CONTACT_DISTANCE := 0.74
 const BLADE_FORWARD_OFFSET := 0.9
 const BLADE_RIGHT_OFFSET := 0.75
 const STICK_CONTROL_RADIUS := 1.25
+const NETWORK_STICK_CONTROL_RADIUS := 1.5
 const RETENTION_RADIUS := 1.9
+const NETWORK_RETENTION_RADIUS := 2.15
 const CONTROL_HEIGHT := 0.68
 const BODY_CONTACT_HEIGHT := 1.5
 const DRIBBLE_LEAD_SPEED := 2.2
@@ -66,7 +68,8 @@ static func step(ball_position: Vector3, ball_velocity: Vector3, participants: A
 		if not previous_pocket.is_empty():
 			var retained_distance: float = Vector2(next_position.x, next_position.z).distance_to(previous_pocket.target)
 			var relative_speed: float = Vector2(next_velocity.x - previous_owner.velocity.x, next_velocity.z - previous_owner.velocity.z).length()
-			if retained_distance <= RETENTION_RADIUS and relative_speed <= MAX_RETENTION_RELATIVE_SPEED:
+			var retention_radius := NETWORK_RETENTION_RADIUS if bool(previous_owner.get("network_pickup_assist", false)) else RETENTION_RADIUS
+			if retained_distance <= retention_radius and relative_speed <= MAX_RETENTION_RELATIVE_SPEED:
 				controller = previous_controller
 	if controller < 0 and Vector2(next_velocity.x, next_velocity.z).length() > MAX_CONTROL_SPEED:
 		return _result(next_position, next_velocity, controller, body_controller)
@@ -84,7 +87,8 @@ static func step(ball_position: Vector3, ball_velocity: Vector3, participants: A
 		if pocket.is_empty() or not is_in_blade_pocket(next_position, participant):
 			continue
 		var stick_distance: float = Vector2(next_position.x, next_position.z).distance_to(pocket.target)
-		if stick_distance <= STICK_CONTROL_RADIUS and stick_distance < closest_stick_distance:
+		var control_radius := NETWORK_STICK_CONTROL_RADIUS if bool(participant.get("network_pickup_assist", false)) else STICK_CONTROL_RADIUS
+		if stick_distance <= control_radius and stick_distance < closest_stick_distance:
 			controller = index
 			closest_stick_distance = stick_distance
 
@@ -140,7 +144,8 @@ static func is_in_blade_pocket(ball_position: Vector3, participant: Dictionary) 
 	# for the mathematical fallback pocket, where it prevents back-face pickup.
 	if not participant.has("blade_target") and relative.dot(pocket.right) <= -0.3:
 		return false
-	return ball_planar.distance_to(pocket.target) <= STICK_CONTROL_RADIUS
+	var control_radius := NETWORK_STICK_CONTROL_RADIUS if bool(participant.get("network_pickup_assist", false)) else STICK_CONTROL_RADIUS
+	return ball_planar.distance_to(pocket.target) <= control_radius
 
 
 static func _result(position: Vector3, velocity: Vector3, controller: int, body_controller: int) -> Dictionary:

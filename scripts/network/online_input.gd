@@ -18,3 +18,7 @@ static func reconcile_position(current: Vector3, authoritative: Vector3, locally
 
 static func next_action_sequence(current: int, just_pressed: bool) -> int:
 	return current + 1 if just_pressed else current
+
+
+static func prediction_speed(has_ball: bool) -> float:
+	return 9.0 * (0.88 if has_ball else 1.0)

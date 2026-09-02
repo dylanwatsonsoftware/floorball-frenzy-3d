@@ -5,7 +5,6 @@ extends Node
 const TransportScript = preload("res://scripts/network/webrtc_transport.gd")
 const OnlineInputScript = preload("res://scripts/network/online_input.gd")
 const SNAPSHOT_SECONDS := 1.0 / 20.0
-const CLIENT_PREDICTION_SPEED := 9.0
 const RINK_HALF_LENGTH := 19.1
 const RINK_HALF_WIDTH := 9.1
 
@@ -156,11 +155,16 @@ func _predict_local_player(movement: Vector2, delta: float) -> void:
 	var actor := _arena.call("get_local_human_actor") as CharacterBody3D
 	if actor == null:
 		return
-	var predicted := OnlineInputScript.predict_position(actor.global_position, movement, delta, CLIENT_PREDICTION_SPEED)
+	var has_ball := _ball.has_method("is_controlled_by_actor") and bool(_ball.call("is_controlled_by_actor", actor.call("get_actor_id")))
+	var prediction_speed: float = OnlineInputScript.prediction_speed(has_ball)
+	var previous_position := actor.global_position
+	var predicted := OnlineInputScript.predict_position(previous_position, movement, delta, prediction_speed)
 	predicted.x = clampf(predicted.x, -RINK_HALF_LENGTH, RINK_HALF_LENGTH)
 	predicted.z = clampf(predicted.z, -RINK_HALF_WIDTH, RINK_HALF_WIDTH)
 	actor.global_position = predicted
-	actor.velocity = Vector3(movement.x, 0.0, movement.y) * CLIENT_PREDICTION_SPEED
+	actor.velocity = Vector3(movement.x, 0.0, movement.y) * prediction_speed
+	if has_ball:
+		_ball.global_position += predicted - previous_position
 	if not movement.is_zero_approx():
 		actor.rotation.y = atan2(movement.x, movement.y)
 
