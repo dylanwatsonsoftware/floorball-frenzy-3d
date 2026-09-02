@@ -36,7 +36,9 @@ func run_test() -> void:
 	if ball.call("get_control_owner_actor_id") != &"" or ball.ball_velocity.x >= -9.0:
 		fail("A support Pirate in scoring range must shoot toward the left goal; owner=%s velocity=%s" % [ball.call("get_control_owner_actor_id"), ball.ball_velocity])
 		return
-	if absf(ball.ball_velocity.z) > 5.0:
+	var shot_direction := Vector2(ball.ball_velocity.x, ball.ball_velocity.z).normalized()
+	var goal_direction := (Vector2(-16.5, 0.0) - Vector2(ball.global_position.x, ball.global_position.z)).normalized()
+	if shot_direction.dot(goal_direction) < 0.98:
 		fail("The Pirate shot must target the goal mouth rather than dumping the ball sideways; velocity=%s" % ball.ball_velocity)
 		return
 	print("Every Pirate ball carrier can wind up and shoot at goal.")

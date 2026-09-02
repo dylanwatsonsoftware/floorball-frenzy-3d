@@ -51,6 +51,15 @@ func _init() -> void:
 	if block_target.x >= danger_ball.x or absf(block_target.y) >= absf(danger_ball.z):
 		fail("The nearest defender must get goal-side of a dangerous ball to block the shot; target=%s" % block_target)
 		return
+	var retreat := Vector2.LEFT
+	var watching_ball: Vector2 = squad.tactical_facing(Vector2.ZERO, retreat, Vector3(6.0, 0.0, 0.0), false)
+	if watching_ball.dot(retreat) > -0.9:
+		fail("A retreating defender must backpedal while watching the ball; facing=%s movement=%s" % [watching_ball, retreat])
+		return
+	var attacking_facing: Vector2 = squad.tactical_facing(Vector2.ZERO, Vector2(0.4, 0.9), Vector3(-6.0, 0.0, 0.0), true)
+	if attacking_facing.dot(Vector2(0.4, 0.9).normalized()) < 0.99:
+		fail("An attacking support player should continue facing the direction of the run")
+		return
 	var arrived: Vector2 = squad.arrival_movement(Vector2(4.0, -2.0), Vector2(4.08, -2.04))
 	if not arrived.is_zero_approx():
 		fail("AI must settle at nearby targets instead of flipping direction every frame; movement=%s" % arrived)

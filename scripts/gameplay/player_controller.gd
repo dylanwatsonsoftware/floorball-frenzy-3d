@@ -71,7 +71,11 @@ func _physics_process(delta: float) -> void:
 	velocity = boundary.velocity
 
 	if velocity.length_squared() > 0.04:
-		_facing_direction = Vector3(velocity.x, 0.0, velocity.z).normalized()
+		var facing_planar := Vector2(velocity.x, velocity.z).normalized()
+		if not is_human_controlled():
+			var owner_team: StringName = _ball.call("get_control_owner_team") if _ball.has_method("get_control_owner_team") else &""
+			facing_planar = SquadLogicScript.tactical_facing(Vector2(global_position.x, global_position.z), facing_planar, _ball.global_position, owner_team == get_team())
+		_facing_direction = Vector3(facing_planar.x, 0.0, facing_planar.y)
 		rotation.y = lerp_angle(rotation.y, atan2(_facing_direction.x, _facing_direction.z), minf(1.0, delta * 12.0))
 	if _mobile_controls != null and _mobile_controls.has_method("set_dash_cooldown_ratio"):
 		_mobile_controls.call("set_dash_cooldown_ratio", get_dash_cooldown_ratio())

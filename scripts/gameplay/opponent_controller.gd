@@ -99,7 +99,12 @@ func _physics_process(delta: float) -> void:
 		global_position = frame_start_position
 		velocity = Vector3.ZERO
 
-	var facing_planar: Vector2 = decision.shot_direction if decision.wants_shot else decision.movement
+	var facing_planar: Vector2 = decision.shot_direction if decision.wants_shot else SquadLogicScript.tactical_facing(
+		Vector2(global_position.x, global_position.z),
+		decision.movement,
+		_ball.global_position,
+		owner_team == &"blue"
+	)
 	if not _shot_aim_locked and not facing_planar.is_zero_approx():
 		_facing_direction = Vector3(facing_planar.x, 0.0, facing_planar.y).normalized()
 		rotation.y = lerp_angle(rotation.y, atan2(_facing_direction.x, _facing_direction.z), minf(1.0, delta * 10.0))

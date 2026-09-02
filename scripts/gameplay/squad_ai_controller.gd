@@ -59,8 +59,12 @@ func _physics_process(delta: float) -> void:
 	var boundary := RinkCollisionScript.constrain_body(global_position, velocity, RINK_HALF_LENGTH, RINK_HALF_WIDTH, 1.8)
 	global_position = boundary.position
 	velocity = boundary.velocity
-	if not movement.is_zero_approx():
-		_facing_direction = Vector3(movement.x, 0.0, movement.y)
+	var facing_planar := movement
+	if not is_human_controlled():
+		var owner_team: StringName = _ball.call("get_control_owner_team") if _ball.has_method("get_control_owner_team") else &""
+		facing_planar = SquadLogicScript.tactical_facing(Vector2(global_position.x, global_position.z), movement, _ball.global_position, owner_team == get_team())
+	if (is_human_controlled() or not _shot_aim_locked) and not facing_planar.is_zero_approx():
+		_facing_direction = Vector3(facing_planar.x, 0.0, facing_planar.y)
 		rotation.y = lerp_angle(rotation.y, atan2(_facing_direction.x, _facing_direction.z), minf(1.0, delta * 10.0))
 	if is_human_controlled() and _mobile_controls != null and _mobile_controls.has_method("set_dash_cooldown_ratio"):
 		_mobile_controls.call("set_dash_cooldown_ratio", get_dash_cooldown_ratio())

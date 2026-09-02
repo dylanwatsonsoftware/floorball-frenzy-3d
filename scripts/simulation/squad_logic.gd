@@ -42,6 +42,14 @@ static func pressure_target(team: StringName, ball_position: Vector3, ball_veloc
 	return ball + Vector2(ball_velocity.x, ball_velocity.z) * 0.22
 
 
+static func tactical_facing(position: Vector2, movement: Vector2, ball_position: Vector3, team_has_possession: bool) -> Vector2:
+	if not team_has_possession:
+		var toward_ball := _planar(ball_position) - position
+		if not toward_ball.is_zero_approx():
+			return toward_ball.normalized()
+	return movement.normalized() if not movement.is_zero_approx() else Vector2.ZERO
+
+
 static func arrival_movement(position: Vector2, target: Vector2, stop_radius: float = ARRIVAL_STOP_RADIUS, slow_radius: float = ARRIVAL_SLOW_RADIUS) -> Vector2:
 	var offset := target - position
 	var distance := offset.length()
