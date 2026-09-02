@@ -90,12 +90,14 @@ func _ai_movement() -> Vector2:
 		return Vector2.ZERO
 	var teammates: Array = []
 	for actor in get_parent().call("get_team_players", get_team()):
+		if StringName(actor.get_meta("role", &"field")) == &"goalkeeper":
+			continue
 		teammates.append({"actor_id": actor.call("get_actor_id"), "position": actor.global_position})
 	var owner_team: StringName = _ball.call("get_control_owner_team") if _ball.has_method("get_control_owner_team") else &""
 	var team_has_possession := owner_team == get_team()
-	var target := SquadLogicScript.support_target(get_team(), get_squad_slot(), _ball.global_position, team_has_possession)
+	var target := SquadLogicScript.support_target(get_team(), get_squad_slot(), _ball.global_position, team_has_possession, _ball.ball_velocity)
 	if not team_has_possession and SquadLogicScript.is_closest_to_ball(get_actor_id(), global_position, teammates, _ball.global_position):
-		target = Vector2(_ball.global_position.x, _ball.global_position.z)
+		target = SquadLogicScript.pressure_target(get_team(), _ball.global_position, _ball.ball_velocity)
 	return SquadLogicScript.arrival_movement(Vector2(global_position.x, global_position.z), target)
 
 

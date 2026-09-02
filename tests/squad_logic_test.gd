@@ -26,6 +26,31 @@ func _init() -> void:
 	if defensive_support.x > -5.5 or defensive_support.y > -4.5:
 		fail("Off-ball defenders must hold a genuinely separated lane instead of swarming the ball; target=%s" % defensive_support)
 		return
+	var attacking_targets := []
+	var attacking_depths := {}
+	for slot in 5:
+		var target: Vector2 = squad.support_target(&"red", slot, Vector3.ZERO, true, Vector3(5.0, 0.0, 2.0))
+		attacking_targets.append(target)
+		attacking_depths[snappedf(target.x, 0.1)] = true
+	if attacking_depths.size() < 4 or _minimum_separation(attacking_targets) < 1.5:
+		fail("Attackers need distinct lanes and depths so they move as individuals; targets=%s" % attacking_targets)
+		return
+	var static_runner: Vector2 = squad.support_target(&"red", 1, Vector3.ZERO, true, Vector3.ZERO)
+	var leading_runner: Vector2 = squad.support_target(&"red", 1, Vector3.ZERO, true, Vector3(6.0, 0.0, 3.0))
+	if leading_runner.distance_to(static_runner) < 0.75:
+		fail("Forward support players must lead the moving ball rather than track it in tandem")
+		return
+	var defensive_targets := []
+	for slot in 5:
+		defensive_targets.append(squad.support_target(&"red", slot, Vector3(3.0, 0.0, 1.0), false))
+	if _minimum_separation(defensive_targets) < 2.0:
+		fail("The five field defenders must occupy a loose, asymmetric dice-five shell; targets=%s" % defensive_targets)
+		return
+	var danger_ball := Vector3(-12.0, 0.0, 3.0)
+	var block_target: Vector2 = squad.pressure_target(&"red", danger_ball, Vector3(-3.0, 0.0, 0.0))
+	if block_target.x >= danger_ball.x or absf(block_target.y) >= absf(danger_ball.z):
+		fail("The nearest defender must get goal-side of a dangerous ball to block the shot; target=%s" % block_target)
+		return
 	var arrived: Vector2 = squad.arrival_movement(Vector2(4.0, -2.0), Vector2(4.08, -2.04))
 	if not arrived.is_zero_approx():
 		fail("AI must settle at nearby targets instead of flipping direction every frame; movement=%s" % arrived)
@@ -107,3 +132,11 @@ func _init() -> void:
 func fail(message: String) -> void:
 	push_error(message)
 	quit(1)
+
+
+func _minimum_separation(points: Array) -> float:
+	var result := INF
+	for first in points.size():
+		for second in range(first + 1, points.size()):
+			result = minf(result, points[first].distance_to(points[second]))
+	return result

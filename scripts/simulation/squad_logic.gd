@@ -12,13 +12,34 @@ static func human_actor_id(owner_actor_id: StringName, owner_team: StringName, h
 	return owner_actor_id if owner_team == human_team else &""
 
 
-static func support_target(team: StringName, slot: int, ball_position: Vector3, team_has_possession: bool) -> Vector2:
+static func support_target(team: StringName, slot: int, ball_position: Vector3, team_has_possession: bool, ball_velocity: Vector3 = Vector3.ZERO) -> Vector2:
 	var attack_direction := 1.0 if team == &"red" else -1.0
-	var lane_width := 4.2 if team_has_possession else 5.2
-	var lane_z: float = float({-1: 0.0, 0: 0.0, 1: -lane_width, 2: lane_width, 3: -lane_width * 0.52, 4: lane_width * 0.52}.get(slot, 0.0))
-	var longitudinal_offset := (3.4 if slot <= 2 else -2.8) if team_has_possession else (-6.2 if slot <= 2 else -8.0)
-	var target_x := clampf(ball_position.x + attack_direction * longitudinal_offset, -14.0, 14.0)
-	return Vector2(target_x, lane_z)
+	if team_has_possession:
+		var depth: float = float([2.2, 5.8, 4.1, -1.8, -3.6][clampi(slot, 0, 4)])
+		var lane: float = float([0.4, -5.0, 4.6, -3.2, 3.8][clampi(slot, 0, 4)])
+		var lead_factor: float = float([0.15, 0.75, 0.58, 0.30, 0.42][clampi(slot, 0, 4)])
+		var lead := Vector2(ball_velocity.x, ball_velocity.z) * lead_factor
+		return Vector2(
+			clampf(ball_position.x + attack_direction * depth + lead.x, -14.5, 14.5),
+			clampf(lane + lead.y, -7.2, 7.2)
+		)
+	var own_goal_x := -17.0 if team == &"red" else 17.0
+	var shell_center_x := lerpf(own_goal_x, ball_position.x, 0.5)
+	var shell_center_z := clampf(ball_position.z * 0.22, -1.4, 1.4)
+	var shell_depth: float = float([0.0, 2.0, 1.4, -2.4, -1.7][clampi(slot, 0, 4)])
+	var shell_lane: float = float([0.2, -4.8, 4.1, -3.3, 3.8][clampi(slot, 0, 4)])
+	return Vector2(
+		clampf(shell_center_x + attack_direction * shell_depth, -14.5, 14.5),
+		clampf(shell_center_z + shell_lane, -7.2, 7.2)
+	)
+
+
+static func pressure_target(team: StringName, ball_position: Vector3, ball_velocity: Vector3) -> Vector2:
+	var ball := _planar(ball_position)
+	var own_goal := Vector2(-17.0 if team == &"red" else 17.0, 0.0)
+	if ball.distance_to(own_goal) < 7.0:
+		return ball + (own_goal - ball).normalized() * 1.4
+	return ball + Vector2(ball_velocity.x, ball_velocity.z) * 0.22
 
 
 static func arrival_movement(position: Vector2, target: Vector2, stop_radius: float = ARRIVAL_STOP_RADIUS, slow_radius: float = ARRIVAL_SLOW_RADIUS) -> Vector2:
