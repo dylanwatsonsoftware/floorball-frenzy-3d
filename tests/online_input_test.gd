@@ -27,6 +27,16 @@ func _init() -> void:
 	if not tiny_correction.is_zero_approx():
 		fail("Tiny authoritative differences should stay inside a prediction dead zone instead of causing micro-stutter; got %s" % tiny_correction)
 		return
+	var predicted_heading := deg_to_rad(90.0)
+	var delayed_heading := deg_to_rad(20.0)
+	var steering_heading: float = controller.reconcile_rotation(predicted_heading, delayed_heading, true, true)
+	if not is_equal_approx(steering_heading, predicted_heading):
+		fail("An actively steering guest must keep its predicted heading instead of being turned back by a delayed snapshot")
+		return
+	var remote_heading: float = controller.reconcile_rotation(0.0, deg_to_rad(90.0), false, false)
+	if remote_heading <= 0.0 or remote_heading >= deg_to_rad(90.0):
+		fail("Remote character turns should be visibly smoothed toward the authoritative heading")
+		return
 	if controller.next_action_sequence(4, false) != 4 or controller.next_action_sequence(4, true) != 5:
 		fail("Discrete online actions need persistent sequence numbers so unreliable packets can be repeated safely")
 		return

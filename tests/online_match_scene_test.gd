@@ -38,6 +38,10 @@ func run_test() -> void:
 	await process_frame
 	await process_frame
 	var client_arena := client_match.get_node("Arena")
+	for replicated_actor in client_arena.call("get_field_players"):
+		if replicated_actor.physics_interpolation_mode != Node.PHYSICS_INTERPOLATION_MODE_OFF:
+			fail("Guest replicas must use network smoothing without a second physics-interpolation pass")
+			return
 	var local_actor: CharacterBody3D = client_arena.call("get_local_human_actor")
 	if local_actor == null or local_actor.call("get_team") != &"blue":
 		fail("A guest must resolve the Pirates human as its locally controlled player")

@@ -125,10 +125,12 @@ func _apply_snapshot(snapshot: Dictionary) -> void:
 	for state: Dictionary in snapshot.get("actors", []):
 		var actor: CharacterBody3D = actor_by_id.get(String(state.get("id", "")))
 		if actor != null:
+			var is_local_actor := actor == local_actor
+			var actively_steering := is_local_actor and Vector2(actor.velocity.x, actor.velocity.z).length_squared() > 0.01
 			var authoritative_position := _array_to_vector3(state.get("p", []))
-			actor.global_position = authoritative_position if is_new_faceoff else OnlineInputScript.reconcile_position(actor.global_position, authoritative_position, actor == local_actor)
+			actor.global_position = authoritative_position if is_new_faceoff else OnlineInputScript.reconcile_position(actor.global_position, authoritative_position, is_local_actor)
 			actor.velocity = _array_to_vector3(state.get("v", []))
-			actor.rotation.y = float(state.get("r", actor.rotation.y)) if is_new_faceoff else lerp_angle(actor.rotation.y, float(state.get("r", actor.rotation.y)), 0.55)
+			actor.rotation.y = float(state.get("r", actor.rotation.y)) if is_new_faceoff else OnlineInputScript.reconcile_rotation(actor.rotation.y, float(state.get("r", actor.rotation.y)), is_local_actor, actively_steering)
 	var authoritative_ball := _array_to_vector3(snapshot.get("ball", []))
 	_ball.global_position = authoritative_ball if is_new_faceoff else _ball.global_position.lerp(authoritative_ball, 0.65)
 	_ball.ball_velocity = _array_to_vector3(snapshot.get("ball_velocity", []))
@@ -143,8 +145,10 @@ func _apply_snapshot(snapshot: Dictionary) -> void:
 
 func _set_client_replica_mode() -> void:
 	_ball.set_physics_process(false)
+	_ball.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	for actor in _arena.call("get_field_players"):
 		actor.set_physics_process(false)
+		actor.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 
 
 func _set_authority_waiting(waiting: bool) -> void:
