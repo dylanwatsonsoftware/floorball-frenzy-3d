@@ -680,186 +680,83 @@ func reset_squads_for_faceoff() -> void:
 			actor.call("reset_for_faceoff")
 
 
-func _add_stick(parent: Node3D, color: Color) -> void:
+func _add_stick(parent: Node3D, _color: Color) -> void:
 	var rig := Node3D.new()
 	rig.name = "StickRig"
-	# The blade sits at the player's right-front foot while the grip rises across
-	# their body. The controller owns the Y rotation for slap animations.
-	rig.position = Vector3(0.52, 0.50, 0.0)
-	rig.rotation_degrees = Vector3(55.0, -28.0, 5.0)
+	rig.position = Vector3.ZERO
+	rig.rotation_degrees.y = 28.0
+	rig.set_meta("authored_stick", true)
 	parent.add_child(rig)
+	var team := StringName(parent.get_meta("team", &"red"))
+	var slot := int(parent.get_meta("squad_slot", 0))
+	var lamb_variants := [
+		[Color("168a45"), Color("f4f5ed")],
+		[Color("f4f5ed"), Color("171c1f")],
+		[Color("171c1f"), Color("168a45")],
+		[Color("0d6f38"), Color("171c1f")],
+		[Color("f4f5ed"), Color("168a45")],
+	]
+	var pirate_variants := [
+		[Color("111820"), Color("f1f4f7")],
+		[Color("f1f4f7"), Color("17284d")],
+		[Color("17284d"), Color("72c8e6")],
+		[Color("72c8e6"), Color("111820")],
+		[Color("111820"), Color("72c8e6")],
+	]
+	var variants: Array = lamb_variants if team == &"red" else pirate_variants
+	var variant: Array = variants[posmod(slot, variants.size())]
+	var shaft_color: Color = variant[0]
+	var handle_color: Color = variant[1]
+	var blade_color := Color("20a957") if team == &"red" else Color("17284d")
+	rig.set_meta("stick_variant", "%s_%d_%s_%s" % [team, slot, shaft_color.to_html(false), handle_color.to_html(false)])
 
-	var shaft := MeshInstance3D.new()
-	shaft.name = "Shaft"
-	var shaft_mesh := CylinderMesh.new()
-	shaft_mesh.top_radius = 0.035
-	shaft_mesh.bottom_radius = 0.044
-	shaft_mesh.height = 1.78
-	shaft_mesh.radial_segments = 10
-	shaft.mesh = shaft_mesh
-	shaft.position = Vector3(0.0, 0.0, 0.25)
-	shaft.rotation_degrees.x = 90.0
-	shaft.material_override = _material(color, 0.65)
-	rig.add_child(shaft)
-
-	var grip := MeshInstance3D.new()
-	grip.name = "Grip"
-	var grip_mesh := CylinderMesh.new()
-	grip_mesh.top_radius = 0.052
-	grip_mesh.bottom_radius = 0.052
-	grip_mesh.height = 0.48
-	grip_mesh.radial_segments = 10
-	grip.mesh = grip_mesh
-	grip.position = Vector3(0.0, 0.0, -0.49)
-	grip.rotation_degrees.x = 90.0
-	grip.material_override = _material(Color("f2f4f7"), 0.82)
-	rig.add_child(grip)
-
-	var end_cap := MeshInstance3D.new()
-	end_cap.name = "EndCap"
-	var end_cap_mesh := CylinderMesh.new()
-	end_cap_mesh.top_radius = 0.06
-	end_cap_mesh.bottom_radius = 0.068
-	end_cap_mesh.height = 0.09
-	end_cap_mesh.radial_segments = 10
-	end_cap.mesh = end_cap_mesh
-	end_cap.position = Vector3(0.0, 0.0, -0.775)
-	end_cap.rotation_degrees.x = 90.0
-	end_cap.material_override = _material(Color("e3e8ee"), 0.76)
-	rig.add_child(end_cap)
-
-	var neck := MeshInstance3D.new()
-	neck.name = "BladeNeck"
-	var neck_mesh := CylinderMesh.new()
-	neck_mesh.top_radius = 0.048
-	neck_mesh.bottom_radius = 0.065
-	neck_mesh.height = 0.26
-	neck_mesh.radial_segments = 10
-	neck.mesh = neck_mesh
-	neck.position = Vector3(-0.025, 0.0, 1.08)
-	neck.rotation_degrees = Vector3(90.0, 10.0, 0.0)
-	neck.material_override = _material(color, 0.6)
-	rig.add_child(neck)
-
-	var blade_color := Color("168a45") if StringName(parent.get_meta("team", &"red")) == &"red" else Color("17284d")
-	_add_floorball_blade(rig, blade_color)
-
-
-func _add_floorball_blade(rig: Node3D, color: Color) -> void:
-	var blade := MeshInstance3D.new()
-	blade.name = "Blade"
-	var left_rail := PackedVector2Array([
-		Vector2(-0.075, 1.04), Vector2(-0.08, 1.18), Vector2(-0.075, 1.34),
-		Vector2(-0.055, 1.51), Vector2(0.0, 1.66),
-	])
-	var right_rail := PackedVector2Array([
-		Vector2(0.07, 1.04), Vector2(0.085, 1.18), Vector2(0.105, 1.34),
-		Vector2(0.13, 1.50), Vector2(0.12, 1.63),
-	])
-	var centre_rail := PackedVector2Array()
-	for index in left_rail.size():
-		centre_rail.append(left_rail[index].lerp(right_rail[index], 0.53))
-	centre_rail.append(Vector2(0.04, 1.71))
-	var vertices := PackedVector3Array()
-	_append_blade_strip(vertices, left_rail, 0.045)
-	_append_blade_strip(vertices, right_rail, 0.045)
-	_append_blade_strip(vertices, centre_rail, 0.034)
-	# Close the frame around the shaft heel and sweep it around a rounded toe.
-	# This outer silhouette is the defining curved end of a floorball blade.
-	_append_blade_strip(vertices, PackedVector2Array([left_rail[0], right_rail[0]]), 0.045)
-	_append_blade_strip(vertices, PackedVector2Array([
-		left_rail[4], Vector2(-0.01, 1.70), Vector2(0.04, 1.73),
-		Vector2(0.09, 1.70), right_rail[4],
-	]), 0.045)
-	# Diagonal webbing reads as a lightweight molded floorball lattice without
-	# reverting to the previous repeated H-shaped blade.
-	for web in [
-		PackedVector2Array([left_rail[1], right_rail[2]]),
-		PackedVector2Array([right_rail[1], left_rail[2]]),
-		PackedVector2Array([left_rail[2], right_rail[3]]),
-		PackedVector2Array([right_rail[2], left_rail[3]]),
-		PackedVector2Array([left_rail[3], right_rail[4]]),
-	]:
-		_append_blade_strip(vertices, web, 0.03)
-	# Bend the open plastic face gently sideways toward the toe. The depth stays
-	# shallow, but keeps the ball on the playable front face like a real blade.
-	for index in vertices.size():
-		var vertex := vertices[index]
-		var hook_ratio := clampf((vertex.z - 1.04) / 0.69, 0.0, 1.0)
-		vertex.y = -0.095 * hook_ratio * hook_ratio
-		vertices[index] = vertex
-	vertices = _solidify_blade_triangles(vertices, 0.032)
-	var arrays := []
-	arrays.resize(ArrayMesh.ARRAY_MAX)
-	arrays[ArrayMesh.ARRAY_VERTEX] = vertices
-	var mesh := ArrayMesh.new()
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	blade.mesh = mesh
-	var material := _material(color, 0.42)
-	material.cull_mode = BaseMaterial3D.CULL_DISABLED
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	blade.material_override = material
-	rig.add_child(blade)
-	# The shaft rig is pitched across the player's body, while a floorball blade
-	# stands on its narrow lower edge. Counter-rotate the lattice into a vertical
-	# actor-space basis while retaining the stick's yaw and slap motion.
-	var blade_center := mesh.get_aabb().get_center()
-	var yaw_basis := Basis(Vector3.UP, deg_to_rad(-28.0))
-	var vertical_actor_basis := Basis(yaw_basis.y, -yaw_basis.x, yaw_basis.z)
-	var old_actor_center := rig.transform * blade_center
-	var actor_origin := old_actor_center - vertical_actor_basis * blade_center
-	actor_origin.y = -0.69 - mesh.get_aabb().position.x
-	# The shaft plugs into the upper heel at the back edge; it must not pierce a
-	# quarter of the way into the playable blade face.
-	actor_origin += vertical_actor_basis.z * 0.16
-	actor_origin.x += 0.10
-	blade.transform = rig.transform.affine_inverse() * Transform3D(vertical_actor_basis, actor_origin)
-	var pocket := Marker3D.new()
-	pocket.name = "BladePocket"
-	# Place the ball centre beyond the concave playing face, near the curled toe.
-	# This lets the vertical blade visibly push the ball instead of intersecting
-	# its centre or appearing to carry it behind the lattice.
-	pocket.position = blade.position + blade.basis * Vector3(0.0, -0.275, 1.58)
-	rig.add_child(pocket)
-	var spine_toe := Marker3D.new()
-	spine_toe.name = "CentreSpineToe"
-	spine_toe.position = blade.position + blade.basis * Vector3(0.04, -0.09, 1.71)
-	rig.add_child(spine_toe)
-
-
-func _append_blade_strip(vertices: PackedVector3Array, points: PackedVector2Array, width: float) -> void:
-	for index in points.size() - 1:
-		var start := points[index]
-		var finish := points[index + 1]
-		var direction := (finish - start).normalized()
-		var normal := Vector2(-direction.y, direction.x) * width * 0.5
-		var a := Vector3(start.x + normal.x, 0.0, start.y + normal.y)
-		var b := Vector3(start.x - normal.x, 0.0, start.y - normal.y)
-		var c := Vector3(finish.x - normal.x, 0.0, finish.y - normal.y)
-		var d := Vector3(finish.x + normal.x, 0.0, finish.y + normal.y)
-		vertices.append_array(PackedVector3Array([a, b, c, a, c, d]))
-
-
-func _solidify_blade_triangles(surface_vertices: PackedVector3Array, thickness: float) -> PackedVector3Array:
-	var solid := PackedVector3Array()
-	var depth := Vector3(0.0, thickness, 0.0)
-	for index in range(0, surface_vertices.size(), 3):
-		var a := surface_vertices[index]
-		var b := surface_vertices[index + 1]
-		var c := surface_vertices[index + 2]
-		var back_a := a + depth
-		var back_b := b + depth
-		var back_c := c + depth
-		solid.append_array(PackedVector3Array([
-			a, b, c,
-			back_a, back_c, back_b,
-			a, back_a, back_b, a, back_b, b,
-			b, back_b, back_c, b, back_c, c,
-			c, back_c, back_a, c, back_a, a,
-		]))
-	return solid
-
-
+	var packed_stick := load("res://assets/models/floorball_stick.glb") as PackedScene
+	var imported := packed_stick.instantiate() as Node3D
+	for child in imported.get_children():
+		child.owner = null
+		imported.remove_child(child)
+		rig.add_child(child)
+		var authored_name := String(child.name).trim_prefix("GameStick__")
+		child.name = authored_name
+		if child is MeshInstance3D:
+			var mesh_part := child as MeshInstance3D
+			if authored_name == "Floorball_Shaft":
+				mesh_part.name = "Shaft"
+				mesh_part.material_override = _material(shaft_color, 0.58)
+			elif authored_name == "Floorball_Grip":
+				mesh_part.name = "Grip"
+				mesh_part.material_override = _material(handle_color, 0.76)
+			elif authored_name == "Floorball_End_Cap":
+				mesh_part.name = "EndCap"
+				mesh_part.material_override = _material(handle_color, 0.7)
+			elif authored_name == "Floorball_Angled_Socket":
+				mesh_part.name = "BladeNeck"
+				mesh_part.material_override = _material(blade_color, 0.42)
+			elif authored_name == "Floorball_Blade_Frame_Outline":
+				mesh_part.name = "Blade"
+				mesh_part.material_override = _material(blade_color, 0.42)
+			elif "Blade" in authored_name or "Heel_Plate" in authored_name:
+				mesh_part.material_override = _material(blade_color, 0.42)
+			elif "Grip" in authored_name:
+				mesh_part.material_override = _material(handle_color, 0.7)
+		elif authored_name == "BladePocket":
+			child.name = "ImportedBladePocket"
+			var pocket := Marker3D.new()
+			pocket.name = "BladePocket"
+			pocket.transform = (child as Node3D).transform
+			rig.add_child(pocket)
+			child.queue_free()
+		elif authored_name == "CentreSpineToe":
+			child.name = "ImportedCentreSpineToe"
+			var spine_toe := Marker3D.new()
+			spine_toe.name = "CentreSpineToe"
+			spine_toe.transform = (child as Node3D).transform
+			rig.add_child(spine_toe)
+			child.queue_free()
+	var blade_pocket := rig.get_node("BladePocket") as Marker3D
+	var desired_pocket := Vector3(-0.75, -0.53, 0.90)
+	rig.position = desired_pocket - rig.basis * blade_pocket.position
+	imported.queue_free()
 func _add_dash_streak(parent: Node3D, color: Color) -> void:
 	var streak := Node3D.new()
 	streak.name = "DashStreak"
@@ -898,15 +795,17 @@ func _add_fuego_aura(parent: Node3D, color: Color) -> void:
 func _build_ball() -> void:
 	var ball := MeshInstance3D.new()
 	ball.name = "Ball"
-	var sphere := SphereMesh.new()
-	sphere.radius = 0.22
-	sphere.height = 0.44
-	sphere.radial_segments = 20
-	sphere.rings = 10
-	ball.mesh = sphere
+	var packed_ball := load("res://assets/models/whiffle_ball.glb") as PackedScene
+	var imported_ball := packed_ball.instantiate() as Node3D
+	var authored_ball := imported_ball.find_child("WhiffleBall", true, false) as MeshInstance3D
+	ball.mesh = authored_ball.mesh
+	var authored_diameter := authored_ball.get_aabb().size.x
+	ball.scale = Vector3.ONE * (0.44 / authored_diameter)
 	ball.position = Vector3(0.0, 0.22, 0.0)
-	ball.material_override = _material(Color("ff8a1f"), 0.38, Color("ff5a00"))
+	ball.material_override = _material(Color("f5f7fa"), 0.34)
+	ball.set_meta("authored_ball", true)
 	ball.set_script(load("res://scripts/gameplay/ball_controller.gd"))
+	imported_ball.queue_free()
 	var trail := MeshInstance3D.new()
 	trail.name = "ShotTrail"
 	var trail_mesh := BoxMesh.new()

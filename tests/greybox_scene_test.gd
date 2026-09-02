@@ -117,7 +117,12 @@ func run_test() -> void:
 	opponent.position = Vector3(5.0, 0.75, 0.0)
 	opponent.velocity = Vector3.ZERO
 	var player_stick := scene.get_node("Arena/Player/StickRig") as Node3D
-	if player_stick.position.x <= 0.0 or player_stick.rotation.y >= -0.2:
+	var stick_actor := player_stick.get_parent() as CharacterBody3D
+	var stick_pocket := player_stick.get_node("BladePocket") as Marker3D
+	var pocket_offset := stick_pocket.global_position - stick_actor.global_position
+	var stick_facing: Vector3 = stick_actor.call("get_facing_direction")
+	var stick_right := Vector3(-stick_facing.z, 0.0, stick_facing.x)
+	if pocket_offset.dot(stick_facing) < 0.5 or pocket_offset.dot(stick_right) < 0.5:
 		fail("The stick must angle across the body toward the player's right")
 		return
 	var dash_streak := scene.get_node("Arena/Player/DashStreak") as Node3D
@@ -177,7 +182,9 @@ func run_test() -> void:
 	var player_blade := scene.get_node("Arena/Player/StickRig/Blade") as MeshInstance3D
 	var blade_bounds := player_blade.get_aabb()
 	var blade_world_center := player_blade.to_global(blade_bounds.get_center())
-	if blade_bounds.end.z <= 0.5 or blade_bounds.end.x <= 0.0 or blade_world_center.y > 0.65:
+	var blade_size := blade_bounds.size
+	var blade_long_axis := maxf(blade_size.x, maxf(blade_size.y, blade_size.z))
+	if blade_long_axis < 0.36 or blade_world_center.y > 0.35:
 		fail("The stick blade must finish grounded, forward, and to the player's right")
 		return
 	if not player.has_method("set_stick_slap_angle"):

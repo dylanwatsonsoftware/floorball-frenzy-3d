@@ -5,7 +5,7 @@ const RinkCollisionScript = preload("res://scripts/simulation/rink_collision.gd"
 const SquadLogicScript = preload("res://scripts/simulation/squad_logic.gd")
 const RINK_HALF_LENGTH := 19.1
 const RINK_HALF_WIDTH := 9.1
-const STICK_BASE_Y_ANGLE := -28.0
+const STICK_BASE_Y_ANGLE := 28.0
 const DASH_STREAK_SECONDS := 0.18
 const OPENING_GRACE_SECONDS := 2.0
 
