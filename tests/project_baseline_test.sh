@@ -6,6 +6,7 @@ project_file="project.godot"
 grep -Fq 'config/features=PackedStringArray("4.7", "GL Compatibility")' "$project_file"
 grep -Fq 'run/main_scene="res://scenes/app/main_menu.tscn"' "$project_file"
 grep -Fq 'textures/vram_compression/import_etc2_astc=true' "$project_file"
+grep -Fq 'common/physics_interpolation=true' "$project_file"
 
 if grep -Fq '"C#"' "$project_file"; then
   echo "Project must not require C# because Godot 4 C# cannot export to web." >&2

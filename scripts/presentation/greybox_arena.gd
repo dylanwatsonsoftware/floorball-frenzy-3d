@@ -38,11 +38,12 @@ func _process(delta: float) -> void:
 	if ball == null:
 		return
 	var action_actor := _action_actor(ball)
-	var actor_position := ball.global_position if action_actor == null else action_actor.global_position
+	var ball_position := ActionCameraScript.display_position(ball)
+	var actor_position := ball_position if action_actor == null else ActionCameraScript.display_position(action_actor)
 	var charge_ratio := float(ball.call("get_shot_charge_ratio")) if ball.has_method("get_shot_charge_ratio") else 0.0
 	var pulling_back := charge_ratio > _camera_charge_pullback
 	_camera_charge_pullback = lerpf(_camera_charge_pullback, charge_ratio, ActionCameraScript.transition_blend(delta, pulling_back))
-	var frame: Dictionary = ActionCameraScript.frame(ball.global_position, actor_position, _camera_charge_pullback > 0.001, _camera_charge_pullback)
+	var frame: Dictionary = ActionCameraScript.frame(ball_position, actor_position, _camera_charge_pullback > 0.001, _camera_charge_pullback)
 	if not _camera_tracking_initialized:
 		_camera_follow_target = frame.target
 		_camera_look_target = frame.target
@@ -674,6 +675,7 @@ func reset_squads_for_faceoff() -> void:
 	for actor in _field_players:
 		actor.position = actor.get_meta("faceoff_position", actor.position)
 		actor.velocity = Vector3.ZERO
+		actor.reset_physics_interpolation()
 		if actor.has_method("reset_for_faceoff"):
 			actor.call("reset_for_faceoff")
 
@@ -982,6 +984,9 @@ func _build_camera() -> void:
 	# Preserve horizontal framing as the browser changes shape. Portrait screens
 	# gain vertical context instead of cropping the rink and its active players.
 	_camera.keep_aspect = Camera3D.KEEP_WIDTH
+	# The camera runs every rendered frame and follows interpolated physics
+	# targets manually; automatic interpolation here would smooth it twice.
+	_camera.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	_camera.current = true
 	add_child(_camera)
 

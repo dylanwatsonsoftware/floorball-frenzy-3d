@@ -75,6 +75,9 @@ func run_test() -> void:
 	if camera.keep_aspect != Camera3D.KEEP_WIDTH:
 		fail("Broadcast camera must preserve horizontal framing so portrait and landscape screens both fit the action width")
 		return
+	if camera.physics_interpolation_mode != Node.PHYSICS_INTERPOLATION_MODE_OFF:
+		fail("The frame-driven broadcast camera must not receive a second automatic interpolation pass")
+		return
 	var opponent := scene.get_node("Arena/Opponent")
 	if not opponent.has_method("is_ai_controlled"):
 		fail("Blue opponent must be controlled by the local-match AI")
@@ -239,9 +242,16 @@ func run_test() -> void:
 		return
 	player.position = Vector3(-5.0, 0.75, 0.0)
 	player.velocity = Vector3.ZERO
-	ball.position = Vector3(-4.1, 0.22, 0.75)
+	player.reset_physics_interpolation()
+	var slap_blade_pocket := player.get_node("StickRig/BladePocket") as Marker3D
+	slap_blade_pocket.force_update_transform()
+	ball.position = Vector3(slap_blade_pocket.global_position.x, 0.22, slap_blade_pocket.global_position.z)
 	ball.ball_velocity = Vector3.ZERO
+	ball.reset_physics_interpolation()
 	ball.record_touch(&"blue")
+	await physics_frame
+	await physics_frame
+	ball.ball_velocity = Vector3.ZERO
 	if not ball.is_one_touch_ready(&"red"):
 		fail("A recent blue touch must arm red's one-touch opportunity")
 		return

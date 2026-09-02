@@ -139,6 +139,7 @@ func _launch_pass(planar_direction: Vector2, inherited_velocity: Vector3, passer
 
 func reset_for_faceoff() -> void:
 	position = Vector3(0.0, BallSimulationScript.BALL_RADIUS, 0.0)
+	reset_physics_interpolation()
 	ball_velocity = Vector3.ZERO
 	_charge_seconds = 0.0
 	_cancel_slap()
@@ -272,6 +273,7 @@ func _interaction_participants() -> Array:
 		}
 		var blade_pocket := actor.get_node_or_null("StickRig/BladePocket") as Marker3D
 		if blade_pocket != null:
+			blade_pocket.force_update_transform()
 			participant.blade_target = blade_pocket.global_position
 		participants.append(participant)
 	return participants
@@ -389,6 +391,7 @@ func _ball_in_slap_actor_blade() -> bool:
 	}
 	var blade_pocket := _slap_actor.get_node_or_null("StickRig/BladePocket") as Marker3D
 	if blade_pocket != null:
+		blade_pocket.force_update_transform()
 		participant.blade_target = blade_pocket.global_position
 	return BallInteractionScript.is_in_blade_pocket(global_position, participant)
 

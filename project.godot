@@ -63,6 +63,10 @@ switch_player={
 "events": [Object(InputEventKey,"physical_keycode":4194308)]
 }
 
+[physics]
+
+common/physics_interpolation=true
+
 [rendering]
 
 renderer/rendering_method="gl_compatibility"

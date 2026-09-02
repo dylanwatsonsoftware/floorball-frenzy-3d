@@ -6,6 +6,9 @@ func _init() -> void:
 	if camera_logic == null:
 		fail("Action-camera framing logic is missing")
 		return
+	if not camera_logic.has_method("display_position"):
+		fail("Frame-based camera tracking must sample interpolated physics positions")
+		return
 
 	var neutral: Dictionary = camera_logic.frame(Vector3(8.0, 0.2, 3.0), Vector3(7.0, 0.75, 2.0), false, 0.0)
 	if neutral.target.x < 5.0 or neutral.target.z < 1.0:

@@ -11,6 +11,10 @@ const FOLLOW_RATE := 2.8
 const CHARGE_PULLBACK_RATE := 2.4
 
 
+static func display_position(subject: Node3D) -> Vector3:
+	return subject.get_global_transform_interpolated().origin
+
+
 static func frame(ball_position: Vector3, action_actor_position: Vector3, charging: bool, charge_ratio: float) -> Dictionary:
 	var action_focus := ball_position.lerp(action_actor_position, 0.38)
 	action_focus = Vector3(

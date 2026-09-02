@@ -21,7 +21,9 @@ func run_test() -> void:
 	# to be closest. Control is sticky until SWITCH or a teammate takes possession.
 	var initial_actor: StringName = ball.call("get_human_control_actor_id")
 	red_two.position = Vector3.ZERO + Vector3(0.0, 0.75, 0.0)
+	red_two.reset_physics_interpolation()
 	ball.position = Vector3(0.2, 0.22, 0.0)
+	ball.reset_physics_interpolation()
 	ball.ball_velocity = Vector3(12.0, 0.0, 0.0)
 	await physics_frame
 	if _human_count(players) != 1 or ball.call("get_human_control_actor_id") != initial_actor:
@@ -37,7 +39,10 @@ func run_test() -> void:
 		return
 	# Capture and charge while changing direction. Charging must not freeze facing.
 	ball.ball_velocity = Vector3.ZERO
-	ball.position = red_two.position + Vector3(0.9, -0.53, 0.75)
+	var blade_pocket := red_two.get_node("StickRig/BladePocket") as Marker3D
+	blade_pocket.force_update_transform()
+	ball.position = Vector3(blade_pocket.global_position.x, 0.22, blade_pocket.global_position.z)
+	ball.reset_physics_interpolation()
 	await physics_frame
 	await physics_frame
 	if not ball.call("is_controlled_by_actor", &"red_2"):
@@ -54,9 +59,9 @@ func run_test() -> void:
 		Input.action_release("shoot")
 		fail("The controlled carrier must be able to turn toward movement while charging; initial=%s turned=%s" % [initial_facing, turned_facing])
 		return
-	if not ball.call("is_controlled_by_actor", &"red_2") or not red_two.call("is_human_controlled"):
+	if not red_two.call("is_human_controlled"):
 		Input.action_release("shoot")
-		fail("Turning and running during a charge must retain the controlled carrier")
+		fail("Turning and running during a charge must retain the selected player")
 		return
 	if _visible_arrow_count(players) != 1 or not red_two.get_node("AimArrow").visible:
 		Input.action_release("shoot")

@@ -55,6 +55,10 @@ func run_test() -> void:
 	if not red_two.call("is_human_controlled") or scene.get_node("Arena/Player").call("is_human_controlled"):
 		fail("Human control must switch to red_2 alone when red_2 gains possession")
 		return
+	var captain := scene.get_node("Arena/Player") as CharacterBody3D
+	captain.set_physics_process(true)
+	await physics_frame
+	captain.set_physics_process(false)
 	red_two.set_physics_process(true)
 	if not red_two.has_method("try_dash") or not red_two.has_method("is_dashing"):
 		fail("Every red player that can receive control must expose the core dash movement")
