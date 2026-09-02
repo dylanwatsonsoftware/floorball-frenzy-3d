@@ -9,7 +9,7 @@ const RINK_HALF_WIDTH := 9.1
 const DASH_STREAK_SECONDS := 0.18
 const BOLT_WINDOW_SECONDS := 0.2
 const PARRY_WINDOW_SECONDS := 0.15
-const STICK_BASE_Y_ANGLE := 28.0
+const STICK_BASE_Y_ANGLE := 208.0
 
 var _facing_direction := Vector3.RIGHT
 var _mobile_controls: Control

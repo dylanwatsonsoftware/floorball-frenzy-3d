@@ -76,6 +76,14 @@ func run_test() -> void:
 			return
 		var blade_center: Vector3 = actor.to_local(blade.to_global(blade.get_aabb().get_center()))
 		var grip_center: Vector3 = actor.to_local(grip.to_global(grip.get_aabb().get_center()))
+		var blade_distance := Vector2(blade_center.x, blade_center.z).length()
+		var grip_distance := Vector2(grip_center.x, grip_center.z).length()
+		if grip_distance >= blade_distance:
+			fail("The stick must point across the player's body with its grip closer than its blade; grip=%s blade=%s" % [grip_center, blade_center])
+			return
+		if rig.scale.x < 1.1:
+			fail("The authored stick needs a slightly larger, readable gameplay scale; scale=%s" % rig.scale)
+			return
 		if blade_center.y < -0.75 or blade_center.y > -0.42 or absf(blade_center.x) < 0.35 or absf(blade_center.z) < 0.35:
 			fail("The authored blade must sit grounded at the player's right-front foot; center=%s" % blade_center)
 			return
