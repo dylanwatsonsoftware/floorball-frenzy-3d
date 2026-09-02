@@ -4,7 +4,7 @@ set -eu
 project_file="project.godot"
 
 grep -Fq 'config/features=PackedStringArray("4.7", "GL Compatibility")' "$project_file"
-grep -Fq 'run/main_scene="res://scenes/app/main.tscn"' "$project_file"
+grep -Fq 'run/main_scene="res://scenes/app/main_menu.tscn"' "$project_file"
 grep -Fq 'textures/vram_compression/import_etc2_astc=true' "$project_file"
 
 if grep -Fq '"C#"' "$project_file"; then
@@ -22,7 +22,8 @@ if grep -Fq 'res://addons/godot_mcp/plugin.cfg' "$project_file"; then
   exit 1
 fi
 
-test -f scenes/app/main.tscn
+test -f scenes/app/main_menu.tscn
+test -f scenes/match/match.tscn
 test -f scripts/app/main.gd
 
 echo "Project baseline is web-capable."

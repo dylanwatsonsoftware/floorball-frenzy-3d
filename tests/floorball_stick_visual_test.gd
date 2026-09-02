@@ -6,7 +6,7 @@ func _init() -> void:
 
 
 func run_test() -> void:
-	var scene := (load("res://scenes/app/main.tscn") as PackedScene).instantiate()
+	var scene := (load("res://scenes/match/match.tscn") as PackedScene).instantiate()
 	root.add_child(scene)
 	await process_frame
 	var players: Array = scene.get_node("Arena").call("get_field_players")

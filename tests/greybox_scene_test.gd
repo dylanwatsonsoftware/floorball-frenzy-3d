@@ -6,7 +6,7 @@ func _init() -> void:
 
 
 func run_test() -> void:
-	var packed := load("res://scenes/app/main.tscn") as PackedScene
+	var packed := load("res://scenes/match/match.tscn") as PackedScene
 	if packed == null:
 		fail("Main scene could not be loaded")
 		return

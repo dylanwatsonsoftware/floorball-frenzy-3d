@@ -1,0 +1,167 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/presentation/main_menu.gd" id="1_menu"]
+[ext_resource type="Script" path="res://scripts/presentation/menu_rink_lines.gd" id="2_rink_lines"]
+[ext_resource type="Texture2D" path="res://assets/ui/floorball-frenzy-wide.png" id="3_logo"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_menu_panel"]
+bg_color = Color(0.018, 0.035, 0.022, 0.96)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.25, 0.72, 0.31, 0.35)
+corner_radius_top_left = 22
+corner_radius_top_right = 22
+corner_radius_bottom_right = 22
+corner_radius_bottom_left = 22
+shadow_color = Color(0, 0, 0, 0.65)
+shadow_size = 18
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_solo_button"]
+bg_color = Color(0.08, 0.25, 0.54, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 6
+border_color = Color(0.28, 0.56, 0.96, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_solo_hover"]
+bg_color = Color(0.12, 0.35, 0.7, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 6
+border_color = Color(0.5, 0.75, 1, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_online_disabled"]
+bg_color = Color(0.05, 0.19, 0.09, 0.88)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 5
+border_color = Color(0.19, 0.55, 0.24, 0.65)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[node name="MainMenu" type="CanvasLayer"]
+script = ExtResource("1_menu")
+
+[node name="Screen" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0.008, 0.02, 0.011, 1)
+
+[node name="RinkLines" type="Control" parent="Screen"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("2_rink_lines")
+
+[node name="Content" type="Panel" parent="Screen"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -350.0
+offset_top = -326.0
+offset_right = 350.0
+offset_bottom = 326.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBox_menu_panel")
+
+[node name="Logo" type="TextureRect" parent="Screen/Content"]
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -248.0
+offset_top = 18.0
+offset_right = 248.0
+offset_bottom = 280.0
+grow_horizontal = 2
+mouse_filter = 2
+texture = ExtResource("3_logo")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Tagline" type="Label" parent="Screen/Content"]
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -310.0
+offset_top = 278.0
+offset_right = 310.0
+offset_bottom = 310.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(0.88, 0.95, 0.89, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.85)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
+theme_override_font_sizes/font_size = 18
+text = "LAMBS FLOORBALL CLUB  ·  FAST 6v6 ARCADE FLOORBALL"
+horizontal_alignment = 1
+
+[node name="SoloButton" type="Button" parent="Screen/Content"]
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -290.0
+offset_top = 332.0
+offset_right = 290.0
+offset_bottom = 426.0
+grow_horizontal = 2
+mouse_default_cursor_shape = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(0.82, 0.91, 1, 1)
+theme_override_font_sizes/font_size = 26
+theme_override_styles/normal = SubResource("StyleBox_solo_button")
+theme_override_styles/hover = SubResource("StyleBox_solo_hover")
+theme_override_styles/pressed = SubResource("StyleBox_solo_hover")
+text = "⚡  SOLO MATCH\nVS PIRATES AI · 6v6"
+
+[node name="OnlineButton" type="Button" parent="Screen/Content"]
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -290.0
+offset_top = 446.0
+offset_right = 290.0
+offset_bottom = 540.0
+grow_horizontal = 2
+mouse_default_cursor_shape = 8
+theme_override_colors/font_disabled_color = Color(0.7, 0.85, 0.72, 0.72)
+theme_override_font_sizes/font_size = 23
+theme_override_styles/disabled = SubResource("StyleBox_online_disabled")
+disabled = true
+text = "🌐  ONLINE MATCH · COMING SOON\nCREATE OR JOIN A GAME"
+
+[node name="Footer" type="Label" parent="Screen/Content"]
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -310.0
+offset_top = 568.0
+offset_right = 310.0
+offset_bottom = 606.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(0.5, 0.65, 0.52, 0.9)
+theme_override_font_sizes/font_size = 13
+text = "MOBILE · DESKTOP · WEB  |  FIRST TO 5 WINS"
+horizontal_alignment = 1

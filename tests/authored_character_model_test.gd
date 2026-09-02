@@ -10,7 +10,7 @@ func run_test() -> void:
 		if not ResourceLoader.exists(asset_path):
 			fail("Character model must be an authored imported 3D asset: %s" % asset_path)
 			return
-	var scene := (load("res://scenes/app/main.tscn") as PackedScene).instantiate()
+	var scene := (load("res://scenes/match/match.tscn") as PackedScene).instantiate()
 	root.add_child(scene)
 	await process_frame
 	for actor in scene.get_node("Arena").call("get_field_players"):

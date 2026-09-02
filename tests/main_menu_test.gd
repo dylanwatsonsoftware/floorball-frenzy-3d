@@ -6,13 +6,10 @@ func _init() -> void:
 
 
 func run_test() -> void:
-	var scene := (load("res://scenes/app/main.tscn") as PackedScene).instantiate()
-	root.add_child(scene)
+	var menu := (load("res://scenes/app/main_menu.tscn") as PackedScene).instantiate()
+	root.add_child(menu)
+	current_scene = menu
 	await process_frame
-	var menu := scene.get_node_or_null("MainMenu") as CanvasLayer
-	if menu == null or not menu.visible:
-		fail("The game must open on a visible main menu")
-		return
 	for path in ["Screen/RinkLines", "Screen/Content/Logo", "Screen/Content/SoloButton", "Screen/Content/OnlineButton"]:
 		if menu.get_node_or_null(path) == null:
 			fail("The ported menu is missing its original-game presentation element: %s" % path)
@@ -29,33 +26,22 @@ func run_test() -> void:
 	if solo_button.disabled:
 		fail("Solo Match must be the active path into the current 6v6 game")
 		return
-	menu.call("_set_gameplay_enabled", false)
 	menu.call("start_solo_match")
-	if Input.is_action_just_released("shoot") or Input.is_action_just_released("dash"):
-		fail("Starting Solo must not synthesize gameplay release edges before the first resumed physics frame")
+	await process_frame
+	await process_frame
+	var loaded_match := current_scene
+	if loaded_match == null or loaded_match.scene_file_path != "res://scenes/match/match.tscn":
+		fail("Solo Match must replace the menu with a fresh standalone match scene")
 		return
-	if menu.visible or not (scene.get_node("HUD") as CanvasLayer).visible:
-		fail("Starting a solo match must dismiss the menu and reveal the gameplay HUD")
+	if loaded_match.get_node_or_null("Arena/Ball") == null or loaded_match.get_node_or_null("HUD") == null:
+		fail("The loaded match must initialize its arena and gameplay HUD")
 		return
-	var ball := scene.get_node("Arena/Ball")
-	if not ball.is_physics_processing():
-		fail("Starting Solo after the menu freeze must resume ball physics")
-		return
-	for actor in scene.get_node("Arena").call("get_field_players"):
+	for actor in loaded_match.get_node("Arena").call("get_field_players"):
 		if not actor.is_physics_processing():
-			fail("Starting Solo must resume every player controller; frozen actor=%s mode=%s" % [actor.name, actor.process_mode])
+			fail("A newly loaded match must start every player controller; frozen actor=%s" % actor.name)
 			return
-	var player := scene.get_node("Arena/Player") as CharacterBody3D
-	var start_position := player.position
-	Input.action_press("move_right")
-	for frame in 8:
-		await physics_frame
-	Input.action_release("move_right")
-	if player.position.distance_to(start_position) < 0.08:
-		fail("The resumed Solo match must advance real player physics after leaving the menu")
-		return
-	print("Responsive original-style main menu is valid.")
-	scene.queue_free()
+	print("Standalone main menu loads a fresh 6v6 match.")
+	loaded_match.queue_free()
 	quit(0)
 
 
