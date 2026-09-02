@@ -53,6 +53,18 @@ func _init() -> void:
 	if moderate_ball_error.x <= 0.0 or moderate_ball_error.x >= 0.4:
 		fail("Moderate ball errors should correct gently; got %s" % moderate_ball_error)
 		return
+	var pending_inputs: Array = [
+		{"seq": 7, "move": Vector2.RIGHT, "delta": 0.1, "speed": 9.0},
+		{"seq": 8, "move": Vector2.DOWN, "delta": 0.1, "speed": 9.0},
+	]
+	var unacknowledged: Array = controller.discard_acknowledged_inputs(pending_inputs, 7)
+	if unacknowledged.size() != 1 or int(unacknowledged[0].seq) != 8:
+		fail("A guest must retain only inputs newer than the host acknowledgement")
+		return
+	var replayed_position: Vector3 = controller.replay_inputs(Vector3.ZERO, unacknowledged)
+	if not replayed_position.is_equal_approx(Vector3(0.0, 0.0, 0.9)):
+		fail("Unacknowledged guest inputs must replay over the host position; got %s" % replayed_position)
+		return
 	if controller.next_action_sequence(4, false) != 4 or controller.next_action_sequence(4, true) != 5:
 		fail("Discrete online actions need persistent sequence numbers so unreliable packets can be repeated safely")
 		return

@@ -33,6 +33,21 @@ static func reconcile_ball_position(current: Vector3, authoritative: Vector3) ->
 	return current.lerp(authoritative, weight)
 
 
+static func discard_acknowledged_inputs(inputs: Array, acknowledged_sequence: int) -> Array:
+	var remaining: Array = []
+	for input: Dictionary in inputs:
+		if int(input.get("seq", -1)) > acknowledged_sequence:
+			remaining.append(input)
+	return remaining
+
+
+static func replay_inputs(authoritative_position: Vector3, inputs: Array) -> Vector3:
+	var replayed := authoritative_position
+	for input: Dictionary in inputs:
+		replayed = predict_position(replayed, input.get("move", Vector2.ZERO), float(input.get("delta", 0.0)), float(input.get("speed", 0.0)))
+	return replayed
+
+
 static func reconcile_rotation(current: float, authoritative: float, locally_predicted: bool, actively_steering: bool) -> float:
 	if locally_predicted and actively_steering:
 		return current

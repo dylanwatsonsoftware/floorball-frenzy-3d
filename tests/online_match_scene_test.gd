@@ -28,6 +28,10 @@ func run_test() -> void:
 	if match_scene.get_node_or_null("OnlineMatchController") == null:
 		fail("Online matches must attach their authoritative networking controller")
 		return
+	var authority_snapshot: Dictionary = match_scene.get_node("OnlineMatchController").call("_capture_snapshot")
+	if not authority_snapshot.has("input_ack"):
+		fail("Authority snapshots must acknowledge the newest processed guest input")
+		return
 	match_scene.queue_free()
 	await process_frame
 	root.get_node("OnlineMatch").call("stop")

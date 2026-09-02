@@ -23,6 +23,7 @@ var _switch_sequence := 0
 var _last_remote_pass_sequence := 0
 var _last_remote_switch_sequence := 0
 var _last_faceoff_sequence := -1
+var _pending_inputs: Array = []
 
 
 func _ready() -> void:
@@ -72,6 +73,7 @@ func _physics_process(delta: float) -> void:
 		_pass_sequence = OnlineInputScript.next_action_sequence(_pass_sequence, Input.is_action_just_pressed("pass"))
 		_switch_sequence = OnlineInputScript.next_action_sequence(_switch_sequence, Input.is_action_just_pressed("switch_player"))
 		_transport.send({"type": "input", "seq": _sequence, "move": _vector_to_array(movement), "dash": Input.is_action_pressed("dash"), "shoot": Input.is_action_pressed("shoot"), "pass_seq": _pass_sequence, "switch_seq": _switch_sequence})
+		_record_pending_input(_sequence, movement, delta)
 		_predict_local_player(movement, delta)
 		_predict_replicas(delta)
 		return
@@ -113,7 +115,7 @@ func _capture_snapshot() -> Dictionary:
 	for actor in _arena.call("get_field_players"):
 		actors.append({"id": String(actor.call("get_actor_id")), "p": _vector3_to_array(actor.global_position), "v": _vector3_to_array(actor.velocity), "r": actor.rotation.y})
 	var match_state: Dictionary = _match_flow.call("get_network_state") if _match_flow.has_method("get_network_state") else {}
-	return {"type": "snapshot", "seq": _sequence, "actors": actors, "ball": _vector3_to_array(_ball.global_position), "ball_velocity": _vector3_to_array(_ball.ball_velocity), "owner": String(_ball.call("get_control_owner_actor_id")), "red_human": String(_ball.call("get_human_control_actor_id_for_team", &"red")), "blue_human": String(_ball.call("get_human_control_actor_id_for_team", &"blue")), "score": _match_flow.score.duplicate(), "goal_seq": int(match_state.get("goal_seq", 0)), "faceoff_seq": int(match_state.get("faceoff_seq", 0)), "scorer": String(match_state.get("scorer", "")), "phase": String(match_state.get("phase", "play"))}
+	return {"type": "snapshot", "seq": _sequence, "input_ack": _last_snapshot, "actors": actors, "ball": _vector3_to_array(_ball.global_position), "ball_velocity": _vector3_to_array(_ball.ball_velocity), "owner": String(_ball.call("get_control_owner_actor_id")), "red_human": String(_ball.call("get_human_control_actor_id_for_team", &"red")), "blue_human": String(_ball.call("get_human_control_actor_id_for_team", &"blue")), "score": _match_flow.score.duplicate(), "goal_seq": int(match_state.get("goal_seq", 0)), "faceoff_seq": int(match_state.get("faceoff_seq", 0)), "scorer": String(match_state.get("scorer", "")), "phase": String(match_state.get("phase", "play"))}
 
 
 func _apply_snapshot(snapshot: Dictionary) -> void:
@@ -122,6 +124,7 @@ func _apply_snapshot(snapshot: Dictionary) -> void:
 	var faceoff_sequence := int(snapshot.get("faceoff_seq", 0))
 	var is_new_faceoff := faceoff_sequence > _last_faceoff_sequence
 	_last_faceoff_sequence = maxi(_last_faceoff_sequence, faceoff_sequence)
+	_pending_inputs = [] if is_new_faceoff else OnlineInputScript.discard_acknowledged_inputs(_pending_inputs, int(snapshot.get("input_ack", -1)))
 	for actor in _arena.call("get_field_players"):
 		actor_by_id[String(actor.call("get_actor_id"))] = actor
 	for state: Dictionary in snapshot.get("actors", []):
@@ -130,6 +133,10 @@ func _apply_snapshot(snapshot: Dictionary) -> void:
 			var is_local_actor := actor == local_actor
 			var actively_steering := is_local_actor and Vector2(actor.velocity.x, actor.velocity.z).length_squared() > 0.01
 			var authoritative_position := _array_to_vector3(state.get("p", []))
+			if is_local_actor and not is_new_faceoff:
+				authoritative_position = OnlineInputScript.replay_inputs(authoritative_position, _pending_inputs)
+				authoritative_position.x = clampf(authoritative_position.x, -RINK_HALF_LENGTH, RINK_HALF_LENGTH)
+				authoritative_position.z = clampf(authoritative_position.z, -RINK_HALF_WIDTH, RINK_HALF_WIDTH)
 			actor.global_position = authoritative_position if is_new_faceoff else OnlineInputScript.reconcile_position(actor.global_position, authoritative_position, is_local_actor)
 			actor.velocity = _array_to_vector3(state.get("v", []))
 			actor.rotation.y = float(state.get("r", actor.rotation.y)) if is_new_faceoff else OnlineInputScript.reconcile_rotation(actor.rotation.y, float(state.get("r", actor.rotation.y)), is_local_actor, actively_steering)
@@ -182,6 +189,14 @@ func _predict_local_player(movement: Vector2, delta: float) -> void:
 		_ball.global_position += predicted - previous_position
 	if not movement.is_zero_approx():
 		actor.rotation.y = atan2(movement.x, movement.y)
+
+
+func _record_pending_input(sequence: int, movement: Vector2, delta: float) -> void:
+	var actor := _arena.call("get_local_human_actor") as CharacterBody3D
+	var has_ball := actor != null and _ball.has_method("is_controlled_by_actor") and bool(_ball.call("is_controlled_by_actor", actor.call("get_actor_id")))
+	_pending_inputs.append({"seq": sequence, "move": movement, "delta": delta, "speed": OnlineInputScript.prediction_speed(has_ball)})
+	if _pending_inputs.size() > 120:
+		_pending_inputs.pop_front()
 
 
 func _predict_replicas(delta: float) -> void:
