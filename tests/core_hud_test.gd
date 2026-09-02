@@ -42,6 +42,9 @@ func run_test() -> void:
 	if "DASH" not in camera_label.text:
 		fail("The core HUD must make the restored desktop dash control discoverable")
 		return
+	if "PASS" not in camera_label.text:
+		fail("The core HUD must make the automatic teammate Pass discoverable")
+		return
 	print("Core-only match HUD is valid.")
 	scene.queue_free()
 	quit(0)

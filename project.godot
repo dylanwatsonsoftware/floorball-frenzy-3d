@@ -50,6 +50,10 @@ shoot={
 "deadzone": 0.2,
 "events": [Object(InputEventKey,"physical_keycode":32)]
 }
+pass={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"physical_keycode":69)]
+}
 dash={
 "deadzone": 0.2,
 "events": [Object(InputEventKey,"physical_keycode":4194325)]

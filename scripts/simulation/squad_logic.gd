@@ -51,6 +51,19 @@ static func is_closest_to_ball(actor_id: StringName, actor_position: Vector3, te
 	return true
 
 
+static func closest_teammate(carrier_id: StringName, carrier_position: Vector3, teammates: Array) -> Dictionary:
+	var closest: Dictionary = {}
+	var closest_distance := INF
+	for teammate in teammates:
+		if StringName(teammate.actor_id) == carrier_id:
+			continue
+		var distance := _planar(carrier_position).distance_squared_to(_planar(teammate.position))
+		if distance < closest_distance:
+			closest_distance = distance
+			closest = teammate
+	return closest
+
+
 static func pass_plan(carrier_position: Vector3, teammates: Array, opponent_positions: Array, team: StringName, pass_index: int) -> Dictionary:
 	var nearest_pressure := INF
 	for opponent_position in opponent_positions:

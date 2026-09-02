@@ -4,18 +4,17 @@ const STICK_RADIUS := 76.0
 const STICK_DEADZONE := 0.2
 const EDGE_MARGIN := 28.0
 const SHOOT_RADIUS := 58.0
-const DASH_RADIUS := 46.0
+const PASS_RADIUS := 46.0
 const SWITCH_RADIUS := 40.0
 
 var _movement_touch := -1
 var _shoot_touch := -1
-var _dash_touch := -1
+var _pass_touch := -1
 var _switch_touch := -1
 var _movement_vector := Vector2.ZERO
 var _stick_knob_offset := Vector2.ZERO
 var _stick_origin := Vector2.ZERO
 var _movement_origin := Vector2.ZERO
-var _dash_cooldown_ratio := 0.0
 
 
 func _ready() -> void:
@@ -28,9 +27,10 @@ func get_movement_vector() -> Vector2:
 	return _movement_vector
 
 
-func set_dash_cooldown_ratio(value: float) -> void:
-	_dash_cooldown_ratio = normalize_cooldown_ratio(value)
-	queue_redraw()
+func set_dash_cooldown_ratio(_value: float) -> void:
+	# Dash remains available to keyboard/controller players, but the limited
+	# mobile action slot is now dedicated to the more fundamental Pass action.
+	return
 
 
 static func normalize_cooldown_ratio(value: float) -> float:
@@ -70,10 +70,10 @@ static func action_at_position(touch_position: Vector2, viewport_size: Vector2) 
 	var shoot_center := Vector2(viewport_size.x - EDGE_MARGIN - SHOOT_RADIUS, viewport_size.y - EDGE_MARGIN - SHOOT_RADIUS)
 	if touch_position.distance_to(shoot_center) <= SHOOT_RADIUS * 1.35:
 		return &"shoot"
-	var dash_center := Vector2(viewport_size.x - EDGE_MARGIN - DASH_RADIUS, shoot_center.y - SHOOT_RADIUS - DASH_RADIUS - 24.0)
-	if touch_position.distance_to(dash_center) <= DASH_RADIUS * 1.35:
-		return &"dash"
-	var switch_center := Vector2(viewport_size.x - EDGE_MARGIN - SWITCH_RADIUS, dash_center.y - DASH_RADIUS - SWITCH_RADIUS - 18.0)
+	var pass_center := Vector2(viewport_size.x - EDGE_MARGIN - PASS_RADIUS, shoot_center.y - SHOOT_RADIUS - PASS_RADIUS - 24.0)
+	if touch_position.distance_to(pass_center) <= PASS_RADIUS * 1.35:
+		return &"pass"
+	var switch_center := Vector2(viewport_size.x - EDGE_MARGIN - SWITCH_RADIUS, pass_center.y - PASS_RADIUS - SWITCH_RADIUS - 18.0)
 	if touch_position.distance_to(switch_center) <= SWITCH_RADIUS * 1.35:
 		return &"switch_player"
 	return &""
@@ -104,9 +104,9 @@ func _handle_touch(event: InputEventScreenTouch) -> void:
 			Input.action_press("shoot")
 			queue_redraw()
 			get_viewport().set_input_as_handled()
-		elif action == &"dash" and _dash_touch == -1:
-			_dash_touch = event.index
-			Input.action_press("dash")
+		elif action == &"pass" and _pass_touch == -1:
+			_pass_touch = event.index
+			Input.action_press("pass")
 			queue_redraw()
 			get_viewport().set_input_as_handled()
 		elif action == &"switch_player" and _switch_touch == -1:
@@ -133,9 +133,9 @@ func _handle_touch(event: InputEventScreenTouch) -> void:
 		Input.action_release("shoot")
 		queue_redraw()
 		get_viewport().set_input_as_handled()
-	elif event.index == _dash_touch:
-		_dash_touch = -1
-		Input.action_release("dash")
+	elif event.index == _pass_touch:
+		_pass_touch = -1
+		Input.action_release("pass")
 		queue_redraw()
 		get_viewport().set_input_as_handled()
 	elif event.index == _switch_touch:
@@ -160,17 +160,17 @@ func _shoot_center() -> Vector2:
 	return Vector2(size.x - EDGE_MARGIN - SHOOT_RADIUS, size.y - EDGE_MARGIN - SHOOT_RADIUS)
 
 
-func _dash_center() -> Vector2:
-	return Vector2(size.x - EDGE_MARGIN - DASH_RADIUS, _shoot_center().y - SHOOT_RADIUS - DASH_RADIUS - 24.0)
+func _pass_center() -> Vector2:
+	return Vector2(size.x - EDGE_MARGIN - PASS_RADIUS, _shoot_center().y - SHOOT_RADIUS - PASS_RADIUS - 24.0)
 
 
 func _switch_center() -> Vector2:
-	return Vector2(size.x - EDGE_MARGIN - SWITCH_RADIUS, _dash_center().y - DASH_RADIUS - SWITCH_RADIUS - 18.0)
+	return Vector2(size.x - EDGE_MARGIN - SWITCH_RADIUS, _pass_center().y - PASS_RADIUS - SWITCH_RADIUS - 18.0)
 
 
 func _draw() -> void:
 	var shoot_center := _shoot_center()
-	var dash_center := _dash_center()
+	var pass_center := _pass_center()
 	var switch_center := _switch_center()
 	if _movement_touch != -1:
 		var stick_center := _stick_center()
@@ -185,13 +185,12 @@ func _draw() -> void:
 	var label := "SHOOT"
 	var label_size := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
 	draw_string(font, shoot_center - label_size * 0.5 + Vector2(0.0, label_size.y), label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color.WHITE)
-	var dash_ready := 1.0 - _dash_cooldown_ratio
-	var dash_color := Color(0.25, 0.72, 1.0, 0.96) if _dash_touch != -1 else Color(0.12, 0.48, 0.78, 0.8)
-	draw_circle(dash_center, DASH_RADIUS, dash_color.darkened(_dash_cooldown_ratio * 0.55))
-	draw_arc(dash_center, DASH_RADIUS, -PI * 0.5, -PI * 0.5 + TAU * dash_ready, 48, Color.WHITE, 3.0)
-	var dash_label := "DASH"
-	var dash_label_size := font.get_string_size(dash_label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
-	draw_string(font, dash_center - dash_label_size * 0.5 + Vector2(0.0, dash_label_size.y), dash_label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color.WHITE)
+	var pass_color := Color(0.25, 0.72, 1.0, 0.96) if _pass_touch != -1 else Color(0.12, 0.48, 0.78, 0.8)
+	draw_circle(pass_center, PASS_RADIUS, pass_color)
+	draw_arc(pass_center, PASS_RADIUS, 0.0, TAU, 48, Color.WHITE, 3.0)
+	var pass_label := "PASS"
+	var pass_label_size := font.get_string_size(pass_label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+	draw_string(font, pass_center - pass_label_size * 0.5 + Vector2(0.0, pass_label_size.y), pass_label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color.WHITE)
 	var switch_color := Color(0.94, 0.68, 0.18, 0.96) if _switch_touch != -1 else Color(0.72, 0.44, 0.12, 0.82)
 	draw_circle(switch_center, SWITCH_RADIUS, switch_color)
 	draw_arc(switch_center, SWITCH_RADIUS, 0.0, TAU, 40, Color.WHITE, 3.0)
@@ -204,7 +203,7 @@ func _draw() -> void:
 func _exit_tree() -> void:
 	if _shoot_touch != -1:
 		Input.action_release("shoot")
-	if _dash_touch != -1:
-		Input.action_release("dash")
+	if _pass_touch != -1:
+		Input.action_release("pass")
 	if _switch_touch != -1:
 		Input.action_release("switch_player")

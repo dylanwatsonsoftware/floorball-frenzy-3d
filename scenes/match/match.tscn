@@ -235,7 +235,7 @@ theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.8)
 theme_override_constants/shadow_offset_x = 2
 theme_override_constants/shadow_offset_y = 2
 theme_override_font_sizes/font_size = 14
-text = "CAMERA 1 · BROADCAST\nCONTROL FOLLOWS LAMBS POSSESSION · MOVE · DASH · HOLD SHOOT · SWITCH"
+text = "CAMERA 1 · BROADCAST\nCONTROL FOLLOWS LAMBS POSSESSION · MOVE · DASH · PASS · HOLD SHOOT · SWITCH"
 
 [node name="ChargeLabel" type="Label" parent="HUD"]
 anchors_preset = 7
@@ -367,7 +367,7 @@ layout_mode = 0
 [node name="ShootButton" type="Control" parent="HUD/MobileControls"]
 layout_mode = 0
 
-[node name="DashButton" type="Control" parent="HUD/MobileControls"]
+[node name="PassButton" type="Control" parent="HUD/MobileControls"]
 layout_mode = 0
 
 [node name="SwitchButton" type="Control" parent="HUD/MobileControls"]

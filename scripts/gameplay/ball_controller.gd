@@ -45,6 +45,7 @@ var _pending_slap_charge := 0.0
 var _pending_slap_direction := Vector2.RIGHT
 var _pending_one_touch := false
 var _pending_bolt := false
+var _pending_pass := false
 var _scoop_remaining := 0.0
 var _last_touch_actor: StringName = &""
 var _last_touch_age := INF
@@ -73,6 +74,8 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if Input.is_action_just_pressed("switch_player"):
 		switch_human_player()
+	if Input.is_action_just_pressed("pass"):
+		pass_to_closest_teammate()
 	_last_touch_age += delta
 	_update_scoop_feedback(delta)
 	_update_steal_feedback(delta)
@@ -122,6 +125,16 @@ func launch(planar_direction: Vector2, charge: float, inherited_velocity: Vector
 		record_touch(shooter)
 		if BallSimulationScript.is_perfect_charge(charge):
 			_award_heat(shooter, 30.0)
+
+
+func _launch_pass(planar_direction: Vector2, inherited_velocity: Vector3, passer: StringName) -> void:
+	_control_owner = -1
+	_ai_possession_seconds = 0.0
+	_reset_ai_shot()
+	ball_velocity = BallSimulationScript.pass_velocity(planar_direction, inherited_velocity)
+	_scoop_remaining = 0.0
+	_set_shot_trail_style(false, false, false)
+	record_touch(passer)
 
 
 func reset_for_faceoff() -> void:
@@ -279,17 +292,42 @@ func begin_slap(direction: Vector2, charge: float) -> void:
 	_slap_actor.call("set_stick_slap_angle", StickSlapScript.angle_at(0.0))
 
 
+func pass_to_closest_teammate() -> bool:
+	if _slap_elapsed >= 0.0:
+		return false
+	var carrier := _actor_for_controller(_control_owner)
+	if carrier == null or carrier.call("get_team") != &"red" or carrier.call("get_actor_id") != get_human_control_actor_id():
+		return false
+	_refresh_field_players()
+	var teammates := []
+	for actor in _field_players:
+		if actor.call("get_team") == &"red":
+			teammates.append({"actor_id": actor.call("get_actor_id"), "position": actor.global_position})
+	var target: Dictionary = SquadLogicScript.closest_teammate(carrier.call("get_actor_id"), carrier.global_position, teammates)
+	if target.is_empty():
+		return false
+	_cancel_active_charge(false)
+	_slap_actor = carrier
+	var offset := Vector2(target.position.x - carrier.global_position.x, target.position.z - carrier.global_position.z)
+	_configure_slap(offset, 0.38, 0.0, true)
+	_slap_actor.call("set_stick_slap_angle", StickSlapScript.angle_at(0.0))
+	return true
+
+
 func _release_charged_slap(direction: Vector2, charge: float) -> void:
 	_configure_slap(direction, charge, StickSlapScript.BACKSWING_SECONDS)
 
 
-func _configure_slap(direction: Vector2, charge: float, start_elapsed: float) -> void:
+func _configure_slap(direction: Vector2, charge: float, start_elapsed: float, is_pass: bool = false) -> void:
 	_slap_elapsed = start_elapsed
 	_pending_slap_direction = direction.normalized() if not direction.is_zero_approx() else Vector2.RIGHT
 	_pending_slap_charge = clampf(charge, 0.0, 2.0)
-	_pending_one_touch = is_one_touch_ready(&"red")
-	_pending_bolt = _slap_actor.has_method("has_recent_dash") and bool(_slap_actor.call("has_recent_dash"))
-	if _pending_one_touch and _pending_bolt:
+	_pending_pass = is_pass
+	_pending_one_touch = not is_pass and is_one_touch_ready(&"red")
+	_pending_bolt = not is_pass and _slap_actor.has_method("has_recent_dash") and bool(_slap_actor.call("has_recent_dash"))
+	if _pending_pass:
+		_charge_label.text = "PASS!"
+	elif _pending_one_touch and _pending_bolt:
 		_charge_label.text = "ONE TOUCH BOLT!"
 	elif _pending_one_touch:
 		_charge_label.text = "ONE TOUCH!"
@@ -312,7 +350,10 @@ func _advance_slap(delta: float) -> void:
 	_slap_elapsed += delta
 	_slap_actor.call("set_stick_slap_angle", StickSlapScript.angle_at(_slap_elapsed))
 	if StickSlapScript.crossed_contact(previous_elapsed, _slap_elapsed) and _ball_in_slap_actor_blade():
-		launch(_pending_slap_direction, _pending_slap_charge, _slap_actor.velocity, _pending_one_touch, &"red", _pending_bolt)
+		if _pending_pass:
+			_launch_pass(_pending_slap_direction, _slap_actor.velocity, &"red")
+		else:
+			launch(_pending_slap_direction, _pending_slap_charge, _slap_actor.velocity, _pending_one_touch, &"red", _pending_bolt)
 		_play_contact_feedback(_pending_slap_charge, _pending_bolt)
 	if _slap_elapsed >= StickSlapScript.TOTAL_SECONDS:
 		_cancel_slap()
@@ -324,10 +365,11 @@ func _cancel_slap() -> void:
 	_pending_slap_charge = 0.0
 	_pending_one_touch = false
 	_pending_bolt = false
+	_pending_pass = false
 	if _slap_actor != null:
 		_slap_actor.call("set_stick_slap_angle", 0.0)
 		_slap_actor.call("set_shot_aim_locked", false)
-	if _charge_label != null and _charge_label.text in ["SLAP!", "ONE TOUCH!", "BOLT!", "ONE TOUCH BOLT!"]:
+	if _charge_label != null and _charge_label.text in ["PASS!", "SLAP!", "ONE TOUCH!", "BOLT!", "ONE TOUCH BOLT!"]:
 		_clear_charge_feedback()
 
 

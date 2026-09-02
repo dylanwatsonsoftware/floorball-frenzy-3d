@@ -33,20 +33,13 @@ func _init() -> void:
 		return
 
 	var action: StringName = controls.action_at_position(Vector2(926.0, 386.0), Vector2(1000.0, 600.0))
-	if action != &"dash":
-		fail("The mobile HUD secondary button must trigger the core dash action")
+	if action != &"pass":
+		fail("The mobile HUD secondary button must trigger the core pass action")
 		return
 	var switch_action: StringName = controls.action_at_position(Vector2(934.0, 282.0), Vector2(1000.0, 600.0))
 	if switch_action != &"switch_player":
 		fail("The mobile HUD needs a dedicated player-switch button")
 		return
-	if not is_equal_approx(controls.normalize_cooldown_ratio(1.4), 1.0):
-		fail("Dash cooldown feedback must clamp above one")
-		return
-	if not is_equal_approx(controls.normalize_cooldown_ratio(-0.2), 0.0):
-		fail("Dash cooldown feedback must clamp below zero")
-		return
-
 	var viewport_size := Vector2(844.0, 390.0)
 	if not controls.can_start_floating_stick(Vector2(200.0, 180.0), viewport_size):
 		fail("Touches on the left side must start the floating joystick")

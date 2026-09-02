@@ -234,8 +234,8 @@ func run_test() -> void:
 	if scene.get_node_or_null("HUD/MobileControls/ShootButton") == null:
 		fail("Mobile controls must show a shoot button")
 		return
-	if scene.get_node_or_null("HUD/MobileControls/DashButton") == null:
-		fail("Mobile controls must show a dash button")
+	if scene.get_node_or_null("HUD/MobileControls/PassButton") == null:
+		fail("Mobile controls must show an automatic pass button")
 		return
 	player.position = Vector3(-5.0, 0.75, 0.0)
 	player.velocity = Vector3.ZERO

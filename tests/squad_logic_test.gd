@@ -46,6 +46,18 @@ func _init() -> void:
 	if next_switch != &"red_3":
 		fail("A second switch must advance to the next-closest teammate; got %s" % next_switch)
 		return
+	var nearest_teammate: Dictionary = squad.closest_teammate(
+		&"red_1",
+		Vector3.ZERO,
+		[
+			{"actor_id": &"red_1", "position": Vector3.ZERO},
+			{"actor_id": &"red_2", "position": Vector3(5.0, 0.75, 0.0)},
+			{"actor_id": &"red_3", "position": Vector3(2.0, 0.75, 1.0)},
+		]
+	)
+	if nearest_teammate.is_empty() or nearest_teammate.actor_id != &"red_3":
+		fail("Human Pass must target the nearest other teammate; got %s" % nearest_teammate)
+		return
 
 	var pass_decision: Dictionary = squad.pass_plan(
 		Vector3(2.0, 0.75, 0.0),

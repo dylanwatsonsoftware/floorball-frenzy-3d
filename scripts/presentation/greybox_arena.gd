@@ -999,7 +999,7 @@ func _apply_camera_preset(index: int) -> void:
 	_camera_tracking_initialized = true
 	_camera_charge_pullback = 0.0
 	if _camera_label != null:
-		_camera_label.text = "CAMERA %d · %s\nCONTROL FOLLOWS LAMBS POSSESSION · TAB SWITCH · SHIFT DASH · HOLD SHOOT" % [index + 1, preset.name.to_upper()]
+		_camera_label.text = "CAMERA %d · %s\nCONTROL FOLLOWS LAMBS POSSESSION · TAB SWITCH · SHIFT DASH · E PASS · HOLD SHOOT" % [index + 1, preset.name.to_upper()]
 
 
 func _add_box(node_name: String, size: Vector3, position: Vector3, color: Color, shadow: bool = true) -> MeshInstance3D:
