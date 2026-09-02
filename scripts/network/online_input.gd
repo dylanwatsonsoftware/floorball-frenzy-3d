@@ -1,6 +1,8 @@
 class_name OnlineInput
 extends RefCounted
 
+const DEFAULT_SNAPSHOT_SECONDS := 1.0 / 30.0
+
 
 static func compose_movement_input(keyboard_or_controller: Vector2, mobile_joystick: Vector2) -> Vector2:
 	return (keyboard_or_controller + mobile_joystick).limit_length(1.0)
@@ -12,7 +14,9 @@ static func predict_position(current: Vector3, movement: Vector2, delta: float, 
 
 static func reconcile_position(current: Vector3, authoritative: Vector3, locally_predicted: bool) -> Vector3:
 	var error := current.distance_to(authoritative)
-	var weight := 0.18 if locally_predicted and error < 2.5 else 0.72
+	if locally_predicted and error < 0.32:
+		return current
+	var weight := 0.1 if locally_predicted and error < 2.5 else 0.72
 	return current.lerp(authoritative, weight)
 
 

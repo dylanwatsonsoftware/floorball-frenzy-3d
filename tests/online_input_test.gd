@@ -23,11 +23,19 @@ func _init() -> void:
 	if local_reconciled.x >= remote_reconciled.x or local_reconciled.x <= 0.0:
 		fail("Local prediction must receive gentler correction than remote interpolation; local=%s remote=%s" % [local_reconciled, remote_reconciled])
 		return
+	var tiny_correction: Vector3 = controller.reconcile_position(Vector3.ZERO, Vector3(0.2, 0.0, 0.0), true)
+	if not tiny_correction.is_zero_approx():
+		fail("Tiny authoritative differences should stay inside a prediction dead zone instead of causing micro-stutter; got %s" % tiny_correction)
+		return
 	if controller.next_action_sequence(4, false) != 4 or controller.next_action_sequence(4, true) != 5:
 		fail("Discrete online actions need persistent sequence numbers so unreliable packets can be repeated safely")
 		return
 	if not is_equal_approx(controller.prediction_speed(false), 9.0) or not is_equal_approx(controller.prediction_speed(true), 7.92):
 		fail("Guest prediction must use the same carrier speed penalty as the host simulation")
+		return
+	var constants: Dictionary = controller.get_script_constant_map()
+	if not constants.has("DEFAULT_SNAPSHOT_SECONDS") or float(constants.get("DEFAULT_SNAPSHOT_SECONDS", 1.0)) > 1.0 / 30.0 + 0.0001:
+		fail("Online snapshots should update at least 30 times per second to avoid visible remote stutter")
 		return
 	print("Online movement packets include keyboard and mobile joystick input.")
 	quit(0)

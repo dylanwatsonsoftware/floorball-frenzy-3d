@@ -64,6 +64,30 @@ func run_test() -> void:
 	if camera_actor != local_actor:
 		fail("The guest camera must follow the locally controlled Pirates player")
 		return
+	var client_controller := client_match.get_node("OnlineMatchController")
+	var goal_snapshot: Dictionary = client_controller.call("_capture_snapshot")
+	goal_snapshot.score = {"red": 0, "blue": 1}
+	goal_snapshot.goal_seq = 1
+	goal_snapshot.scorer = "blue"
+	goal_snapshot.phase = "goal"
+	goal_snapshot.faceoff_seq = 0
+	client_controller.call("_apply_snapshot", goal_snapshot)
+	if (client_match.get_node("HUD/MessageLabel") as Label).text != "PIRATES GOAL!" or not (client_match.get_node("HUD/GoalFlash") as ColorRect).visible:
+		fail("A guest goal snapshot must show the Pirates goal celebration immediately")
+		return
+	var faceoff_snapshot: Dictionary = goal_snapshot.duplicate(true)
+	faceoff_snapshot.phase = "play"
+	faceoff_snapshot.faceoff_seq = 1
+	for actor_state: Dictionary in faceoff_snapshot.actors:
+		if actor_state.id == String(local_actor.call("get_actor_id")):
+			actor_state.p = [-5.0, 0.75, 0.0]
+	client_controller.call("_apply_snapshot", faceoff_snapshot)
+	if not local_actor.global_position.is_equal_approx(Vector3(-5.0, 0.75, 0.0)):
+		fail("A synchronized faceoff must snap deliberately after the celebration instead of drifting through lag correction")
+		return
+	if not (client_match.get_node("HUD/MessageLabel") as Label).text.is_empty():
+		fail("The goal message must clear when the authoritative match returns to play")
+		return
 	print("Online matches give both host and guest a visible, camera-tracked human player.")
 	client_match.queue_free()
 	root.get_node("OnlineMatch").call("stop")

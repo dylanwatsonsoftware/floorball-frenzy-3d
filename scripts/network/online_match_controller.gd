@@ -4,7 +4,7 @@ extends Node
 
 const TransportScript = preload("res://scripts/network/webrtc_transport.gd")
 const OnlineInputScript = preload("res://scripts/network/online_input.gd")
-const SNAPSHOT_SECONDS := 1.0 / 20.0
+const SNAPSHOT_SECONDS := OnlineInputScript.DEFAULT_SNAPSHOT_SECONDS
 const RINK_HALF_LENGTH := 19.1
 const RINK_HALF_WIDTH := 9.1
 
@@ -21,6 +21,7 @@ var _pass_sequence := 0
 var _switch_sequence := 0
 var _last_remote_pass_sequence := 0
 var _last_remote_switch_sequence := 0
+var _last_faceoff_sequence := -1
 
 
 func _ready() -> void:
@@ -109,26 +110,34 @@ func _capture_snapshot() -> Dictionary:
 	var actors: Array = []
 	for actor in _arena.call("get_field_players"):
 		actors.append({"id": String(actor.call("get_actor_id")), "p": _vector3_to_array(actor.global_position), "v": _vector3_to_array(actor.velocity), "r": actor.rotation.y})
-	return {"type": "snapshot", "seq": _sequence, "actors": actors, "ball": _vector3_to_array(_ball.global_position), "ball_velocity": _vector3_to_array(_ball.ball_velocity), "owner": String(_ball.call("get_control_owner_actor_id")), "red_human": String(_ball.call("get_human_control_actor_id_for_team", &"red")), "blue_human": String(_ball.call("get_human_control_actor_id_for_team", &"blue")), "score": _match_flow.score.duplicate()}
+	var match_state: Dictionary = _match_flow.call("get_network_state") if _match_flow.has_method("get_network_state") else {}
+	return {"type": "snapshot", "seq": _sequence, "actors": actors, "ball": _vector3_to_array(_ball.global_position), "ball_velocity": _vector3_to_array(_ball.ball_velocity), "owner": String(_ball.call("get_control_owner_actor_id")), "red_human": String(_ball.call("get_human_control_actor_id_for_team", &"red")), "blue_human": String(_ball.call("get_human_control_actor_id_for_team", &"blue")), "score": _match_flow.score.duplicate(), "goal_seq": int(match_state.get("goal_seq", 0)), "faceoff_seq": int(match_state.get("faceoff_seq", 0)), "scorer": String(match_state.get("scorer", "")), "phase": String(match_state.get("phase", "play"))}
 
 
 func _apply_snapshot(snapshot: Dictionary) -> void:
 	var actor_by_id := {}
 	var local_actor := _arena.call("get_local_human_actor") as CharacterBody3D
+	var faceoff_sequence := int(snapshot.get("faceoff_seq", 0))
+	var is_new_faceoff := faceoff_sequence > _last_faceoff_sequence
+	_last_faceoff_sequence = maxi(_last_faceoff_sequence, faceoff_sequence)
 	for actor in _arena.call("get_field_players"):
 		actor_by_id[String(actor.call("get_actor_id"))] = actor
 	for state: Dictionary in snapshot.get("actors", []):
 		var actor: CharacterBody3D = actor_by_id.get(String(state.get("id", "")))
 		if actor != null:
-			actor.global_position = OnlineInputScript.reconcile_position(actor.global_position, _array_to_vector3(state.get("p", [])), actor == local_actor)
+			var authoritative_position := _array_to_vector3(state.get("p", []))
+			actor.global_position = authoritative_position if is_new_faceoff else OnlineInputScript.reconcile_position(actor.global_position, authoritative_position, actor == local_actor)
 			actor.velocity = _array_to_vector3(state.get("v", []))
-			actor.rotation.y = lerp_angle(actor.rotation.y, float(state.get("r", actor.rotation.y)), 0.55)
-	_ball.global_position = _ball.global_position.lerp(_array_to_vector3(snapshot.get("ball", [])), 0.65)
+			actor.rotation.y = float(state.get("r", actor.rotation.y)) if is_new_faceoff else lerp_angle(actor.rotation.y, float(state.get("r", actor.rotation.y)), 0.55)
+	var authoritative_ball := _array_to_vector3(snapshot.get("ball", []))
+	_ball.global_position = authoritative_ball if is_new_faceoff else _ball.global_position.lerp(authoritative_ball, 0.65)
 	_ball.ball_velocity = _array_to_vector3(snapshot.get("ball_velocity", []))
 	if _ball.has_method("apply_network_control_state"):
 		_ball.call("apply_network_control_state", StringName(snapshot.get("owner", "")), StringName(snapshot.get("red_human", "red_1")), StringName(snapshot.get("blue_human", "blue_1")))
 	var score: Dictionary = snapshot.get("score", {})
-	if not score.is_empty() and _match_flow.has_method("apply_network_score"):
+	if not score.is_empty() and _match_flow.has_method("apply_network_state"):
+		_match_flow.call("apply_network_state", int(score.get("red", 0)), int(score.get("blue", 0)), int(snapshot.get("goal_seq", 0)), StringName(snapshot.get("scorer", "")), StringName(snapshot.get("phase", "play")))
+	elif not score.is_empty() and _match_flow.has_method("apply_network_score"):
 		_match_flow.call("apply_network_score", int(score.get("red", 0)), int(score.get("blue", 0)))
 
 

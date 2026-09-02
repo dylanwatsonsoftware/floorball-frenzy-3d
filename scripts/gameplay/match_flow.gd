@@ -20,6 +20,10 @@ var _message_label: Label
 var _goal_flash: ColorRect
 var _goal_flash_tween: Tween
 var _arena: Node3D
+var _goal_sequence := 0
+var _faceoff_sequence := 0
+var _last_scorer: StringName = &""
+var _last_network_goal_sequence := 0
 
 
 func _ready() -> void:
@@ -43,6 +47,8 @@ func _process(delta: float) -> void:
 
 
 func _on_goal_scored(scorer: StringName) -> void:
+	_goal_sequence += 1
+	_last_scorer = scorer
 	var result := MatchSimulationScript.apply_goal(score, scorer)
 	score.red = result.red
 	score.blue = result.blue
@@ -60,6 +66,8 @@ func _on_goal_scored(scorer: StringName) -> void:
 
 
 func _reset_faceoff() -> void:
+	_faceoff_sequence += 1
+	_last_scorer = &""
 	_clear_goal_flash()
 	if _winner != &"":
 		score.red = 0
@@ -93,6 +101,26 @@ func apply_network_score(red_score: int, blue_score: int) -> void:
 	score.red = red_score
 	score.blue = blue_score
 	_update_score_label()
+
+
+func get_network_state() -> Dictionary:
+	return {
+		"goal_seq": _goal_sequence,
+		"faceoff_seq": _faceoff_sequence,
+		"scorer": String(_last_scorer),
+		"phase": "win" if _winner != &"" and _pause_remaining > 0.0 else "goal" if _pause_remaining > 0.0 else "play",
+	}
+
+
+func apply_network_state(red_score: int, blue_score: int, goal_sequence: int, scorer: StringName, phase: StringName) -> void:
+	apply_network_score(red_score, blue_score)
+	if goal_sequence > _last_network_goal_sequence and scorer in [&"red", &"blue"]:
+		_last_network_goal_sequence = goal_sequence
+		_message_label.text = "%s %s!" % [_team_name(scorer), "WINS" if phase == &"win" else "GOAL"]
+		_show_goal_flash(scorer)
+	elif phase == &"play":
+		_message_label.text = ""
+		_clear_goal_flash()
 
 
 func _team_name(team: StringName) -> String:
