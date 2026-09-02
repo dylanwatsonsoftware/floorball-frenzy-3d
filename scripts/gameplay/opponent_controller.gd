@@ -27,6 +27,7 @@ var _fuego_remaining := 0.0
 var _fuego_aura: MeshInstance3D
 var _heat_bar: ProgressBar
 var _opening_grace_remaining := OPENING_GRACE_SECONDS
+var _shot_aim_locked := false
 
 
 func _ready() -> void:
@@ -99,7 +100,7 @@ func _physics_process(delta: float) -> void:
 		velocity = Vector3.ZERO
 
 	var facing_planar: Vector2 = decision.shot_direction if decision.wants_shot else decision.movement
-	if not facing_planar.is_zero_approx():
+	if not _shot_aim_locked and not facing_planar.is_zero_approx():
 		_facing_direction = Vector3(facing_planar.x, 0.0, facing_planar.y).normalized()
 		rotation.y = lerp_angle(rotation.y, atan2(_facing_direction.x, _facing_direction.z), minf(1.0, delta * 10.0))
 
@@ -131,6 +132,10 @@ func set_stick_slap_angle(angle_degrees: float) -> void:
 		body_rig.call("set_swing_pose", angle_degrees)
 
 
+func set_shot_aim_locked(value: bool) -> void:
+	_shot_aim_locked = value
+
+
 func get_actor_id() -> StringName:
 	return StringName(get_meta("actor_id", &"blue_1"))
 
@@ -153,6 +158,7 @@ func is_ai_controlled() -> bool:
 
 func reset_for_faceoff() -> void:
 	_opening_grace_remaining = OPENING_GRACE_SECONDS
+	_shot_aim_locked = false
 	_dash_streak_remaining = 0.0
 	_parry_window_remaining = 0.0
 	if _dash_streak != null:

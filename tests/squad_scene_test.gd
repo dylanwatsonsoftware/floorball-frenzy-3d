@@ -23,6 +23,9 @@ func run_test() -> void:
 		if not actor.has_method("get_team") or not actor.has_method("get_actor_id"):
 			fail("Every field player must expose stable team and actor identity")
 			return
+		if StringName(actor.get_meta("role", &"field")) != &"goalkeeper" and (not actor.has_method("set_shot_aim_locked") or not actor.has_method("set_stick_slap_angle")):
+			fail("Every field-player controller must support the complete AI shot animation contract: %s" % actor.name)
+			return
 		var team: StringName = actor.call("get_team")
 		var actor_id: StringName = actor.call("get_actor_id")
 		teams[team] += 1
