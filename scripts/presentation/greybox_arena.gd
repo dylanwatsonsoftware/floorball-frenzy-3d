@@ -757,6 +757,7 @@ func _add_floorball_blade(rig: Node3D, color: Color) -> void:
 	var centre_rail := PackedVector2Array()
 	for index in left_rail.size():
 		centre_rail.append(left_rail[index].lerp(right_rail[index], 0.53))
+	centre_rail.append(Vector2(0.04, 1.71))
 	var vertices := PackedVector3Array()
 	_append_blade_strip(vertices, left_rail, 0.045)
 	_append_blade_strip(vertices, right_rail, 0.045)
@@ -785,6 +786,7 @@ func _add_floorball_blade(rig: Node3D, color: Color) -> void:
 		var hook_ratio := clampf((vertex.z - 1.04) / 0.69, 0.0, 1.0)
 		vertex.y = -0.095 * hook_ratio * hook_ratio
 		vertices[index] = vertex
+	vertices = _solidify_blade_triangles(vertices, 0.032)
 	var arrays := []
 	arrays.resize(ArrayMesh.ARRAY_MAX)
 	arrays[ArrayMesh.ARRAY_VERTEX] = vertices
@@ -805,6 +807,10 @@ func _add_floorball_blade(rig: Node3D, color: Color) -> void:
 	var old_actor_center := rig.transform * blade_center
 	var actor_origin := old_actor_center - vertical_actor_basis * blade_center
 	actor_origin.y = -0.69 - mesh.get_aabb().position.x
+	# The shaft plugs into the upper heel at the back edge; it must not pierce a
+	# quarter of the way into the playable blade face.
+	actor_origin += vertical_actor_basis.z * 0.16
+	actor_origin.x += 0.10
 	blade.transform = rig.transform.affine_inverse() * Transform3D(vertical_actor_basis, actor_origin)
 	var pocket := Marker3D.new()
 	pocket.name = "BladePocket"
@@ -812,6 +818,10 @@ func _add_floorball_blade(rig: Node3D, color: Color) -> void:
 	# cups a floorball in the supplied stick reference.
 	pocket.position = blade.position + blade.basis * Vector3(0.0, -0.085, 1.68)
 	rig.add_child(pocket)
+	var spine_toe := Marker3D.new()
+	spine_toe.name = "CentreSpineToe"
+	spine_toe.position = blade.position + blade.basis * Vector3(0.04, -0.09, 1.71)
+	rig.add_child(spine_toe)
 
 
 func _append_blade_strip(vertices: PackedVector3Array, points: PackedVector2Array, width: float) -> void:
@@ -825,6 +835,26 @@ func _append_blade_strip(vertices: PackedVector3Array, points: PackedVector2Arra
 		var c := Vector3(finish.x - normal.x, 0.0, finish.y - normal.y)
 		var d := Vector3(finish.x + normal.x, 0.0, finish.y + normal.y)
 		vertices.append_array(PackedVector3Array([a, b, c, a, c, d]))
+
+
+func _solidify_blade_triangles(surface_vertices: PackedVector3Array, thickness: float) -> PackedVector3Array:
+	var solid := PackedVector3Array()
+	var depth := Vector3(0.0, thickness, 0.0)
+	for index in range(0, surface_vertices.size(), 3):
+		var a := surface_vertices[index]
+		var b := surface_vertices[index + 1]
+		var c := surface_vertices[index + 2]
+		var back_a := a + depth
+		var back_b := b + depth
+		var back_c := c + depth
+		solid.append_array(PackedVector3Array([
+			a, b, c,
+			back_a, back_c, back_b,
+			a, back_a, back_b, a, back_b, b,
+			b, back_b, back_c, b, back_c, c,
+			c, back_c, back_a, c, back_a, a,
+		]))
+	return solid
 
 
 func _add_dash_streak(parent: Node3D, color: Color) -> void:

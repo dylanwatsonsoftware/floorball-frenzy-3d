@@ -48,7 +48,16 @@ func run_test() -> void:
 		if blade_pocket == null:
 			fail("The modeled blade needs an authored toe pocket shared with ball possession")
 			return
+		var neck := rig.get_node_or_null("BladeNeck") as MeshInstance3D
+		if neck == null:
+			fail("The shaft must plug into the blade through a molded hosel")
+			return
 		var blade_size: Vector3 = blade.get_aabb().size
+		var blade_bounds := blade.get_aabb()
+		var neck_in_blade := blade.to_local(neck.global_position)
+		if neck_in_blade.z > blade_bounds.position.z + 0.14 or neck_in_blade.x < blade_bounds.end.x - 0.09:
+			fail("The hosel must join the upper heel edge instead of entering near the blade middle; hosel=%s bounds=%s" % [neck_in_blade, blade_bounds])
+			return
 		if blade_size.z < blade_size.x * 1.6:
 			fail("The blade's long axis must continue along the shaft rather than sit across it at right angles; size=%s" % blade_size)
 			return
@@ -68,7 +77,6 @@ func run_test() -> void:
 		if absf(blade_face_normal.dot(Vector3.UP)) > 0.16 or blade_height_axis.dot(Vector3.UP) < 0.94:
 			fail("The lattice face must stand vertically on its narrow lower edge; normal=%s height_axis=%s" % [blade_face_normal, blade_height_axis])
 			return
-		var blade_bounds := blade.get_aabb()
 		var blade_min_y := INF
 		var blade_max_y := -INF
 		for x in [blade_bounds.position.x, blade_bounds.end.x]:
@@ -81,6 +89,15 @@ func run_test() -> void:
 			fail("The blade must stand above the rink without passing through it; min_y=%.3f max_y=%.3f" % [blade_min_y, blade_max_y])
 			return
 		var blade_vertices := (blade.mesh as ArrayMesh).surface_get_arrays(0)[ArrayMesh.ARRAY_VERTEX] as PackedVector3Array
+		var heel_min_depth := INF
+		var heel_max_depth := -INF
+		for vertex in blade_vertices:
+			if vertex.z < blade_bounds.position.z + 0.09:
+				heel_min_depth = minf(heel_min_depth, vertex.y)
+				heel_max_depth = maxf(heel_max_depth, vertex.y)
+		if heel_max_depth - heel_min_depth < 0.025:
+			fail("The molded blade needs visible 2–3 cm-equivalent thickness even before its spoon curvature; heel_depth=%.3f" % (heel_max_depth - heel_min_depth))
+			return
 		var toe_min_x := INF
 		var toe_max_x := -INF
 		for vertex in blade_vertices:
@@ -89,6 +106,10 @@ func run_test() -> void:
 				toe_max_x = maxf(toe_max_x, vertex.x)
 		if toe_max_x - toe_min_x < 0.10:
 			fail("The outer frame must sweep around a visibly rounded toe instead of ending in a point; toe_span=%.3f" % (toe_max_x - toe_min_x))
+			return
+		var spine_toe := rig.get_node_or_null("CentreSpineToe") as Marker3D
+		if spine_toe == null or blade.to_local(spine_toe.global_position).z < blade_bounds.end.z - 0.08:
+			fail("The centre spine must continue into the rounded outer toe instead of stopping inside the blade")
 			return
 		var blade_center_in_actor: Vector3 = rig.transform * blade.transform * blade.get_aabb().get_center()
 		var grip_center_in_actor: Vector3 = rig.transform * grip.position
