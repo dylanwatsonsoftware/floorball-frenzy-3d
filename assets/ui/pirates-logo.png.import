@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bkdlvoqgdi1un"
-path="res://.godot/imported/pirates-logo.jpg-9062c02b9d8d4c5b2cba4d970ee5f38a.ctex"
+uid="uid://cva8pfmyjvssv"
+path="res://.godot/imported/pirates-logo.png-07e59cc5a8100398a57a2b0810943e8f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/ui/pirates-logo.jpg"
-dest_files=["res://.godot/imported/pirates-logo.jpg-9062c02b9d8d4c5b2cba4d970ee5f38a.ctex"]
+source_file="res://assets/ui/pirates-logo.png"
+dest_files=["res://.godot/imported/pirates-logo.png-07e59cc5a8100398a57a2b0810943e8f.ctex"]
 
 [params]
 

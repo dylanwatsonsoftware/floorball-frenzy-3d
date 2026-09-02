@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://di5qth2yyb0al"
-path="res://.godot/imported/lambs-logo.jpg-0f6e5500287df566cf41611fd39b0647.ctex"
+uid="uid://qbuah51dwxc7"
+path="res://.godot/imported/lambs-logo.png-21287fe7c0c60eb8b32196883fe31cd1.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/ui/lambs-logo.jpg"
-dest_files=["res://.godot/imported/lambs-logo.jpg-0f6e5500287df566cf41611fd39b0647.ctex"]
+source_file="res://assets/ui/lambs-logo.png"
+dest_files=["res://.godot/imported/lambs-logo.png-21287fe7c0c60eb8b32196883fe31cd1.ctex"]
 
 [params]
 

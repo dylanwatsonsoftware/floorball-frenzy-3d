@@ -5,8 +5,8 @@
 [ext_resource type="Script" path="res://scripts/gameplay/mobile_controls.gd" id="3_mobile"]
 [ext_resource type="Script" path="res://scripts/presentation/web_display_controls.gd" id="4_display"]
 [ext_resource type="Script" path="res://scripts/gameplay/match_flow.gd" id="5_match"]
-[ext_resource type="Texture2D" path="res://assets/ui/lambs-logo.jpg" id="6_lambs_logo"]
-[ext_resource type="Texture2D" path="res://assets/ui/pirates-logo.jpg" id="7_pirates_logo"]
+[ext_resource type="Texture2D" path="res://assets/ui/lambs-logo.png" id="6_lambs_logo"]
+[ext_resource type="Texture2D" path="res://assets/ui/pirates-logo.png" id="7_pirates_logo"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_score_backdrop"]
 bg_color = Color(0.025, 0.035, 0.055, 0.94)
