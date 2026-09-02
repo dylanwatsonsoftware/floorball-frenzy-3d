@@ -284,6 +284,7 @@ func run_test() -> void:
 	if not ball.is_one_touch_ready(&"red"):
 		fail("A recent blue touch must arm red's one-touch opportunity")
 		return
+	var slap_player_start: Vector3 = player.global_position
 	ball.begin_slap(Vector2.RIGHT, 1.0)
 	var charge_label := scene.get_node("HUD/ChargeLabel") as Label
 	if charge_label.text != "ONE TOUCH!":
@@ -302,6 +303,9 @@ func run_test() -> void:
 		await physics_frame
 	if ball.ball_velocity.x <= 10.0 or ball.position.y <= 0.22:
 		fail("Forward blade contact must launch the ball with lift; velocity=%s position=%s" % [ball.ball_velocity, ball.position])
+		return
+	if player.global_position.x - slap_player_start.x < 0.12:
+		fail("The shooter must take a visible forward step through slap contact; start=%s end=%s" % [slap_player_start, player.global_position])
 		return
 	if not shot_trail.visible:
 		fail("A fast charged shot must reveal the ball trail")

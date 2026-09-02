@@ -49,8 +49,8 @@ func set_swing_pose(stick_angle_degrees: float) -> void:
 
 
 func _apply_swing_pose() -> void:
-	rotation.y = deg_to_rad(clampf(_swing_angle * 0.24, -18.0, 12.0))
-	var shoulder_turn := deg_to_rad(clampf(-_swing_angle * 0.12, -7.0, 10.0))
+	rotation.y = deg_to_rad(clampf(_swing_angle * 0.34, -28.0, 28.0))
+	var shoulder_turn := deg_to_rad(clampf(-_swing_angle * 0.20, -18.0, 18.0))
 	(get_node("LeftArm") as Node3D).rotation.y = shoulder_turn
 	(get_node("RightArm") as Node3D).rotation.y = shoulder_turn
 

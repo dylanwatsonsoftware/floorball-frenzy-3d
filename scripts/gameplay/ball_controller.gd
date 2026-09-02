@@ -350,6 +350,13 @@ func _advance_slap(delta: float) -> void:
 	var previous_elapsed := _slap_elapsed
 	_slap_elapsed += delta
 	_slap_actor.call("set_stick_slap_angle", StickSlapScript.angle_at(_slap_elapsed))
+	var previous_step: float = StickSlapScript.forward_step_at(previous_elapsed)
+	var current_step: float = StickSlapScript.forward_step_at(_slap_elapsed)
+	var step_distance := current_step - previous_step
+	if step_distance > 0.0:
+		var step_direction := Vector3(_pending_slap_direction.x, 0.0, _pending_slap_direction.y)
+		if not step_direction.is_zero_approx():
+			_slap_actor.global_position += step_direction.normalized() * step_distance
 	if StickSlapScript.crossed_contact(previous_elapsed, _slap_elapsed) and _ball_in_slap_actor_blade():
 		if _pending_pass:
 			_launch_pass(_pending_slap_direction, _slap_actor.velocity, &"red")

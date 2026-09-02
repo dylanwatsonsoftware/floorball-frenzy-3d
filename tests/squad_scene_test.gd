@@ -105,10 +105,10 @@ func run_test() -> void:
 	Input.action_press("shoot")
 	await physics_frame
 	var early_shaft := carrier_arrow.get_node("Shaft") as MeshInstance3D
-	var early_length: float = (early_shaft.mesh as BoxMesh).size.z
+	var early_length: float = (early_shaft.mesh as QuadMesh).size.y
 	for frame in 24:
 		await physics_frame
-	var charged_length: float = (early_shaft.mesh as BoxMesh).size.z
+	var charged_length: float = (early_shaft.mesh as QuadMesh).size.y
 	var arrow_material := early_shaft.material_override as StandardMaterial3D
 	if is_equal_approx(carrier_stick.rotation.y, carrier_rest_angle) or not is_equal_approx(captain_stick.rotation.y, captain_rest_angle):
 		Input.action_release("shoot")

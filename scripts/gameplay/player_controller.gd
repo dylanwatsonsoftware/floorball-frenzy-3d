@@ -10,6 +10,8 @@ const DASH_STREAK_SECONDS := 0.18
 const BOLT_WINDOW_SECONDS := 0.2
 const PARRY_WINDOW_SECONDS := 0.15
 const STICK_BASE_Y_ANGLE := 208.0
+const STICK_BACKSWING_SHIFT := 1.15
+const STICK_FOLLOW_SHIFT := 0.18
 
 var _facing_direction := Vector3.RIGHT
 var _mobile_controls: Control
@@ -235,6 +237,12 @@ func _update_heat_presentation() -> void:
 func set_stick_slap_angle(angle_degrees: float) -> void:
 	var stick_rig := get_node_or_null("StickRig") as Node3D
 	if stick_rig != null:
+		if not stick_rig.has_meta("rest_position"):
+			stick_rig.set_meta("rest_position", stick_rig.position)
+		var rest_position: Vector3 = stick_rig.get_meta("rest_position")
+		var backswing_ratio := clampf(angle_degrees / 82.0, 0.0, 1.0)
+		var follow_ratio := clampf(-angle_degrees / 42.0, 0.0, 1.0)
+		stick_rig.position = rest_position + Vector3(0.0, 0.0, -STICK_BACKSWING_SHIFT * backswing_ratio + STICK_FOLLOW_SHIFT * follow_ratio)
 		stick_rig.rotation_degrees.y = STICK_BASE_Y_ANGLE + angle_degrees
 	var body_rig := get_node_or_null("BodyRig") as Node3D
 	if body_rig != null and body_rig.has_method("set_swing_pose"):

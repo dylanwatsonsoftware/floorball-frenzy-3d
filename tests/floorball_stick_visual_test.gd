@@ -12,6 +12,7 @@ func _init() -> void:
 
 
 func run_test() -> void:
+	var slap := load("res://scripts/simulation/stick_slap.gd")
 	if not ResourceLoader.exists("res://assets/models/floorball_stick.glb"):
 		fail("The approved Blender floorball stick must be exported as an authored game asset")
 		return
@@ -80,8 +81,16 @@ func run_test() -> void:
 			fail("The resting grip must sit in the player's hands instead of floating in front; center=%s" % grip_center)
 			return
 		var body_rig := actor.get_node("BodyRig") as Node3D
-		actor.call("set_stick_slap_angle", -75.0)
-		if absf(body_rig.rotation.y) < 0.15:
+		actor.call("set_stick_slap_angle", slap.BACKSWING_ANGLE)
+		blade.force_update_transform()
+		var backswing_blade_center: Vector3 = blade.to_global(blade.get_aabb().get_center())
+		var facing: Vector3 = actor.call("get_facing_direction")
+		var blade_from_player: Vector3 = backswing_blade_center - actor.global_position
+		var local_backswing_blade: Vector3 = actor.to_local(backswing_blade_center)
+		if local_backswing_blade.z >= -0.1:
+			fail("The wound-up blade must travel behind the player's body; blade=%s facing=%s" % [blade_from_player, facing])
+			return
+		if absf(body_rig.rotation.y) < 0.30:
 			fail("A real backswing must visibly twist the player's torso with the stick")
 			return
 		actor.call("set_stick_slap_angle", 0.0)

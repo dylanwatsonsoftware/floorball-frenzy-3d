@@ -6,8 +6,9 @@ const FORWARD_SECONDS := 0.16
 const RECOVERY_SECONDS := 0.16
 const CONTACT_SECONDS := BACKSWING_SECONDS + FORWARD_SECONDS * 0.72
 const TOTAL_SECONDS := BACKSWING_SECONDS + FORWARD_SECONDS + RECOVERY_SECONDS
-const BACKSWING_ANGLE := -78.0
-const CONTACT_ANGLE := 42.0
+const BACKSWING_ANGLE := 82.0
+const CONTACT_ANGLE := -42.0
+const FORWARD_STEP_DISTANCE := 0.30
 
 
 static func phase_at(elapsed: float) -> StringName:
@@ -38,3 +39,11 @@ static func angle_at(elapsed: float) -> float:
 		var t := clampf((elapsed - BACKSWING_SECONDS - FORWARD_SECONDS) / RECOVERY_SECONDS, 0.0, 1.0)
 		return lerpf(CONTACT_ANGLE, 0.0, t)
 	return 0.0
+
+
+static func forward_step_at(elapsed: float) -> float:
+	if elapsed <= BACKSWING_SECONDS:
+		return 0.0
+	var progress := clampf((elapsed - BACKSWING_SECONDS) / FORWARD_SECONDS, 0.0, 1.0)
+	var eased := 1.0 - pow(1.0 - progress, 2.0)
+	return FORWARD_STEP_DISTANCE * eased
