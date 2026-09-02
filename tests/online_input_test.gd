@@ -37,6 +37,14 @@ func _init() -> void:
 	if remote_heading <= 0.0 or remote_heading >= deg_to_rad(90.0):
 		fail("Remote character turns should be visibly smoothed toward the authoritative heading")
 		return
+	var replica_step: Vector3 = controller.predict_replica_position(Vector3(2.0, 0.75, 3.0), Vector3(6.0, 0.0, -3.0), 1.0 / 60.0)
+	if not replica_step.is_equal_approx(Vector3(2.1, 0.75, 2.95)):
+		fail("Remote replicas should continue along their last authoritative velocity between snapshots; got %s" % replica_step)
+		return
+	var stalled_step: Vector3 = controller.predict_replica_position(Vector3.ONE, Vector3(40.0, 0.0, 0.0), 0.2)
+	if stalled_step.distance_to(Vector3.ONE) > 2.01:
+		fail("Replica prediction must be bounded after a long frame so it cannot create a large visual jump")
+		return
 	if controller.next_action_sequence(4, false) != 4 or controller.next_action_sequence(4, true) != 5:
 		fail("Discrete online actions need persistent sequence numbers so unreliable packets can be repeated safely")
 		return

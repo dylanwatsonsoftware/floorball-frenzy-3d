@@ -72,6 +72,7 @@ func _physics_process(delta: float) -> void:
 		_switch_sequence = OnlineInputScript.next_action_sequence(_switch_sequence, Input.is_action_just_pressed("switch_player"))
 		_transport.send({"type": "input", "seq": _sequence, "move": _vector_to_array(movement), "dash": Input.is_action_pressed("dash"), "shoot": Input.is_action_pressed("shoot"), "pass_seq": _pass_sequence, "switch_seq": _switch_sequence})
 		_predict_local_player(movement, delta)
+		_predict_replicas(delta)
 		return
 	_snapshot_elapsed += delta
 	if _snapshot_elapsed >= SNAPSHOT_SECONDS:
@@ -180,6 +181,20 @@ func _predict_local_player(movement: Vector2, delta: float) -> void:
 		_ball.global_position += predicted - previous_position
 	if not movement.is_zero_approx():
 		actor.rotation.y = atan2(movement.x, movement.y)
+
+
+func _predict_replicas(delta: float) -> void:
+	var local_actor := _arena.call("get_local_human_actor") as CharacterBody3D
+	for actor in _arena.call("get_field_players"):
+		if actor == local_actor:
+			continue
+		var predicted: Vector3 = OnlineInputScript.predict_replica_position(actor.global_position, actor.velocity, delta)
+		predicted.x = clampf(predicted.x, -RINK_HALF_LENGTH, RINK_HALF_LENGTH)
+		predicted.z = clampf(predicted.z, -RINK_HALF_WIDTH, RINK_HALF_WIDTH)
+		actor.global_position = predicted
+	var locally_controlled_ball := local_actor != null and _ball.has_method("is_controlled_by_actor") and bool(_ball.call("is_controlled_by_actor", local_actor.call("get_actor_id")))
+	if not locally_controlled_ball:
+		_ball.global_position = OnlineInputScript.predict_replica_position(_ball.global_position, _ball.ball_velocity, delta)
 
 
 func _vector_to_array(value: Vector2) -> Array:
