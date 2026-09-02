@@ -3,6 +3,7 @@ extends Node
 
 
 const TransportScript = preload("res://scripts/network/webrtc_transport.gd")
+const OnlineInputScript = preload("res://scripts/network/online_input.gd")
 const SNAPSHOT_SECONDS := 1.0 / 20.0
 
 var _transport: FloorballWebRTCTransport
@@ -13,12 +14,14 @@ var _snapshot_elapsed := 0.0
 var _last_snapshot := -1
 var _status: Label
 var _match_flow: Node
+var _mobile_controls: Control
 
 
 func _ready() -> void:
 	_arena = get_parent().get_node("Arena") as Node3D
 	_ball = _arena.get_node("Ball") as Node3D
 	_match_flow = get_parent().get_node("MatchFlow")
+	_mobile_controls = get_parent().get_node_or_null("HUD/MobileControls") as Control
 	_status = Label.new()
 	_status.position = Vector2(20.0, 20.0)
 	_status.add_theme_font_size_override("font_size", 18)
@@ -57,7 +60,7 @@ func _on_disconnected() -> void:
 func _physics_process(delta: float) -> void:
 	if OnlineMatch.role == &"client":
 		_sequence += 1
-		_transport.send({"type": "input", "seq": _sequence, "move": _vector_to_array(Input.get_vector("move_left", "move_right", "move_up", "move_down")), "dash": Input.is_action_pressed("dash"), "shoot": Input.is_action_pressed("shoot"), "pass": Input.is_action_just_pressed("pass"), "switch": Input.is_action_just_pressed("switch_player")})
+		_transport.send({"type": "input", "seq": _sequence, "move": _vector_to_array(_movement_input()), "dash": Input.is_action_pressed("dash"), "shoot": Input.is_action_pressed("shoot"), "pass": Input.is_action_just_pressed("pass"), "switch": Input.is_action_just_pressed("switch_player")})
 		return
 	_snapshot_elapsed += delta
 	if _snapshot_elapsed >= SNAPSHOT_SECONDS:
@@ -123,6 +126,13 @@ func _set_authority_waiting(waiting: bool) -> void:
 	_ball.set_physics_process(not waiting)
 	for actor in _arena.call("get_field_players"):
 		actor.set_physics_process(not waiting)
+
+
+func _movement_input() -> Vector2:
+	var mobile := Vector2.ZERO
+	if _mobile_controls != null and _mobile_controls.has_method("get_movement_vector"):
+		mobile = _mobile_controls.call("get_movement_vector")
+	return OnlineInputScript.compose_movement_input(Input.get_vector("move_left", "move_right", "move_up", "move_down"), mobile)
 
 
 func _vector_to_array(value: Vector2) -> Array:

@@ -49,6 +49,17 @@ func run_test() -> void:
 	if not local_actor.get_node("ControlRing").visible or not local_actor.get_node("PlayerMarker").visible:
 		fail("The guest-controlled player must show its coloured ring and overhead arrow")
 		return
+	var remote_actor: CharacterBody3D
+	for actor in client_arena.call("get_field_players"):
+		if actor.call("get_team") == &"red" and bool(actor.call("is_human_controlled")):
+			remote_actor = actor
+			break
+	if remote_actor == null or not remote_actor.get_node("PlayerMarker").visible:
+		fail("Guests must see which Lambs player their opponent currently controls")
+		return
+	if remote_actor.get_node("ControlRing").visible:
+		fail("Only the local player should receive the ground control ring")
+		return
 	var camera_actor: CharacterBody3D = client_arena.call("get_camera_actor", client_arena.get_node("Ball"))
 	if camera_actor != local_actor:
 		fail("The guest camera must follow the locally controlled Pirates player")
