@@ -62,6 +62,15 @@ static func project_snapshot_position(position: Vector3, velocity: Vector3, age_
 	return position + velocity * clampf(age_seconds, 0.0, MAX_SNAPSHOT_AGE_SECONDS)
 
 
+static func packet_loss_percent(received_packets: int, missing_packets: int) -> float:
+	var total := received_packets + missing_packets
+	return 0.0 if total <= 0 else float(missing_packets) / float(total) * 100.0
+
+
+static func connection_diagnostic_text(round_trip_ms: float, loss_percent: float) -> String:
+	return "%d ms · %.1f%% LOSS · WEBRTC" % [roundi(maxf(0.0, round_trip_ms)), clampf(loss_percent, 0.0, 100.0)]
+
+
 static func reconcile_rotation(current: float, authoritative: float, locally_predicted: bool, actively_steering: bool) -> float:
 	if locally_predicted and actively_steering:
 		return current

@@ -30,6 +30,8 @@ var _estimated_rtt_ms := 0.0
 var _host_clock_offset_ms := 0.0
 var _has_clock_offset := false
 var _snapshot_age_seconds := 0.0
+var _received_snapshots := 0
+var _missing_snapshots := 0
 
 
 func _ready() -> void:
@@ -113,8 +115,12 @@ func _on_message(message: Dictionary) -> void:
 		var seq := int(message.get("seq", -1))
 		if seq <= _last_snapshot:
 			return
+		if _last_snapshot >= 0:
+			_missing_snapshots += maxi(0, seq - _last_snapshot - 1)
+		_received_snapshots += 1
 		_last_snapshot = seq
 		_apply_snapshot(message)
+		_update_connection_diagnostics()
 
 
 func _capture_snapshot() -> Dictionary:
@@ -188,6 +194,11 @@ func _update_snapshot_timing(snapshot: Dictionary) -> void:
 	_host_clock_offset_ms = offset_sample if not _has_clock_offset else lerpf(_host_clock_offset_ms, offset_sample, 0.1)
 	_has_clock_offset = true
 	_snapshot_age_seconds = OnlineInputScript.snapshot_age_seconds(received_at_ms, host_time_ms, _host_clock_offset_ms)
+
+
+func _update_connection_diagnostics() -> void:
+	var loss := OnlineInputScript.packet_loss_percent(_received_snapshots, _missing_snapshots)
+	_status.text = "ONLINE · %s · %s" % [OnlineMatch.room_id, OnlineInputScript.connection_diagnostic_text(_estimated_rtt_ms, loss)]
 
 
 func _set_authority_waiting(waiting: bool) -> void:

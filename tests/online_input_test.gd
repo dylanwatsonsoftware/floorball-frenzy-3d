@@ -77,6 +77,13 @@ func _init() -> void:
 	if capped_age > 0.1501:
 		fail("Old packet projection must be capped so delay spikes cannot launch replicas ahead")
 		return
+	if not is_equal_approx(controller.packet_loss_percent(95, 5), 5.0):
+		fail("Connection diagnostics must calculate snapshot packet loss")
+		return
+	var diagnostic: String = controller.connection_diagnostic_text(84.4, 3.2)
+	if diagnostic != "84 ms · 3.2% LOSS · WEBRTC":
+		fail("Connection diagnostics should be compact and readable in-game; got '%s'" % diagnostic)
+		return
 	if controller.next_action_sequence(4, false) != 4 or controller.next_action_sequence(4, true) != 5:
 		fail("Discrete online actions need persistent sequence numbers so unreliable packets can be repeated safely")
 		return
