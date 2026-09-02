@@ -48,10 +48,14 @@ func _init() -> void:
 		return
 	var network_player := authored_player.duplicate()
 	network_player.network_pickup_assist = true
+	var compensated_player: Dictionary = interaction.compensate_network_blade(network_player, 0.12)
+	if not compensated_player.blade_target.is_equal_approx(network_player.blade_target + network_player.velocity * 0.12):
+		fail("Remote blade pickup must project toward the guest's current movement to cover transit delay")
+		return
 	var latency_assisted_pickup: Dictionary = interaction.step(
-		Vector3(0.9, 0.22, -1.72),
+		Vector3(2.7, 0.22, -0.38),
 		Vector3.ZERO,
-		[network_player],
+		[compensated_player],
 		0.1
 	)
 	if latency_assisted_pickup.controller != 0:

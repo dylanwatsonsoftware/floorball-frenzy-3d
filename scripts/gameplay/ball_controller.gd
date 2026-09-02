@@ -32,6 +32,8 @@ const AI_GOAL := Vector2(-16.5, 0.0)
 const AI_SHOOT_DISTANCE := 7.0
 const AI_SHOT_CHARGE_SECONDS := 0.55
 const PASSER_PICKUP_LOCK_SECONDS := 0.38
+const NETWORK_PICKUP_GRACE_SECONDS := 0.32
+const NETWORK_BLADE_PREDICTION_SECONDS := 0.12
 
 var ball_velocity := Vector3.ZERO
 var _charge_seconds := 0.0
@@ -67,6 +69,7 @@ var _network_blue_charge := 0.0
 var _network_blue_was_shooting := false
 var _pickup_lock_actor_id: StringName = &""
 var _pickup_lock_seconds := 0.0
+var _network_blue_possession_grace := 0.0
 
 signal goal_scored(scorer: StringName)
 
@@ -82,6 +85,7 @@ func _physics_process(delta: float) -> void:
 	if OnlineMatch.enabled and OnlineMatch.is_authority():
 		_update_network_blue_actions(delta)
 	_pickup_lock_seconds = maxf(0.0, _pickup_lock_seconds - delta)
+	_network_blue_possession_grace = maxf(0.0, _network_blue_possession_grace - delta)
 	if _pickup_lock_seconds <= 0.0:
 		_pickup_lock_actor_id = &""
 	if Input.is_action_just_pressed("switch_player"):
@@ -152,6 +156,7 @@ func _launch_pass(planar_direction: Vector2, inherited_velocity: Vector3, passer
 
 
 func reset_for_faceoff() -> void:
+	_network_blue_possession_grace = 0.0
 	position = Vector3(0.0, BallSimulationScript.BALL_RADIUS, 0.0)
 	reset_physics_interpolation()
 	ball_velocity = Vector3.ZERO
@@ -278,6 +283,7 @@ func _interaction_participants() -> Array:
 	_refresh_field_players()
 	var participants := []
 	for actor in _field_players:
+		var is_network_human: bool = OnlineMatch.enabled and OnlineMatch.is_authority() and actor.call("get_team") == &"blue" and actor.call("get_actor_id") == get_human_control_actor_id_for_team(&"blue")
 		var participant := {
 			"position": actor.global_position,
 			"velocity": actor.velocity,
@@ -286,13 +292,15 @@ func _interaction_participants() -> Array:
 			"actor_id": actor.call("get_actor_id"),
 			"team": actor.call("get_team"),
 			"pickup_blocked": actor.call("get_actor_id") == _pickup_lock_actor_id and _pickup_lock_seconds > 0.0,
-			"shot_protected": actor == _slap_actor and _current_slap_phase() in [&"backswing", &"forward"],
-			"network_pickup_assist": OnlineMatch.enabled and OnlineMatch.is_authority() and actor.call("get_team") == &"blue" and actor.call("get_actor_id") == get_human_control_actor_id_for_team(&"blue"),
+			"shot_protected": (actor == _slap_actor and _current_slap_phase() in [&"backswing", &"forward"]) or (is_network_human and actor.call("get_actor_id") == get_control_owner_actor_id() and _network_blue_possession_grace > 0.0),
+			"network_pickup_assist": is_network_human,
 		}
 		var blade_pocket := actor.get_node_or_null("StickRig/BladePocket") as Marker3D
 		if blade_pocket != null:
 			blade_pocket.force_update_transform()
 			participant.blade_target = blade_pocket.global_position
+		if is_network_human:
+			participant = BallInteractionScript.compensate_network_blade(participant, NETWORK_BLADE_PREDICTION_SECONDS)
 		participants.append(participant)
 	return participants
 
@@ -484,6 +492,7 @@ func _update_human_control_from_possession(previous_controller: int) -> void:
 	var team: StringName = new_owner.call("get_team")
 	if team == &"blue":
 		_blue_human_control_actor_id = new_actor_id
+		_network_blue_possession_grace = NETWORK_PICKUP_GRACE_SECONDS
 		return
 	if new_actor_id == _human_control_actor_id:
 		return

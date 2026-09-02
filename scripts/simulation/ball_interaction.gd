@@ -18,6 +18,13 @@ const MAX_RETENTION_RELATIVE_SPEED := 7.5
 const POSITION_ASSIST_RATE := 7.0
 
 
+static func compensate_network_blade(participant: Dictionary, prediction_seconds: float) -> Dictionary:
+	var compensated := participant.duplicate()
+	if compensated.has("blade_target"):
+		compensated.blade_target = compensated.blade_target + compensated.get("velocity", Vector3.ZERO) * clampf(prediction_seconds, 0.0, 0.15)
+	return compensated
+
+
 static func step(ball_position: Vector3, ball_velocity: Vector3, participants: Array, delta: float, previous_controller: int = -1) -> Dictionary:
 	var next_position := ball_position
 	var next_velocity := ball_velocity
