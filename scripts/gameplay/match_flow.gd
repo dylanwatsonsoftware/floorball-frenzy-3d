@@ -86,7 +86,7 @@ func _reset_faceoff() -> void:
 
 
 func _update_score_label() -> void:
-	_score_label.text = "LAMBS  %d  —  %d  PIRATES" % [score.red, score.blue]
+	_score_label.text = "%d  —  %d" % [score.red, score.blue]
 
 
 func _team_name(team: StringName) -> String:
