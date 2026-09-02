@@ -73,6 +73,9 @@ func _physics_process(delta: float) -> void:
 
 
 func _human_movement() -> Vector2:
+	var online_match := get_node_or_null("/root/OnlineMatch")
+	if online_match != null and bool(online_match.get("enabled")) and bool(online_match.call("is_authority")) and get_team() == &"blue":
+		return online_match.get("remote_input")
 	var keyboard := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	var touch := Vector2.ZERO
 	if _mobile_controls != null and _mobile_controls.has_method("get_movement_vector"):
@@ -132,7 +135,7 @@ func get_squad_slot() -> int:
 
 
 func is_human_controlled() -> bool:
-	return get_team() == &"red" and _ball != null and _ball.has_method("get_human_control_actor_id") and _ball.call("get_human_control_actor_id") == get_actor_id()
+	return _ball != null and _ball.has_method("get_human_control_actor_id_for_team") and _ball.call("get_human_control_actor_id_for_team", get_team()) == get_actor_id()
 
 
 func is_dashing() -> bool:

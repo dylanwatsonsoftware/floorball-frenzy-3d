@@ -24,6 +24,7 @@ var _camera_follow_target := Vector3.ZERO
 var _camera_look_target := Vector3.ZERO
 var _camera_tracking_initialized := false
 var _camera_charge_pullback := 0.0
+var _client_charge_seconds := 0.0
 
 
 func _ready() -> void:
@@ -38,13 +39,14 @@ func _process(delta: float) -> void:
 	var ball := get_node_or_null("Ball") as MeshInstance3D
 	if ball == null:
 		return
-	var action_actor := _action_actor(ball)
+	var action_actor := get_camera_actor(ball)
 	var ball_position := ActionCameraScript.display_position(ball)
 	var actor_position := ball_position if action_actor == null else ActionCameraScript.display_position(action_actor)
-	var charge_ratio := float(ball.call("get_shot_charge_ratio")) if ball.has_method("get_shot_charge_ratio") else 0.0
+	var charge_ratio := _local_charge_ratio(ball, delta)
 	var pulling_back := charge_ratio > _camera_charge_pullback
 	_camera_charge_pullback = lerpf(_camera_charge_pullback, charge_ratio, ActionCameraScript.transition_blend(delta, pulling_back))
-	var frame: Dictionary = ActionCameraScript.frame(ball_position, actor_position, _camera_charge_pullback > 0.001, _camera_charge_pullback)
+	var attacking_goal_x := GOAL_LINE_X if not OnlineMatch.enabled or OnlineMatch.local_team() == &"red" else -GOAL_LINE_X
+	var frame: Dictionary = ActionCameraScript.frame(ball_position, actor_position, _camera_charge_pullback > 0.001, _camera_charge_pullback, Vector3(attacking_goal_x, 0.3, 0.0))
 	if not _camera_tracking_initialized:
 		_camera_follow_target = frame.target
 		_camera_look_target = frame.target
@@ -61,7 +63,23 @@ func _process(delta: float) -> void:
 	_camera.look_at(_camera_look_target, Vector3.UP)
 
 
-func _action_actor(ball: MeshInstance3D) -> CharacterBody3D:
+func get_local_human_actor() -> CharacterBody3D:
+	var local_team := OnlineMatch.local_team() if OnlineMatch.enabled else &"red"
+	var ball := get_node_or_null("Ball")
+	if ball == null or not ball.has_method("get_human_control_actor_id_for_team"):
+		return null
+	var local_actor_id: StringName = ball.call("get_human_control_actor_id_for_team", local_team)
+	for actor in _field_players:
+		if actor.call("get_team") == local_team and actor.call("get_actor_id") == local_actor_id:
+			return actor
+	return null
+
+
+func get_camera_actor(ball: MeshInstance3D) -> CharacterBody3D:
+	if OnlineMatch.enabled:
+		var local_actor := get_local_human_actor()
+		if local_actor != null:
+			return local_actor
 	var owner_id: StringName = ball.call("get_control_owner_actor_id") if ball.has_method("get_control_owner_actor_id") else &""
 	var nearest: CharacterBody3D
 	var nearest_distance := INF
@@ -73,6 +91,17 @@ func _action_actor(ball: MeshInstance3D) -> CharacterBody3D:
 			nearest = actor
 			nearest_distance = distance
 	return nearest
+
+
+func _local_charge_ratio(ball: MeshInstance3D, delta: float) -> float:
+	if OnlineMatch.enabled and OnlineMatch.role == &"client":
+		if Input.is_action_pressed("shoot"):
+			_client_charge_seconds = minf(0.8, _client_charge_seconds + delta)
+		else:
+			_client_charge_seconds = 0.0
+		return _client_charge_seconds / 0.8
+	_client_charge_seconds = 0.0
+	return float(ball.call("get_shot_charge_ratio")) if ball.has_method("get_shot_charge_ratio") else 0.0
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -294,6 +323,9 @@ func _build_opponent() -> void:
 	opponent.add_child(shape)
 	_add_humanoid(opponent, &"blue", 0)
 	_add_stick(opponent, Color("202a38"))
+	_add_control_ring(opponent)
+	_add_aim_arrow(opponent)
+	_add_player_marker(opponent)
 	_add_dash_streak(opponent, Color(0.35, 0.78, 0.94, 0.78))
 	_add_fuego_aura(opponent, Color("ffb52e"))
 
@@ -318,10 +350,9 @@ func _build_support_player(node_name: String, actor_id: StringName, team: String
 	_add_humanoid(actor, team, slot)
 	_add_stick(actor, Color("202a38"))
 	_add_dash_streak(actor, Color(0.18, 0.78, 0.35, 0.78) if team == &"red" else Color(0.35, 0.78, 0.94, 0.78))
-	if team == &"red":
-		_add_control_ring(actor)
-		_add_aim_arrow(actor)
-		_add_player_marker(actor)
+	_add_control_ring(actor)
+	_add_aim_arrow(actor)
+	_add_player_marker(actor)
 
 
 func _build_goalkeeper(node_name: String, actor_id: StringName, team: StringName, start_position: Vector3) -> void:
@@ -347,10 +378,9 @@ func _build_goalkeeper(node_name: String, actor_id: StringName, team: StringName
 	body_rig.position.y = -0.28
 	body_rig.set_meta("kneeling", true)
 	_add_goalkeeper_helmet(keeper, Color("073d27") if team == &"red" else Color("87d4e3"))
-	if team == &"red":
-		_add_control_ring(keeper)
-		_add_aim_arrow(keeper)
-		_add_player_marker(keeper)
+	_add_control_ring(keeper)
+	_add_aim_arrow(keeper)
+	_add_player_marker(keeper)
 
 
 func _add_humanoid(parent: Node3D, team: StringName, slot: int) -> void:
@@ -595,7 +625,8 @@ func _add_player_marker(parent: Node3D) -> void:
 	parent.add_child(marker)
 	var arrow := Sprite3D.new()
 	arrow.name = "Arrow2D"
-	arrow.texture = _make_player_arrow_texture()
+	var team: StringName = parent.get_meta("team", &"red")
+	arrow.texture = _make_player_arrow_texture(team)
 	arrow.pixel_size = 0.009
 	arrow.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	arrow.no_depth_test = true
@@ -603,10 +634,10 @@ func _add_player_marker(parent: Node3D) -> void:
 	marker.add_child(arrow)
 
 
-func _make_player_arrow_texture() -> ImageTexture:
+func _make_player_arrow_texture(team: StringName) -> ImageTexture:
 	var image := Image.create(96, 96, false, Image.FORMAT_RGBA8)
-	var outline := Color("172238")
-	var fill := Color("ffe24f")
+	var outline := Color("083d22") if team == &"red" else Color("17284d")
+	var fill := Color("43dc72") if team == &"red" else Color("75d4ed")
 	for y in 96:
 		for x in 96:
 			var outer_body := x >= 27 and x <= 68 and y >= 5 and y <= 47
@@ -629,7 +660,9 @@ func _add_control_ring(parent: Node3D) -> void:
 	indicator.mesh = ring
 	indicator.position.y = -0.7
 	indicator.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	indicator.material_override = _material(Color(1.0, 0.88, 0.28, 0.88), 0.18, Color("ffd84a"))
+	var team: StringName = parent.get_meta("team", &"red")
+	var ring_color := Color("43dc72") if team == &"red" else Color("75d4ed")
+	indicator.material_override = _material(Color(ring_color, 0.88), 0.18, ring_color)
 	indicator.visible = false
 	parent.add_child(indicator)
 

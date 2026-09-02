@@ -28,8 +28,33 @@ func run_test() -> void:
 	if match_scene.get_node_or_null("OnlineMatchController") == null:
 		fail("Online matches must attach their authoritative networking controller")
 		return
-	print("Online match composes one human and five AI players per side.")
 	match_scene.queue_free()
+	await process_frame
+	root.get_node("OnlineMatch").call("stop")
+
+	root.get_node("OnlineMatch").call("start", &"client", "ABC234", "Test Game")
+	var client_match := (load("res://scenes/match/match.tscn") as PackedScene).instantiate()
+	root.add_child(client_match)
+	await process_frame
+	await process_frame
+	var client_arena := client_match.get_node("Arena")
+	var local_actor: CharacterBody3D = client_arena.call("get_local_human_actor")
+	if local_actor == null or local_actor.call("get_team") != &"blue":
+		fail("A guest must resolve the Pirates human as its locally controlled player")
+		return
+	for child_name in ["ControlRing", "AimArrow", "PlayerMarker"]:
+		if local_actor.get_node_or_null(child_name) == null:
+			fail("The guest-controlled player is missing its %s" % child_name)
+			return
+	if not local_actor.get_node("ControlRing").visible or not local_actor.get_node("PlayerMarker").visible:
+		fail("The guest-controlled player must show its coloured ring and overhead arrow")
+		return
+	var camera_actor: CharacterBody3D = client_arena.call("get_camera_actor", client_arena.get_node("Ball"))
+	if camera_actor != local_actor:
+		fail("The guest camera must follow the locally controlled Pirates player")
+		return
+	print("Online matches give both host and guest a visible, camera-tracked human player.")
+	client_match.queue_free()
 	root.get_node("OnlineMatch").call("stop")
 	quit(0)
 

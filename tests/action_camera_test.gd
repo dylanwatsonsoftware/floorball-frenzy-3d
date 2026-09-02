@@ -31,6 +31,15 @@ func _init() -> void:
 		fail("Charge pullback must preserve the camera angle so screen-space shot direction does not rotate; neutral=%s charged=%s" % [neutral_view, charged_view])
 		return
 
+	var red_goal_frame: Dictionary = camera_logic.frame(Vector3(8.0, 0.2, 1.0), Vector3(7.0, 0.75, 1.0), true, 1.0, Vector3(16.5, 0.3, 0.0))
+	var blue_goal_frame: Dictionary = camera_logic.frame(Vector3(-8.0, 0.2, -1.0), Vector3(-7.0, 0.75, -1.0), true, 1.0, Vector3(-16.5, 0.3, 0.0))
+	if red_goal_frame.target.x <= 8.0 or blue_goal_frame.target.x >= -8.0:
+		fail("A charged-shot camera must frame the local player's attacking goal; red=%s blue=%s" % [red_goal_frame.target, blue_goal_frame.target])
+		return
+	if not is_equal_approx(red_goal_frame.target.x, -blue_goal_frame.target.x):
+		fail("Charged-shot goal framing must be symmetrical for hosts and guests; red=%s blue=%s" % [red_goal_frame.target, blue_goal_frame.target])
+		return
+
 	if not camera_logic.has_method("follow_target") or not camera_logic.has_method("transition_blend"):
 		fail("Action tracking needs explicit dead-zone and transition timing behavior")
 		return

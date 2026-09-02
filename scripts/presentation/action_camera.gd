@@ -15,7 +15,7 @@ static func display_position(subject: Node3D) -> Vector3:
 	return subject.get_global_transform_interpolated().origin
 
 
-static func frame(ball_position: Vector3, action_actor_position: Vector3, charging: bool, charge_ratio: float) -> Dictionary:
+static func frame(ball_position: Vector3, action_actor_position: Vector3, charging: bool, charge_ratio: float, attacking_goal_position: Vector3 = Vector3.ZERO) -> Dictionary:
 	var action_focus := ball_position.lerp(action_actor_position, 0.38)
 	action_focus = Vector3(
 		clampf(action_focus.x, -13.5, 13.5),
@@ -25,6 +25,11 @@ static func frame(ball_position: Vector3, action_actor_position: Vector3, chargi
 	var pullback := clampf(charge_ratio, 0.0, 1.0) if charging else 0.0
 	pullback = smoothstep(0.0, 1.0, pullback)
 	var full_rink_focus := Vector3(FULL_RINK_FRAMING.x, FULL_RINK_FRAMING.y, action_focus.z * 0.15)
+	if not attacking_goal_position.is_zero_approx():
+		# Bias the charged view between the action and its target goal. This keeps
+		# the shooter and ball readable while revealing the scoring lane.
+		full_rink_focus = action_focus.lerp(attacking_goal_position, 0.48)
+		full_rink_focus.y = FULL_RINK_FRAMING.y
 	var target := action_focus.lerp(full_rink_focus, pullback)
 	var offset := NORMAL_OFFSET.lerp(CHARGE_OFFSET, pullback)
 	return {
