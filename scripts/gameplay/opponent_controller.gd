@@ -72,7 +72,7 @@ func _physics_process(delta: float) -> void:
 	var should_press := owner_team != &"blue" and SquadLogicScript.is_closest_to_ball(get_actor_id(), global_position, teammates, _ball.global_position)
 	if owner_actor != get_actor_id() and not should_press:
 		var support_target := SquadLogicScript.support_target(&"blue", 0, _ball.global_position, owner_team == &"blue")
-		decision.movement = (support_target - Vector2(global_position.x, global_position.z)).normalized()
+		decision.movement = SquadLogicScript.arrival_movement(Vector2(global_position.x, global_position.z), support_target)
 		decision.wants_dash = false
 	if decision.wants_dash:
 		try_dash(decision.movement)

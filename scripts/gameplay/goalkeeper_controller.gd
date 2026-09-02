@@ -2,6 +2,7 @@ extends CharacterBody3D
 
 const PlayerMotorScript = preload("res://scripts/gameplay/player_motor.gd")
 const GoalkeeperAIScript = preload("res://scripts/simulation/goalkeeper_ai.gd")
+const SquadLogicScript = preload("res://scripts/simulation/squad_logic.gd")
 const KEEPER_SPEED_MULTIPLIER := 0.72
 
 var _ball: Node3D
@@ -45,7 +46,7 @@ func _ai_movement() -> Vector2:
 	var owner_team: StringName = _ball.call("get_control_owner_team")
 	var loose_ball := owner_team == &""
 	var target := GoalkeeperAIScript.target(get_team(), _ball.global_position, loose_ball)
-	return (target - Vector2(global_position.x, global_position.z)).normalized()
+	return SquadLogicScript.arrival_movement(Vector2(global_position.x, global_position.z), target)
 
 
 func _constrain_to_crease() -> void:

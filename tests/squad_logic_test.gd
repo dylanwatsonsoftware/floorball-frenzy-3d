@@ -26,6 +26,18 @@ func _init() -> void:
 	if defensive_support.x > -5.5 or defensive_support.y > -4.5:
 		fail("Off-ball defenders must hold a genuinely separated lane instead of swarming the ball; target=%s" % defensive_support)
 		return
+	var arrived: Vector2 = squad.arrival_movement(Vector2(4.0, -2.0), Vector2(4.08, -2.04))
+	if not arrived.is_zero_approx():
+		fail("AI must settle at nearby targets instead of flipping direction every frame; movement=%s" % arrived)
+		return
+	var approaching: Vector2 = squad.arrival_movement(Vector2.ZERO, Vector2(1.0, 0.0))
+	if approaching.x <= 0.0 or approaching.x >= 1.0:
+		fail("AI must ease into support positions instead of overshooting them at full speed; movement=%s" % approaching)
+		return
+	var travelling: Vector2 = squad.arrival_movement(Vector2.ZERO, Vector2(8.0, 0.0))
+	if not travelling.is_equal_approx(Vector2.RIGHT):
+		fail("AI must retain full movement speed when meaningfully far from its target; movement=%s" % travelling)
+		return
 	var switch_target: StringName = squad.next_human_actor_id(
 		&"red_1",
 		[

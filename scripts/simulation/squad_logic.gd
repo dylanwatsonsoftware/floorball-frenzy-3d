@@ -4,6 +4,8 @@ extends RefCounted
 const HUMAN_TEAM := &"red"
 const PRESSURE_DISTANCE := 3.0
 const PASS_ERROR_RADIANS := 0.12
+const ARRIVAL_STOP_RADIUS := 0.18
+const ARRIVAL_SLOW_RADIUS := 2.4
 
 
 static func human_actor_id(owner_actor_id: StringName, owner_team: StringName, human_team: StringName = HUMAN_TEAM) -> StringName:
@@ -17,6 +19,14 @@ static func support_target(team: StringName, slot: int, ball_position: Vector3, 
 	var longitudinal_offset := (3.4 if slot <= 2 else -2.8) if team_has_possession else (-6.2 if slot <= 2 else -8.0)
 	var target_x := clampf(ball_position.x + attack_direction * longitudinal_offset, -14.0, 14.0)
 	return Vector2(target_x, lane_z)
+
+
+static func arrival_movement(position: Vector2, target: Vector2, stop_radius: float = ARRIVAL_STOP_RADIUS, slow_radius: float = ARRIVAL_SLOW_RADIUS) -> Vector2:
+	var offset := target - position
+	var distance := offset.length()
+	if distance <= stop_radius:
+		return Vector2.ZERO
+	return offset.normalized() * minf(1.0, (distance - stop_radius) / maxf(0.001, slow_radius - stop_radius))
 
 
 static func next_human_actor_id(current_actor_id: StringName, teammates: Array, ball_position: Vector3) -> StringName:

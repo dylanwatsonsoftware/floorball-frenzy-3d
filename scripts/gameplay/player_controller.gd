@@ -96,7 +96,7 @@ func _ai_movement() -> Vector2:
 	var target := SquadLogicScript.support_target(get_team(), get_squad_slot(), _ball.global_position, team_has_possession)
 	if not team_has_possession and SquadLogicScript.is_closest_to_ball(get_actor_id(), global_position, teammates, _ball.global_position):
 		target = Vector2(_ball.global_position.x, _ball.global_position.z)
-	return (target - Vector2(global_position.x, global_position.z)).normalized()
+	return SquadLogicScript.arrival_movement(Vector2(global_position.x, global_position.z), target)
 
 
 func get_facing_direction() -> Vector3:
