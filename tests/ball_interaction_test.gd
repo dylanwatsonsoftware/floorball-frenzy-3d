@@ -35,6 +35,18 @@ func _init() -> void:
 		fail("Approaching a loose ball directly in front must feed it into the curved stick pocket")
 		return
 
+	var authored_player := player.duplicate()
+	authored_player.blade_target = Vector3(0.9, 0.22, -0.38)
+	var authored_pickup: Dictionary = interaction.step(
+		authored_player.blade_target,
+		Vector3.ZERO,
+		[authored_player],
+		0.1
+	)
+	if authored_pickup.controller != 0:
+		fail("An authored 3D blade-front anchor must remain catchable even when the stick is mirrored around the player")
+		return
+
 	var turned_player := player.duplicate()
 	turned_player.facing = Vector3.FORWARD
 	turned_player.velocity = Vector3.ZERO

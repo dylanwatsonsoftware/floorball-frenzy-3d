@@ -816,9 +816,10 @@ func _add_floorball_blade(rig: Node3D, color: Color) -> void:
 	blade.transform = rig.transform.affine_inverse() * Transform3D(vertical_actor_basis, actor_origin)
 	var pocket := Marker3D.new()
 	pocket.name = "BladePocket"
-	# The pocket lies just inside the curled toe, where the concave front face
-	# cups a floorball in the supplied stick reference.
-	pocket.position = blade.position + blade.basis * Vector3(0.0, -0.085, 1.68)
+	# Place the ball centre beyond the concave playing face, near the curled toe.
+	# This lets the vertical blade visibly push the ball instead of intersecting
+	# its centre or appearing to carry it behind the lattice.
+	pocket.position = blade.position + blade.basis * Vector3(0.0, -0.275, 1.58)
 	rig.add_child(pocket)
 	var spine_toe := Marker3D.new()
 	spine_toe.name = "CentreSpineToe"

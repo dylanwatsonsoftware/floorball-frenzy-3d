@@ -72,6 +72,9 @@ func run_test() -> void:
 		if pocket_in_blade.z < blade.get_aabb().end.z - 0.18:
 			fail("The ball pocket must sit at the curled blade toe rather than near the shaft or blade centre; pocket=%s blade_end=%s" % [pocket_in_blade, blade.get_aabb().end])
 			return
+		if pocket_in_blade.y > blade_bounds.position.y - 0.16:
+			fail("The carried ball centre must sit beyond the blade's playable front face instead of overlapping the blade; pocket=%s front=%s" % [pocket_in_blade, blade_bounds.position.y])
+			return
 		var blade_face_normal := blade.global_basis.y.normalized()
 		var blade_height_axis := blade.global_basis.x.normalized()
 		if absf(blade_face_normal.dot(Vector3.UP)) > 0.16 or blade_height_axis.dot(Vector3.UP) < 0.94:

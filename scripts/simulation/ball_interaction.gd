@@ -118,7 +118,12 @@ static func is_in_blade_pocket(ball_position: Vector3, participant: Dictionary) 
 		return false
 	var ball_planar := Vector2(ball_position.x, ball_position.z)
 	var relative: Vector2 = ball_planar - pocket.player
-	if relative.dot(pocket.facing) <= 0.08 or relative.dot(pocket.right) <= -0.3:
+	if relative.dot(pocket.facing) <= 0.08:
+		return false
+	# Authored 3D blade markers already identify the concave playing face and
+	# may be mirrored around either team's player. Keep the side heuristic only
+	# for the mathematical fallback pocket, where it prevents back-face pickup.
+	if not participant.has("blade_target") and relative.dot(pocket.right) <= -0.3:
 		return false
 	return ball_planar.distance_to(pocket.target) <= STICK_CONTROL_RADIUS
 
