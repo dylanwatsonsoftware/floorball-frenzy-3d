@@ -18,10 +18,10 @@ func _init() -> void:
 	if slap.crossed_contact(slap.CONTACT_SECONDS + 0.01, slap.CONTACT_SECONDS + 0.03):
 		fail("Contact must not repeat after the blade passes the ball")
 		return
-	if slap.angle_at(0.0) >= 0.0 or absf(slap.angle_at(slap.CONTACT_SECONDS)) > 0.01 or slap.angle_at(slap.CONTACT_SECONDS + 0.02) >= 0.0:
+	if slap.angle_at(0.0) >= 0.0 or absf(slap.angle_at(slap.CONTACT_SECONDS)) > 0.01 or slap.angle_at(slap.CONTACT_SECONDS + 0.02) <= 0.0:
 		fail("The stick must meet the carried ball at neutral angle before following through")
 		return
-	if slap.BACKSWING_SECONDS < 0.18 or slap.BACKSWING_ANGLE < 70.0:
+	if slap.BACKSWING_SECONDS < 0.18 or slap.BACKSWING_ANGLE > -70.0:
 		fail("The backswing must be long and deep enough to read clearly in gameplay")
 		return
 	if not slap.has_method("forward_step_at"):

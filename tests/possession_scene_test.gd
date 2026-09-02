@@ -47,6 +47,14 @@ func run_test() -> void:
 	if carried_gap > 0.36:
 		fail("A possessed ball must settle visibly onto the actual blade instead of an obsolete physics offset; gap=%s ball=%s blade=%s" % [carried_gap, ball.global_position, blade_world_center])
 		return
+	ball.call("begin_slap", Vector2.RIGHT, 0.7)
+	opponent.call("try_dash", Vector2.LEFT)
+	var opponent_index: int = scene.get_node("Arena").call("get_field_players").find(opponent)
+	ball.call("_apply_dash_steal", opponent_index)
+	if not ball.call("is_controlled_by_actor", player.call("get_actor_id")):
+		fail("An AI dash must not strip the ball during the player's committed shot wind-up")
+		return
+	ball.call("_cancel_slap")
 	ball.position = Vector3(0.0, 4.0, 0.0)
 	ball.ball_velocity = Vector3.ZERO
 

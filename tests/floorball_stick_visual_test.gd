@@ -81,7 +81,13 @@ func run_test() -> void:
 			fail("The resting grip must sit in the player's hands instead of floating in front; center=%s" % grip_center)
 			return
 		var body_rig := actor.get_node("BodyRig") as Node3D
+		var resting_grip_world: Vector3 = grip.to_global(grip.get_aabb().get_center())
 		actor.call("set_stick_slap_angle", slap.BACKSWING_ANGLE)
+		grip.force_update_transform()
+		var wound_grip_world: Vector3 = grip.to_global(grip.get_aabb().get_center())
+		if wound_grip_world.distance_to(resting_grip_world) > 0.18:
+			fail("The stick must pivot around the hands instead of sliding the shaft through the torso; rest=%s wound=%s" % [resting_grip_world, wound_grip_world])
+			return
 		blade.force_update_transform()
 		var backswing_blade_center: Vector3 = blade.to_global(blade.get_aabb().get_center())
 		var facing: Vector3 = actor.call("get_facing_direction")

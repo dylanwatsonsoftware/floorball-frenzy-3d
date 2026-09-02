@@ -102,6 +102,20 @@ func _init() -> void:
 	if friendly_overlap.controller != 0:
 		fail("A teammate crossing the carrier's stick must not steal or knock away possession; got %s" % friendly_overlap)
 		return
+	var protected_owner := team_owner.duplicate()
+	protected_owner.shot_protected = true
+	var opponent_challenger := challenger.duplicate()
+	opponent_challenger.team = &"blue"
+	var protected_overlap: Dictionary = interaction.step(
+		Vector3(0.9, 0.22, 0.75),
+		Vector3.ZERO,
+		[protected_owner, opponent_challenger],
+		0.1,
+		0
+	)
+	if protected_overlap.controller != 0:
+		fail("A carrier winding up a shot must retain possession through incidental challenge contact; got %s" % protected_overlap)
+		return
 
 	var wrong_side: Dictionary = interaction.step(Vector3(0.9, 0.22, -0.75), Vector3.ZERO, [player], 0.1)
 	if wrong_side.controller != -1:

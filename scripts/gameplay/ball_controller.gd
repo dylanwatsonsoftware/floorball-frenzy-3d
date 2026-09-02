@@ -31,6 +31,7 @@ const BLUE_STEAL_COLOR := Color("58a8ff")
 const AI_GOAL := Vector2(-16.5, 0.0)
 const AI_SHOOT_DISTANCE := 7.0
 const AI_SHOT_CHARGE_SECONDS := 0.55
+const PASSER_PICKUP_LOCK_SECONDS := 0.38
 
 var ball_velocity := Vector3.ZERO
 var _charge_seconds := 0.0
@@ -60,6 +61,8 @@ var _ai_pass_cooldown := 0.0
 var _aim_arrow_actor: CharacterBody3D
 var _charge_cancelled_until_release := false
 var _human_control_actor_id: StringName = &"red_1"
+var _pickup_lock_actor_id: StringName = &""
+var _pickup_lock_seconds := 0.0
 
 signal goal_scored(scorer: StringName)
 
@@ -72,6 +75,9 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	_pickup_lock_seconds = maxf(0.0, _pickup_lock_seconds - delta)
+	if _pickup_lock_seconds <= 0.0:
+		_pickup_lock_actor_id = &""
 	if Input.is_action_just_pressed("switch_player"):
 		switch_human_player()
 	if Input.is_action_just_pressed("pass"):
@@ -128,6 +134,8 @@ func launch(planar_direction: Vector2, charge: float, inherited_velocity: Vector
 
 
 func _launch_pass(planar_direction: Vector2, inherited_velocity: Vector3, passer: StringName) -> void:
+	_pickup_lock_actor_id = _slap_actor.call("get_actor_id") if _slap_actor != null else &""
+	_pickup_lock_seconds = PASSER_PICKUP_LOCK_SECONDS
 	_control_owner = -1
 	_ai_possession_seconds = 0.0
 	_reset_ai_shot()
@@ -146,6 +154,8 @@ func reset_for_faceoff() -> void:
 	_last_touch_actor = &""
 	_last_touch_age = INF
 	_dash_steal_consumed = {0: false, 1: false}
+	_pickup_lock_actor_id = &""
+	_pickup_lock_seconds = 0.0
 	_steal_feedback_remaining = 0.0
 	_scoop_remaining = 0.0
 	_control_owner = -1
@@ -269,6 +279,8 @@ func _interaction_participants() -> Array:
 			"slap_phase": _current_slap_phase() if actor == _slap_actor else &"idle",
 			"actor_id": actor.call("get_actor_id"),
 			"team": actor.call("get_team"),
+			"pickup_blocked": actor.call("get_actor_id") == _pickup_lock_actor_id and _pickup_lock_seconds > 0.0,
+			"shot_protected": actor == _slap_actor and _current_slap_phase() in [&"backswing", &"forward"],
 		}
 		var blade_pocket := actor.get_node_or_null("StickRig/BladePocket") as Marker3D
 		if blade_pocket != null:
@@ -493,6 +505,8 @@ func _update_ai_pass(delta: float) -> void:
 	if StringName(carrier.get_meta("role", &"field")) == &"goalkeeper" and _ai_possession_seconds >= 0.55:
 		var clear_direction := (Vector2.ZERO - Vector2(carrier.global_position.x, carrier.global_position.z)).normalized()
 		ball_velocity = BallSimulationScript.pass_velocity(clear_direction, carrier.velocity)
+		_pickup_lock_actor_id = carrier.call("get_actor_id")
+		_pickup_lock_seconds = PASSER_PICKUP_LOCK_SECONDS
 		_control_owner = -1
 		_ai_possession_seconds = 0.0
 		_ai_pass_cooldown = 0.8
@@ -517,6 +531,8 @@ func _update_ai_pass(delta: float) -> void:
 	if not decision.wants_pass:
 		return
 	ball_velocity = BallSimulationScript.pass_velocity(decision.direction, carrier.velocity)
+	_pickup_lock_actor_id = carrier.call("get_actor_id")
+	_pickup_lock_seconds = PASSER_PICKUP_LOCK_SECONDS
 	_control_owner = -1
 	_ai_possession_seconds = 0.0
 	_ai_pass_cooldown = 0.8
@@ -563,6 +579,8 @@ func _record_body_touch(controller: int) -> void:
 
 
 func _apply_dash_steal(body_controller: int) -> void:
+	if _control_owner >= 0 and _slap_actor == _actor_for_controller(_control_owner) and _current_slap_phase() in [&"backswing", &"forward"]:
+		return
 	if body_controller < 0 or body_controller >= _field_players.size():
 		return
 	var dashing_controller := body_controller if _is_controller_dashing(body_controller) else -1

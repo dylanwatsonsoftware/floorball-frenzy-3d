@@ -47,13 +47,18 @@ func run_test() -> void:
 		return
 	var expected := Vector2(nearest.global_position.x - carrier.global_position.x, nearest.global_position.z - carrier.global_position.z).normalized()
 	var peak_pass_velocity := Vector2.ZERO
-	for frame in 20:
+	var maximum_pass_separation := 0.0
+	for frame in 45:
 		await physics_frame
 		var frame_velocity := Vector2(ball.ball_velocity.x, ball.ball_velocity.z)
+		maximum_pass_separation = maxf(maximum_pass_separation, Vector2(ball.global_position.x - carrier.global_position.x, ball.global_position.z - carrier.global_position.z).length())
 		if frame_velocity.length() > peak_pass_velocity.length():
 			peak_pass_velocity = frame_velocity
 	if peak_pass_velocity.length() < 6.0 or peak_pass_velocity.length() > 10.5 or peak_pass_velocity.normalized().dot(expected) < 0.93:
 		fail("Pass contact must send the ball at controlled speed toward the nearest teammate; peak=%s expected=%s" % [peak_pass_velocity, expected])
+		return
+	if maximum_pass_separation < 1.5 or ball.call("get_control_owner_actor_id") == carrier.call("get_actor_id"):
+		fail("A released pass must escape the passer's stick instead of wobbling in place; separation=%s owner=%s" % [maximum_pass_separation, ball.call("get_control_owner_actor_id")])
 		return
 	print("Human Pass slaps toward the nearest teammate at controlled speed.")
 	scene.queue_free()

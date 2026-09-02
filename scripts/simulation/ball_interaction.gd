@@ -24,10 +24,14 @@ static func step(ball_position: Vector3, ball_velocity: Vector3, participants: A
 
 	var body_controller := -1
 	var previous_team: StringName = &""
+	var previous_shot_protected := false
 	if previous_controller >= 0 and previous_controller < participants.size():
 		previous_team = StringName(participants[previous_controller].get("team", &""))
+		previous_shot_protected = bool(participants[previous_controller].get("shot_protected", false))
 	for body_index in participants.size():
 		var participant: Dictionary = participants[body_index]
+		if bool(participant.get("pickup_blocked", false)) or (previous_shot_protected and body_index != previous_controller):
+			continue
 		var participant_team := StringName(participant.get("team", &""))
 		if body_index != previous_controller and previous_team != &"" and participant_team == previous_team:
 			continue
@@ -71,6 +75,8 @@ static func step(ball_position: Vector3, ball_velocity: Vector3, participants: A
 		if controller >= 0 or index == blocked_controller:
 			continue
 		var participant: Dictionary = participants[index]
+		if bool(participant.get("pickup_blocked", false)) or (previous_shot_protected and index != previous_controller):
+			continue
 		var participant_team := StringName(participant.get("team", &""))
 		if index != previous_controller and previous_team != &"" and participant_team == previous_team:
 			continue
