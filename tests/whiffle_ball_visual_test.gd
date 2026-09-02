@@ -14,8 +14,8 @@ func run_test() -> void:
 	if authored_mesh == null or authored_mesh.get_aabb().size.x < 0.071 or authored_mesh.get_aabb().size.x > 0.073:
 		fail("The authored source ball must retain its real 72 mm diameter")
 		return
-	if authored_mesh.mesh.get_surface_count() < 3:
-		fail("The simplified ball needs separate shell, rounded hole, and recessed opening surfaces")
+	if authored_mesh.mesh.get_surface_count() != 1:
+		fail("The floorball must use one continuous perforated shell, not separate dark dot or recess surfaces")
 		return
 	authored_scene.free()
 	var scene := (load("res://scenes/match/match.tscn") as PackedScene).instantiate()
@@ -29,19 +29,17 @@ func run_test() -> void:
 	if vertices.size() < 500:
 		fail("The whiffle ball needs modeled perforations rather than a primitive sphere")
 		return
-	if ball.material_override != null:
-		fail("The runtime ball must preserve its authored shell, rim, recess, and dimple materials")
+	var ball_material := ball.material_override as StandardMaterial3D
+	if ball_material == null or ball_material.albedo_color.get_luminance() < 0.85:
+		fail("The runtime ball must use one clean white shell material so openings read as genuine holes")
 		return
-	var light_surfaces := 0
 	var dark_surfaces := 0
 	for surface in ball.mesh.get_surface_count():
 		var material := ball.mesh.surface_get_material(surface) as StandardMaterial3D
-		if material != null and material.albedo_color.get_luminance() > 0.8:
-			light_surfaces += 1
-		elif material != null and material.albedo_color.get_luminance() < 0.22:
+		if material != null and material.albedo_color.get_luminance() < 0.22:
 			dark_surfaces += 1
-	if light_surfaces < 1 or dark_surfaces < 1:
-		fail("The ball must read as an opaque white shell with recessed dark openings")
+	if dark_surfaces > 0:
+		fail("The ball must not fake perforations with black materials")
 		return
 	var displayed_size := ball.get_aabb().size * ball.scale
 	if displayed_size.x < 0.40 or displayed_size.x > 0.46:

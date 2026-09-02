@@ -804,6 +804,7 @@ func _build_ball() -> void:
 	var authored_diameter := authored_ball.get_aabb().size.x
 	ball.scale = Vector3.ONE * (0.44 / authored_diameter)
 	ball.position = Vector3(0.0, 0.22, 0.0)
+	ball.material_override = _material(Color("f5f7fa"), 0.34)
 	ball.set_meta("authored_ball", true)
 	ball.set_script(load("res://scripts/gameplay/ball_controller.gd"))
 	imported_ball.queue_free()
