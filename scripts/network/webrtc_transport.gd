@@ -3,6 +3,7 @@ extends Node
 
 
 const ApiEndpointScript = preload("res://scripts/network/api_endpoint.gd")
+const StateCodecScript = preload("res://scripts/network/online_state_codec.gd")
 const POLL_SECONDS := 0.25
 
 signal connected
@@ -87,7 +88,7 @@ func _process(delta: float) -> void:
 			status_changed.emit("Opponent disconnected")
 		while state == 1 and int(_channel.call("get_available_packet_count")) > 0:
 			var packet: PackedByteArray = _channel.call("get_packet")
-			var value = JSON.parse_string(packet.get_string_from_utf8())
+			var value = StateCodecScript.decode_snapshot(packet) if StateCodecScript.is_snapshot_packet(packet) else JSON.parse_string(packet.get_string_from_utf8())
 			if value is Dictionary:
 				message_received.emit(value)
 	_poll_remaining -= delta
@@ -96,10 +97,11 @@ func _process(delta: float) -> void:
 		_poll_signals()
 
 
-func send(message: Dictionary) -> void:
+func send(message: Variant) -> void:
 	if _channel == null or int(_channel.call("get_ready_state")) != 1:
 		return
-	_channel.call("put_packet", JSON.stringify(message).to_utf8_buffer())
+	var packet: PackedByteArray = message if message is PackedByteArray else JSON.stringify(message).to_utf8_buffer()
+	_channel.call("put_packet", packet)
 
 
 func close() -> void:

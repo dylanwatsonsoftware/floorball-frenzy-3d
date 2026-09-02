@@ -5,6 +5,7 @@ extends Node
 const TransportScript = preload("res://scripts/network/webrtc_transport.gd")
 const OnlineInputScript = preload("res://scripts/network/online_input.gd")
 const BallSimulationScript = preload("res://scripts/simulation/ball_simulation.gd")
+const StateCodecScript = preload("res://scripts/network/online_state_codec.gd")
 const SNAPSHOT_SECONDS := OnlineInputScript.DEFAULT_SNAPSHOT_SECONDS
 const RINK_HALF_LENGTH := 19.1
 const RINK_HALF_WIDTH := 9.1
@@ -86,7 +87,7 @@ func _physics_process(delta: float) -> void:
 	if _snapshot_elapsed >= SNAPSHOT_SECONDS:
 		_snapshot_elapsed = 0.0
 		_sequence += 1
-		_transport.send(_capture_snapshot())
+		_transport.send(StateCodecScript.encode_snapshot(_capture_snapshot()))
 
 
 func _on_message(message: Dictionary) -> void:
