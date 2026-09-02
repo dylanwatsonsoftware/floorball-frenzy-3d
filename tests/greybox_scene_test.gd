@@ -239,6 +239,11 @@ func run_test() -> void:
 	if not (aim_arrow.get_node("Shaft") as MeshInstance3D).mesh is QuadMesh or not (aim_arrow.get_node("Head") as MeshInstance3D).mesh is ArrayMesh:
 		fail("The charged-shot guide must use flat 2D-style shaft and arrowhead geometry")
 		return
+	var arrow_head := aim_arrow.get_node("Head") as MeshInstance3D
+	var arrow_head_material := arrow_head.material_override as StandardMaterial3D
+	if arrow_head_material.cull_mode != BaseMaterial3D.CULL_DISABLED:
+		fail("The flat charged-shot arrowhead must render from both sides at every camera angle")
+		return
 	if scene.get_node_or_null("HUD/ChargeLabel") == null:
 		fail("HUD must expose shot charging feedback")
 		return

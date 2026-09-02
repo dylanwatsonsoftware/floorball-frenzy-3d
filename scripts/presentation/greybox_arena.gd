@@ -657,7 +657,9 @@ func _add_aim_arrow(parent: Node3D) -> void:
 	head.position.z = 2.25
 	head.scale = Vector3(0.4, 1.0, 0.52)
 	head.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	head.material_override = _material(Color(0.86, 0.82, 0.2, 0.38), 0.2, Color("d9b72d"))
+	var head_material := _material(Color(0.86, 0.82, 0.2, 0.38), 0.2, Color("d9b72d"))
+	head_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	head.material_override = head_material
 	arrow.add_child(head)
 
 
