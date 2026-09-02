@@ -661,9 +661,12 @@ func _update_scoop_feedback(delta: float) -> void:
 
 
 func _update_spin(delta: float) -> void:
-	var planar_speed := Vector2(ball_velocity.x, ball_velocity.z).length()
+	var planar_velocity := Vector3(ball_velocity.x, 0.0, ball_velocity.z)
+	var planar_speed := planar_velocity.length()
 	if planar_speed > 0.05:
-		rotate_x(planar_speed * delta / BallSimulationScript.BALL_RADIUS)
+		var roll_axis := Vector3.UP.cross(planar_velocity.normalized())
+		var roll_angle := planar_speed * delta / BallSimulationScript.BALL_RADIUS
+		global_basis = Basis(roll_axis, roll_angle) * global_basis
 
 
 func _update_shot_trail() -> void:

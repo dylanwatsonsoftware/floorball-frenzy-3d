@@ -220,6 +220,14 @@ func run_test() -> void:
 	if not ball.has_method("is_scoop_active"):
 		fail("Ball gameplay must expose the original retreating quick-release scoop state")
 		return
+	ball.rotation = Vector3.ZERO
+	ball.ball_velocity = Vector3(6.0, 0.0, 0.0)
+	ball.call("_update_spin", 0.1)
+	if absf(ball.rotation.z) <= 0.05 or absf(ball.rotation.x) > 0.01:
+		fail("A ball moving along X must visibly roll around its perpendicular Z axis; rotation=%s" % ball.rotation)
+		return
+	ball.rotation = Vector3.ZERO
+	ball.ball_velocity = Vector3.ZERO
 	var shot_trail := scene.get_node("Arena/Ball/ShotTrail") as MeshInstance3D
 	if shot_trail.visible:
 		fail("The ball trail must remain hidden at faceoff")
