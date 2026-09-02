@@ -19,6 +19,9 @@ var _movement_origin := Vector2.ZERO
 
 func _ready() -> void:
 	visible = should_show_mobile_controls(OS.has_feature("web"), DisplayServer.is_touchscreen_available(), _browser_touch_available())
+	var control_hint := get_node_or_null("../CameraLabel") as Label
+	if control_hint != null:
+		control_hint.visible = should_show_control_hint(visible)
 	set_process_input(true)
 	resized.connect(queue_redraw)
 
@@ -49,6 +52,10 @@ static func calculate_stick_vector(offset: Vector2, radius: float, deadzone: flo
 
 static func should_show_mobile_controls(is_web: bool, display_touch_available: bool, browser_touch_available: bool) -> bool:
 	return display_touch_available or (is_web and browser_touch_available)
+
+
+static func should_show_control_hint(mobile_controls_visible: bool) -> bool:
+	return not mobile_controls_visible
 
 
 static func can_start_floating_stick(touch_position: Vector2, viewport_size: Vector2) -> bool:

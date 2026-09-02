@@ -31,6 +31,9 @@ func _init() -> void:
 	if not controls.should_show_mobile_controls(false, true, false):
 		fail("Native touchscreen builds must show mobile controls")
 		return
+	if controls.should_show_control_hint(true) or not controls.should_show_control_hint(false):
+		fail("Text control hints must hide on mobile and remain visible on desktop")
+		return
 
 	var action: StringName = controls.action_at_position(Vector2(926.0, 386.0), Vector2(1000.0, 600.0))
 	if action != &"pass":

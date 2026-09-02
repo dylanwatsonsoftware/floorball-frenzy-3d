@@ -36,8 +36,8 @@ func run_test() -> void:
 	if "—" not in score_label.text:
 		fail("The broadcast score must remain readable independently of the team-name panels")
 		return
-	if "CONTROL FOLLOWS LAMBS POSSESSION" not in camera_label.text:
-		fail("The 6v6 HUD must explain that human control follows the Lambs ball carrier")
+	if "CAMERA" in camera_label.text or "CONTROL FOLLOWS" in camera_label.text:
+		fail("The desktop hint must omit camera/status narration and only show controls")
 		return
 	if "DASH" not in camera_label.text:
 		fail("The core HUD must make the restored desktop dash control discoverable")
