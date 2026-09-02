@@ -2,7 +2,7 @@ class_name FloorballWebRTCTransport
 extends Node
 
 
-const API_BASE := "/api"
+const ApiEndpointScript = preload("res://scripts/network/api_endpoint.gd")
 const POLL_SECONDS := 0.25
 
 signal connected
@@ -33,7 +33,7 @@ func start(role: StringName, room_id: String) -> bool:
 	var request := HTTPRequest.new()
 	add_child(request)
 	request.request_completed.connect(_on_ice_servers_received.bind(request))
-	if request.request(API_BASE + "/ice-servers") != OK:
+	if request.request(ApiEndpointScript.current_base() + "/ice-servers") != OK:
 		request.queue_free()
 		_initialize_peer(_fallback_ice_servers())
 	return true
@@ -130,7 +130,7 @@ func _poll_signals() -> void:
 	var request := HTTPRequest.new()
 	add_child(request)
 	request.request_completed.connect(_on_signals_received.bind(request))
-	var url := "%s/signal?room=%s&role=%s&t=%d" % [API_BASE, _room_id.uri_encode(), String(_role), Time.get_ticks_msec()]
+	var url := "%s/signal?room=%s&role=%s&t=%d" % [ApiEndpointScript.current_base(), _room_id.uri_encode(), String(_role), Time.get_ticks_msec()]
 	if request.request(url) != OK:
 		_polling = false
 		request.queue_free()
@@ -173,4 +173,4 @@ func _post_signal(message: Dictionary) -> void:
 	var request := HTTPRequest.new()
 	add_child(request)
 	request.request_completed.connect(func(_a: int, _b: int, _c: PackedStringArray, _d: PackedByteArray) -> void: request.queue_free())
-	request.request(API_BASE + "/signal", ["Content-Type: application/json"], HTTPClient.METHOD_POST, JSON.stringify({"room": _room_id, "role": String(_role), "msg": message}))
+	request.request(ApiEndpointScript.current_base() + "/signal", ["Content-Type: application/json"], HTTPClient.METHOD_POST, JSON.stringify({"room": _room_id, "role": String(_role), "msg": message}))

@@ -2,8 +2,8 @@ extends CanvasLayer
 
 
 const MATCH_SCENE := "res://scenes/match/match.tscn"
-const API_BASE := "/api"
 const OnlineSessionScript = preload("res://scripts/network/online_session.gd")
+const ApiEndpointScript = preload("res://scripts/network/api_endpoint.gd")
 
 
 @onready var _solo_button := get_node("Screen/Content/SoloButton") as Button
@@ -92,7 +92,7 @@ func _refresh_lobby() -> void:
 	var request := HTTPRequest.new()
 	add_child(request)
 	request.request_completed.connect(_on_lobby_loaded.bind(request))
-	var error := request.request(API_BASE + "/lobby")
+	var error := request.request(ApiEndpointScript.current_base() + "/lobby")
 	if error != OK:
 		_lobby_status.text = "Could not reach matchmaking."
 		request.queue_free()
@@ -141,7 +141,7 @@ func _post_lobby(payload: Dictionary) -> void:
 	var request := HTTPRequest.new()
 	add_child(request)
 	request.request_completed.connect(func(_a: int, _b: int, _c: PackedStringArray, _d: PackedByteArray) -> void: request.queue_free())
-	request.request(API_BASE + "/lobby", ["Content-Type: application/json"], HTTPClient.METHOD_POST, JSON.stringify(payload))
+	request.request(ApiEndpointScript.current_base() + "/lobby", ["Content-Type: application/json"], HTTPClient.METHOD_POST, JSON.stringify(payload))
 
 
 func _close_lobby() -> void:
