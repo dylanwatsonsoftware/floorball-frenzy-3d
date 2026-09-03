@@ -19,6 +19,9 @@ func _init() -> void:
 	if not codec.is_snapshot_packet(encoded):
 		fail("Encoded state must have a recognizable versioned packet header")
 		return
+	if encoded[3] != 0x31:
+		fail("Possession metadata must remain wire-compatible with already-open FFS1 web clients")
+		return
 	var json_size := JSON.stringify(snapshot).to_utf8_buffer().size()
 	if encoded.size() >= json_size * 0.75:
 		fail("Binary snapshots should materially reduce high-frequency packet size; binary=%d json=%d" % [encoded.size(), json_size])
@@ -32,6 +35,11 @@ func _init() -> void:
 		return
 	if decoded.score != {"red": 2, "blue": 3} or decoded.owner != "blue_1" or not decoded.ball_attached:
 		fail("Binary match and possession state did not survive a round trip")
+		return
+	var legacy_packet := encoded.slice(0, encoded.size() - 1)
+	var legacy_decoded: Dictionary = codec.decode_snapshot(legacy_packet)
+	if legacy_decoded.owner != "blue_1" or not legacy_decoded.ball_attached:
+		fail("New guests must infer possession attachment when receiving an older FFS1 snapshot")
 		return
 	print("Online snapshots use compact binary state packets.")
 	quit(0)

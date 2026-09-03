@@ -95,7 +95,29 @@ func run_test() -> void:
 	if client_ball.global_position.distance_to(remote_blade_pocket.global_position) > 0.05 or client_ball.global_position.x <= previous_possessed_ball_position.x:
 		fail("A possessed replica ball must follow its owner's predicted blade between snapshots")
 		return
-	client_ball.call("apply_network_control_state", &"", &"red_1", &"blue_1")
+	var local_possession_snapshot: Dictionary = possessed_snapshot.duplicate(true)
+	local_possession_snapshot.owner = String(local_actor.call("get_actor_id"))
+	local_possession_snapshot.blue_human = String(local_actor.call("get_actor_id"))
+	client_controller.call("_apply_snapshot", local_possession_snapshot)
+	var local_blade_pocket := local_actor.get_node("StickRig/BladePocket") as Marker3D
+	var local_ball_start: Vector3 = client_ball.global_position
+	client_controller.call("_predict_local_player", Vector2.RIGHT, 0.1)
+	client_controller.call("_predict_replicas", 0.1)
+	local_blade_pocket.force_update_transform()
+	if client_ball.global_position.distance_to(local_blade_pocket.global_position) > 0.05 or client_ball.global_position.x <= local_ball_start.x:
+		fail("The guest-owned ball must follow the guest's locally predicted blade immediately")
+		return
+	var released_snapshot: Dictionary = local_possession_snapshot.duplicate(true)
+	released_snapshot.owner = ""
+	released_snapshot.ball_attached = false
+	released_snapshot.ball = _vector3_array(client_ball.global_position)
+	released_snapshot.ball_velocity = [8.0, 0.18, 0.0]
+	client_controller.call("_apply_snapshot", released_snapshot)
+	var release_start: Vector3 = client_ball.global_position
+	client_controller.call("_predict_replicas", 1.0 / 60.0)
+	if client_ball.global_position.x <= release_start.x:
+		fail("A released guest ball must resume local pass/shot movement immediately")
+		return
 	client_ball.global_position = Vector3(0.0, 1.0, 0.0)
 	client_ball.ball_velocity = Vector3(2.0, 0.0, 0.0)
 	client_controller.call("_predict_replicas", 1.0 / 60.0)
@@ -134,3 +156,7 @@ func run_test() -> void:
 func fail(message: String) -> void:
 	push_error(message)
 	quit(1)
+
+
+func _vector3_array(value: Vector3) -> Array:
+	return [value.x, value.y, value.z]
