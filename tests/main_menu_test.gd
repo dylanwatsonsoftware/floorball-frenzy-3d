@@ -32,6 +32,28 @@ func run_test() -> void:
 	if not menu.has_method("show_online_lobby"):
 		fail("The main menu must expose the online matchmaking flow")
 		return
+	menu.call("show_online_lobby")
+	await process_frame
+	for path in ["LobbyOverlay", "LobbyOverlay/ArenaGlow", "LobbyOverlay/LobbyPanel", "LobbyOverlay/LobbyPanel/Layout/Header", "LobbyOverlay/LobbyPanel/Layout/CreateCard", "LobbyOverlay/LobbyPanel/Layout/OpenGamesCard"]:
+		if menu.get_node_or_null(path) == null:
+			fail("The matchmaking lobby is missing its structured presentation element: %s" % path)
+			return
+	var create_game := menu.get_node("LobbyOverlay/LobbyPanel/Layout/CreateCard/Body/CreateGame") as Button
+	var refresh_games := menu.get_node("LobbyOverlay/LobbyPanel/Layout/Footer/RefreshGames") as Button
+	var back_button := menu.get_node("LobbyOverlay/LobbyPanel/Layout/Footer/Back") as Button
+	if create_game.custom_minimum_size.y < 56.0 or refresh_games.custom_minimum_size.y < 48.0 or back_button.custom_minimum_size.y < 48.0:
+		fail("Matchmaking actions need comfortable phone-sized touch targets")
+		return
+	var game_name := menu.get_node("LobbyOverlay/LobbyPanel/Layout/CreateCard/Body/GameName") as LineEdit
+	if game_name.placeholder_text.is_empty() or game_name.custom_minimum_size.y < 52.0:
+		fail("Hosting a game needs a clearly labelled, touch-friendly name field")
+		return
+	var lobby_status := menu.get_node("LobbyOverlay/LobbyPanel/Layout/OpenGamesCard/Body/LobbyStatus") as Label
+	if lobby_status.text.is_empty():
+		fail("The online lobby must always communicate its loading or availability state")
+		return
+	menu.call("_close_lobby")
+	await process_frame
 	var solo_button := menu.get_node("Screen/Content/SoloButton") as Button
 	if solo_button.disabled:
 		fail("Solo Match must be the active path into the current 6v6 game")
