@@ -32,6 +32,7 @@ var _has_clock_offset := false
 var _snapshot_age_seconds := 0.0
 var _received_snapshots := 0
 var _missing_snapshots := 0
+var _ball_attached_to_owner := false
 
 
 func _ready() -> void:
@@ -128,7 +129,9 @@ func _capture_snapshot() -> Dictionary:
 	for actor in _arena.call("get_field_players"):
 		actors.append({"id": String(actor.call("get_actor_id")), "p": _vector3_to_array(actor.global_position), "v": _vector3_to_array(actor.velocity), "r": actor.rotation.y})
 	var match_state: Dictionary = _match_flow.call("get_network_state") if _match_flow.has_method("get_network_state") else {}
-	return {"type": "snapshot", "seq": _sequence, "host_time_ms": Time.get_ticks_msec(), "input_ack": _last_snapshot, "input_echo_ms": _last_remote_input_sent_ms, "actors": actors, "ball": _vector3_to_array(_ball.global_position), "ball_velocity": _vector3_to_array(_ball.ball_velocity), "owner": String(_ball.call("get_control_owner_actor_id")), "red_human": String(_ball.call("get_human_control_actor_id_for_team", &"red")), "blue_human": String(_ball.call("get_human_control_actor_id_for_team", &"blue")), "score": _match_flow.score.duplicate(), "goal_seq": int(match_state.get("goal_seq", 0)), "faceoff_seq": int(match_state.get("faceoff_seq", 0)), "scorer": String(match_state.get("scorer", "")), "phase": String(match_state.get("phase", "play"))}
+	var owner_id := String(_ball.call("get_control_owner_actor_id"))
+	var slap_phase := StringName(_ball.call("get_slap_phase")) if _ball.has_method("get_slap_phase") else &"idle"
+	return {"type": "snapshot", "seq": _sequence, "host_time_ms": Time.get_ticks_msec(), "input_ack": _last_snapshot, "input_echo_ms": _last_remote_input_sent_ms, "actors": actors, "ball": _vector3_to_array(_ball.global_position), "ball_velocity": _vector3_to_array(_ball.ball_velocity), "owner": owner_id, "ball_attached": not owner_id.is_empty() and slap_phase not in [&"backswing", &"forward"], "red_human": String(_ball.call("get_human_control_actor_id_for_team", &"red")), "blue_human": String(_ball.call("get_human_control_actor_id_for_team", &"blue")), "score": _match_flow.score.duplicate(), "goal_seq": int(match_state.get("goal_seq", 0)), "faceoff_seq": int(match_state.get("faceoff_seq", 0)), "scorer": String(match_state.get("scorer", "")), "phase": String(match_state.get("phase", "play"))}
 
 
 func _apply_snapshot(snapshot: Dictionary) -> void:
@@ -157,17 +160,23 @@ func _apply_snapshot(snapshot: Dictionary) -> void:
 			actor.global_position = authoritative_position if is_new_faceoff else OnlineInputScript.reconcile_position(actor.global_position, authoritative_position, is_local_actor)
 			actor.velocity = authoritative_velocity
 			actor.rotation.y = float(state.get("r", actor.rotation.y)) if is_new_faceoff else OnlineInputScript.reconcile_rotation(actor.rotation.y, float(state.get("r", actor.rotation.y)), is_local_actor, actively_steering)
+	var snapshot_owner := StringName(snapshot.get("owner", ""))
+	_ball_attached_to_owner = bool(snapshot.get("ball_attached", not snapshot_owner.is_empty()))
+	if _ball.has_method("apply_network_control_state"):
+		_ball.call("apply_network_control_state", snapshot_owner, StringName(snapshot.get("red_human", "red_1")), StringName(snapshot.get("blue_human", "blue_1")))
+	var possession := _network_possession(snapshot_owner) if _ball_attached_to_owner else {}
 	var authoritative_ball := _array_to_vector3(snapshot.get("ball", []))
 	var authoritative_ball_velocity := _array_to_vector3(snapshot.get("ball_velocity", []))
 	var local_actor_id := String(local_actor.call("get_actor_id")) if local_actor != null else ""
-	if not is_new_faceoff and String(snapshot.get("owner", "")) != local_actor_id:
+	if not possession.is_empty():
+		authoritative_ball = possession.position
+		authoritative_ball_velocity = possession.velocity
+	elif not is_new_faceoff and String(snapshot_owner) != local_actor_id:
 		var aged_ball: Dictionary = BallSimulationScript.step(authoritative_ball, authoritative_ball_velocity, _snapshot_age_seconds)
 		authoritative_ball = aged_ball.position
 		authoritative_ball_velocity = aged_ball.velocity
-	_ball.global_position = authoritative_ball if is_new_faceoff else OnlineInputScript.reconcile_ball_position(_ball.global_position, authoritative_ball)
+	_ball.global_position = authoritative_ball if is_new_faceoff or not possession.is_empty() else OnlineInputScript.reconcile_ball_position(_ball.global_position, authoritative_ball)
 	_ball.ball_velocity = authoritative_ball_velocity
-	if _ball.has_method("apply_network_control_state"):
-		_ball.call("apply_network_control_state", StringName(snapshot.get("owner", "")), StringName(snapshot.get("red_human", "red_1")), StringName(snapshot.get("blue_human", "blue_1")))
 	var score: Dictionary = snapshot.get("score", {})
 	if not score.is_empty() and _match_flow.has_method("apply_network_state"):
 		_match_flow.call("apply_network_state", int(score.get("red", 0)), int(score.get("blue", 0)), int(snapshot.get("goal_seq", 0)), StringName(snapshot.get("scorer", "")), StringName(snapshot.get("phase", "play")))
@@ -220,14 +229,11 @@ func _predict_local_player(movement: Vector2, delta: float) -> void:
 		return
 	var has_ball := _ball.has_method("is_controlled_by_actor") and bool(_ball.call("is_controlled_by_actor", actor.call("get_actor_id")))
 	var prediction_speed: float = OnlineInputScript.prediction_speed(has_ball)
-	var previous_position := actor.global_position
-	var predicted := OnlineInputScript.predict_position(previous_position, movement, delta, prediction_speed)
+	var predicted := OnlineInputScript.predict_position(actor.global_position, movement, delta, prediction_speed)
 	predicted.x = clampf(predicted.x, -RINK_HALF_LENGTH, RINK_HALF_LENGTH)
 	predicted.z = clampf(predicted.z, -RINK_HALF_WIDTH, RINK_HALF_WIDTH)
 	actor.global_position = predicted
 	actor.velocity = Vector3(movement.x, 0.0, movement.y) * prediction_speed
-	if has_ball:
-		_ball.global_position += predicted - previous_position
 	if not movement.is_zero_approx():
 		actor.rotation.y = atan2(movement.x, movement.y)
 
@@ -249,12 +255,30 @@ func _predict_replicas(delta: float) -> void:
 		predicted.x = clampf(predicted.x, -RINK_HALF_LENGTH, RINK_HALF_LENGTH)
 		predicted.z = clampf(predicted.z, -RINK_HALF_WIDTH, RINK_HALF_WIDTH)
 		actor.global_position = predicted
-	var locally_controlled_ball := local_actor != null and _ball.has_method("is_controlled_by_actor") and bool(_ball.call("is_controlled_by_actor", local_actor.call("get_actor_id")))
-	if not locally_controlled_ball:
+	var owner_id := StringName(_ball.call("get_control_owner_actor_id")) if _ball.has_method("get_control_owner_actor_id") else &""
+	var possession := _network_possession(owner_id) if _ball_attached_to_owner else {}
+	if not possession.is_empty():
+		_ball.global_position = possession.position
+		_ball.ball_velocity = possession.velocity
+	else:
 		var prediction_delta := clampf(delta, 0.0, OnlineInputScript.MAX_REPLICA_PREDICTION_STEP)
 		var predicted_ball: Dictionary = BallSimulationScript.step(_ball.global_position, _ball.ball_velocity, prediction_delta)
 		_ball.global_position = predicted_ball.position
 		_ball.ball_velocity = predicted_ball.velocity
+
+
+func _network_possession(owner_id: StringName) -> Dictionary:
+	if owner_id.is_empty():
+		return {}
+	for actor in _arena.call("get_field_players"):
+		if actor.call("get_actor_id") != owner_id:
+			continue
+		var blade_pocket := actor.get_node_or_null("StickRig/BladePocket") as Marker3D
+		if blade_pocket == null:
+			return {}
+		blade_pocket.force_update_transform()
+		return {"position": blade_pocket.global_position, "velocity": actor.velocity}
+	return {}
 
 
 func _vector_to_array(value: Vector2) -> Array:

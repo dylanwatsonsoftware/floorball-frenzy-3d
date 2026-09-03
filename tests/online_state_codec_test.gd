@@ -12,7 +12,7 @@ func _init() -> void:
 	var snapshot := {
 		"type": "snapshot", "seq": 42, "host_time_ms": 123456, "input_ack": 37, "input_echo_ms": 123400,
 		"actors": actors, "ball": [1.0, 0.22, 2.0], "ball_velocity": [8.0, 0.18, -1.0],
-		"owner": "blue_1", "red_human": "red_1", "blue_human": "blue_1",
+		"owner": "blue_1", "ball_attached": true, "red_human": "red_1", "blue_human": "blue_1",
 		"score": {"red": 2, "blue": 3}, "goal_seq": 4, "faceoff_seq": 5, "scorer": "blue", "phase": "play",
 	}
 	var encoded: PackedByteArray = codec.encode_snapshot(snapshot)
@@ -30,7 +30,7 @@ func _init() -> void:
 	if decoded.actors[7].id != "red_7" or not is_equal_approx(float(decoded.actors[7].p[0]), 7.0):
 		fail("Binary actor state did not survive a round trip")
 		return
-	if decoded.score != {"red": 2, "blue": 3} or decoded.owner != "blue_1":
+	if decoded.score != {"red": 2, "blue": 3} or decoded.owner != "blue_1" or not decoded.ball_attached:
 		fail("Binary match and possession state did not survive a round trip")
 		return
 	print("Online snapshots use compact binary state packets.")

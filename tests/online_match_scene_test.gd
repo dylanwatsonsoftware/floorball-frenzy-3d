@@ -77,6 +77,25 @@ func run_test() -> void:
 		return
 	var client_controller := client_match.get_node("OnlineMatchController")
 	var client_ball = client_arena.get_node("Ball")
+	var possessed_snapshot: Dictionary = client_controller.call("_capture_snapshot")
+	possessed_snapshot.owner = String(remote_actor.call("get_actor_id"))
+	possessed_snapshot.ball_attached = true
+	possessed_snapshot.ball = [18.0, 0.22, 8.0]
+	possessed_snapshot.ball_velocity = [20.0, 0.0, 0.0]
+	client_controller.call("_apply_snapshot", possessed_snapshot)
+	var remote_blade_pocket := remote_actor.get_node("StickRig/BladePocket") as Marker3D
+	remote_blade_pocket.force_update_transform()
+	if client_ball.global_position.distance_to(remote_blade_pocket.global_position) > 0.05:
+		fail("A possessed guest replica ball must attach to its authoritative owner's blade instead of reconciling stale ball coordinates")
+		return
+	var previous_possessed_ball_position: Vector3 = client_ball.global_position
+	remote_actor.velocity = Vector3(4.0, 0.0, 0.0)
+	client_controller.call("_predict_replicas", 1.0 / 60.0)
+	remote_blade_pocket.force_update_transform()
+	if client_ball.global_position.distance_to(remote_blade_pocket.global_position) > 0.05 or client_ball.global_position.x <= previous_possessed_ball_position.x:
+		fail("A possessed replica ball must follow its owner's predicted blade between snapshots")
+		return
+	client_ball.call("apply_network_control_state", &"", &"red_1", &"blue_1")
 	client_ball.global_position = Vector3(0.0, 1.0, 0.0)
 	client_ball.ball_velocity = Vector3(2.0, 0.0, 0.0)
 	client_controller.call("_predict_replicas", 1.0 / 60.0)

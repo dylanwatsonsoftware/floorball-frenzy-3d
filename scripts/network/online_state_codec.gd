@@ -5,7 +5,7 @@ const MAGIC_SIZE := 4
 
 
 static func is_snapshot_packet(packet: PackedByteArray) -> bool:
-	return packet.size() >= MAGIC_SIZE and packet[0] == 0x46 and packet[1] == 0x46 and packet[2] == 0x53 and packet[3] == 0x31
+	return packet.size() >= MAGIC_SIZE and packet[0] == 0x46 and packet[1] == 0x46 and packet[2] == 0x53 and packet[3] == 0x32
 
 
 static func encode_snapshot(snapshot: Dictionary) -> PackedByteArray:
@@ -14,7 +14,7 @@ static func encode_snapshot(snapshot: Dictionary) -> PackedByteArray:
 	stream.put_u8(0x46)
 	stream.put_u8(0x46)
 	stream.put_u8(0x53)
-	stream.put_u8(0x31)
+	stream.put_u8(0x32)
 	stream.put_32(int(snapshot.get("seq", 0)))
 	stream.put_64(int(snapshot.get("host_time_ms", 0)))
 	stream.put_32(int(snapshot.get("input_ack", -1)))
@@ -29,6 +29,7 @@ static func encode_snapshot(snapshot: Dictionary) -> PackedByteArray:
 	_put_vector3(stream, snapshot.get("ball", []))
 	_put_vector3(stream, snapshot.get("ball_velocity", []))
 	stream.put_utf8_string(String(snapshot.get("owner", "")))
+	stream.put_u8(1 if bool(snapshot.get("ball_attached", false)) else 0)
 	stream.put_utf8_string(String(snapshot.get("red_human", "red_1")))
 	stream.put_utf8_string(String(snapshot.get("blue_human", "blue_1")))
 	var score: Dictionary = snapshot.get("score", {})
@@ -62,6 +63,7 @@ static func decode_snapshot(packet: PackedByteArray) -> Dictionary:
 	snapshot.ball = _get_vector3(stream)
 	snapshot.ball_velocity = _get_vector3(stream)
 	snapshot.owner = stream.get_utf8_string()
+	snapshot.ball_attached = stream.get_u8() == 1
 	snapshot.red_human = stream.get_utf8_string()
 	snapshot.blue_human = stream.get_utf8_string()
 	snapshot.score = {"red": stream.get_16(), "blue": stream.get_16()}
