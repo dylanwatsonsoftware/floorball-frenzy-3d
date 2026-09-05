@@ -400,12 +400,12 @@ func _add_humanoid(parent: Node3D, team: StringName, slot: int) -> void:
 	if StringName(parent.get_meta("role", &"field")) == &"goalkeeper":
 		jersey_color = Color("06462a") if team == &"red" else Color("72b7c8")
 	for part_name in ["Torso", "LeftArm", "RightArm"]:
-		var part := rig.get_node_or_null(part_name) as MeshInstance3D
+		var part := rig.find_child(part_name, true, false) as MeshInstance3D
 		if part != null:
 			part.material_override = _material(jersey_color, 0.78)
 	var accent_color := Color("f4f5ed") if team == &"red" else Color("75d4ed")
 	for part_name in ["JerseyStripe", "LeftLeg", "RightLeg"]:
-		var part := rig.get_node_or_null(part_name) as MeshInstance3D
+		var part := rig.find_child(part_name, true, false) as MeshInstance3D
 		if part != null:
 			part.material_override = _material(accent_color, 0.76)
 	# Small proportion changes distinguish teammates without reverting to

@@ -18,8 +18,8 @@ func run_test() -> void:
 		if not bool(rig.get_meta("authored_mesh", false)):
 			fail("%s must use the authored mesh pipeline rather than assembled primitives" % actor.name)
 			return
-		for part_name in ["Torso", "Head", "LeftArm", "RightArm", "LeftLeg", "RightLeg"]:
-			var part := rig.get_node_or_null(part_name) as MeshInstance3D
+		for part_name in ["Torso", "HeadVisual", "LeftArm", "RightArm", "LeftLeg", "RightLeg"]:
+			var part := rig.find_child(part_name, true, false) as MeshInstance3D
 			if part == null or not part.mesh is ArrayMesh:
 				fail("%s/%s must be imported modeled geometry, not a Godot primitive" % [actor.name, part_name])
 				return

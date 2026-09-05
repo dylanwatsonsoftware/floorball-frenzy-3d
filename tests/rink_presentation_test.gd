@@ -71,12 +71,12 @@ func run_test() -> void:
 		if rig == null:
 			fail("Every field player needs a lightweight animated humanoid rig")
 			return
-		for part_name in ["Torso", "Head", "LeftArm", "RightArm", "LeftLeg", "RightLeg"]:
-			if rig.get_node_or_null(part_name) == null:
+		for part_name in ["Torso", "HeadVisual", "LeftArm", "RightArm", "LeftLeg", "RightLeg"]:
+			if rig.find_child(part_name, true, false) == null:
 				fail("Humanoid rig is missing %s on %s" % [part_name, actor.name])
 				return
-		if not rig.has_method("apply_movement_pose"):
-			fail("Humanoid rigs must expose deterministic running animation")
+		if rig.get_node_or_null("AnimationTree") == null:
+			fail("Humanoid rigs must expose deterministic locomotion blending")
 			return
 		var team: StringName = actor.call("get_team")
 		var signature: String = String(rig.get_meta("variant_signature", ""))
@@ -85,25 +85,23 @@ func run_test() -> void:
 			return
 		if team == &"red":
 			for mascot_part in ["LambWool", "LambWoolCollar", "LambFace", "LeftLambEar", "RightLambEar", "Muzzle"]:
-				if rig.get_node_or_null(mascot_part) == null:
+				if rig.find_child(mascot_part, true, false) == null:
 					fail("The Lambs must read as anthropomorphic lambs; missing %s" % mascot_part)
 					return
 			lamb_variants[signature] = true
-			var lamb_jersey := (rig.get_node("Torso") as MeshInstance3D).material_override as StandardMaterial3D
+			var lamb_jersey := (rig.find_child("Torso", true, false) as MeshInstance3D).material_override as StandardMaterial3D
 			if lamb_jersey.albedo_color.g <= lamb_jersey.albedo_color.r:
 				fail("The Lambs must wear recognisable green, white and black")
 				return
 		else:
 			for mascot_part in ["PirateBandana", "PirateTricorne", "PirateEyePatch", "PirateNose", "PirateBeard", "LeftHumanEar", "RightHumanEar"]:
-				if rig.get_node_or_null(mascot_part) == null:
+				if rig.find_child(mascot_part, true, false) == null:
 					fail("The Pirates must read as distinct human pirate mascots; missing %s" % mascot_part)
 					return
 			pirate_variants[signature] = true
-		var left_leg := rig.get_node("LeftLeg") as Node3D
-		var right_leg := rig.get_node("RightLeg") as Node3D
-		rig.call("apply_movement_pose", 7.0, 0.18, false)
-		if absf(left_leg.rotation.x) < 0.08 or left_leg.rotation.x * right_leg.rotation.x >= 0.0:
-			fail("Running must visibly swing the legs in opposing directions")
+		var animation_tree := rig.get_node("AnimationTree") as AnimationTree
+		if not animation_tree.active or not (animation_tree.tree_root as AnimationNodeBlendTree).has_node("Locomotion"):
+			fail("Running must be driven by the authored locomotion blend space")
 			return
 	if lamb_variants.size() != 6 or pirate_variants.size() != 6:
 		fail("All six characters on each team must be visually distinguishable; lambs=%d pirates=%d" % [lamb_variants.size(), pirate_variants.size()])

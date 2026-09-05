@@ -1,71 +1,106 @@
 extends Node3D
 
-const RUN_CYCLE_RATE := 1.15
-const MAX_RUN_SWING := 0.72
+const MAX_SPEED := 9.0
 
-var _run_time := 0.0
+var _animation_tree: AnimationTree
+var _animation_player: AnimationPlayer
+var _skeleton: Skeleton3D
 var _swing_angle := 0.0
+var _slap_requested := false
 
 
-func _process(delta: float) -> void:
+func _ready() -> void:
+	_animation_player = find_child("AnimationPlayer", true, false) as AnimationPlayer
+	_skeleton = find_child("Skeleton3D", true, false) as Skeleton3D
+	_setup_animation_tree()
+	_setup_hand_targets()
+
+
+func _process(_delta: float) -> void:
 	var actor := get_parent() as CharacterBody3D
-	if actor == null:
+	if actor == null or _animation_tree == null:
 		return
 	if StringName(actor.get_meta("role", &"field")) == &"goalkeeper":
 		apply_goalkeeper_pose()
 		return
-	var speed := Vector2(actor.velocity.x, actor.velocity.z).length()
-	_run_time += delta * maxf(2.4, speed * RUN_CYCLE_RATE)
-	var dashing := actor.has_method("is_dashing") and bool(actor.call("is_dashing"))
-	apply_movement_pose(speed, _run_time, dashing)
+	var planar_velocity := Vector2(actor.velocity.x, actor.velocity.z)
+	var facing := Vector2(sin(actor.rotation.y), cos(actor.rotation.y))
+	var right := Vector2(facing.y, -facing.x)
+	var blend := Vector2(planar_velocity.dot(right), planar_velocity.dot(facing)) / MAX_SPEED
+	_animation_tree.set("parameters/Locomotion/blend_position", blend.limit_length(1.0))
+	position.y = absf(sin(Time.get_ticks_msec() * 0.012)) * 0.018 * minf(1.0, planar_velocity.length() / MAX_SPEED)
 
 
-func apply_movement_pose(speed: float, cycle_time: float, dashing: bool) -> void:
-	var movement_ratio := clampf(speed / 9.0, 0.0, 1.0)
-	var swing := sin(cycle_time) * MAX_RUN_SWING * movement_ratio
-	if dashing:
-		swing = 0.92
-	var left_leg := get_node("LeftLeg") as Node3D
-	var right_leg := get_node("RightLeg") as Node3D
-	var left_arm := get_node("LeftArm") as Node3D
-	var right_arm := get_node("RightArm") as Node3D
-	left_leg.rotation.x = swing
-	right_leg.rotation.x = -swing
-	# Arms stay forward around the stick grip, with enough counter-swing to read
-	# as running from the broadcast camera.
-	left_arm.rotation.x = -0.58 - swing * 0.18
-	right_arm.rotation.x = -0.72 + swing * 0.18
-	left_arm.rotation.z = -0.22
-	right_arm.rotation.z = 0.35
-	var bob := absf(sin(cycle_time)) * 0.045 * movement_ratio
-	position.y = bob - (0.05 if dashing else 0.0)
-	rotation.x = -0.12 if dashing else 0.0
-	_apply_swing_pose()
+func _setup_animation_tree() -> void:
+	if _animation_player == null or _skeleton == null:
+		return
+	_animation_tree = AnimationTree.new()
+	_animation_tree.name = "AnimationTree"
+	add_child(_animation_tree)
+	_animation_tree.anim_player = _animation_tree.get_path_to(_animation_player)
+	var graph := AnimationNodeBlendTree.new()
+	var locomotion := AnimationNodeBlendSpace2D.new()
+	locomotion.blend_mode = AnimationNodeBlendSpace2D.BLEND_MODE_DISCRETE_CARRY
+	locomotion.add_blend_point(_clip(&"idle"), Vector2.ZERO, -1, "Idle")
+	locomotion.add_blend_point(_clip(&"run"), Vector2(0.0, 1.0), -1, "Run")
+	locomotion.add_blend_point(_clip(&"backpedal"), Vector2(0.0, -1.0), -1, "Backpedal")
+	locomotion.add_blend_point(_clip(&"strafe_left"), Vector2(-1.0, 0.0), -1, "StrafeLeft")
+	locomotion.add_blend_point(_clip(&"strafe_right"), Vector2(1.0, 0.0), -1, "StrafeRight")
+	graph.add_node("Locomotion", locomotion, Vector2(0.0, 80.0))
+	graph.add_node("SlapAnimation", _clip(&"slap_shot"), Vector2(0.0, 220.0))
+	var slap_layer := AnimationNodeOneShot.new()
+	slap_layer.fadein_time = 0.08
+	slap_layer.fadeout_time = 0.14
+	slap_layer.mix_mode = AnimationNodeOneShot.MIX_MODE_ADD
+	_filter_upper_body(slap_layer)
+	graph.add_node("SlapShot", slap_layer, Vector2(240.0, 100.0))
+	graph.connect_node("SlapShot", 0, "Locomotion")
+	graph.connect_node("SlapShot", 1, "SlapAnimation")
+	graph.connect_node("output", 0, "SlapShot")
+	_animation_tree.tree_root = graph
+	_animation_tree.active = true
+	set_meta("upper_body_animation_layer", true)
+
+
+func _clip(animation_name: StringName) -> AnimationNodeAnimation:
+	var node := AnimationNodeAnimation.new()
+	node.animation = animation_name
+	return node
+
+
+func _filter_upper_body(layer: AnimationNodeOneShot) -> void:
+	var animation := _animation_player.get_animation(&"slap_shot")
+	if animation == null:
+		return
+	layer.filter_enabled = true
+	for track_index in animation.get_track_count():
+		var path := animation.track_get_path(track_index)
+		var path_text := String(path)
+		if ["Spine", "Chest", "Neck", "Head", "Arm", "Forearm", "Hand"].any(func(fragment: String) -> bool: return path_text.contains(fragment)):
+			layer.set_filter_path(path, true)
+
+
+func _setup_hand_targets() -> void:
+	for target_data in [["LeftHandIKTarget", Vector3(-0.34, -0.16, -0.10)], ["RightHandIKTarget", Vector3(0.34, -0.16, -0.10)]]:
+		var target := Marker3D.new()
+		target.name = target_data[0]
+		target.position = target_data[1]
+		add_child(target)
+	set_meta("hand_ik_ready", true)
 
 
 func set_swing_pose(stick_angle_degrees: float) -> void:
+	var was_resting := absf(_swing_angle) < 2.0
 	_swing_angle = stick_angle_degrees
-	_apply_swing_pose()
-
-
-func _apply_swing_pose() -> void:
 	rotation.y = deg_to_rad(clampf(_swing_angle * 0.34, -28.0, 28.0))
-	var shoulder_turn := deg_to_rad(clampf(-_swing_angle * 0.20, -18.0, 18.0))
-	(get_node("LeftArm") as Node3D).rotation.y = shoulder_turn
-	(get_node("RightArm") as Node3D).rotation.y = shoulder_turn
+	if _animation_tree != null and was_resting and absf(_swing_angle) >= 2.0 and not _slap_requested:
+		_animation_tree.set("parameters/SlapShot/request", AnimationNodeOneShot.ONE_SHOT_REQUEST_FIRE)
+		_slap_requested = true
+	if absf(_swing_angle) < 2.0:
+		_slap_requested = false
 
 
 func apply_goalkeeper_pose() -> void:
-	var left_leg := get_node("LeftLeg") as Node3D
-	var right_leg := get_node("RightLeg") as Node3D
-	var left_arm := get_node("LeftArm") as Node3D
-	var right_arm := get_node("RightArm") as Node3D
-	left_leg.rotation.x = -1.30
-	right_leg.rotation.x = -1.30
-	left_leg.rotation.z = -0.16
-	right_leg.rotation.z = 0.16
-	left_arm.rotation.x = -0.72
-	right_arm.rotation.x = -0.72
-	left_arm.rotation.z = -0.62
-	right_arm.rotation.z = 0.62
+	if _animation_tree != null:
+		_animation_tree.set("parameters/Locomotion/blend_position", Vector2.ZERO)
 	position.y = -0.28

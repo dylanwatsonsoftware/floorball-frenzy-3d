@@ -5,7 +5,16 @@ import os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "assets", "models")
+SOURCE_OUT = os.path.join(ROOT, "blender_source")
 os.makedirs(OUT, exist_ok=True)
+os.makedirs(SOURCE_OUT, exist_ok=True)
+
+
+def clear_scene():
+    if bpy.context.object is not None and bpy.context.object.mode != "OBJECT":
+        bpy.ops.object.mode_set(mode="OBJECT")
+    for obj in list(bpy.data.objects):
+        bpy.data.objects.remove(obj, do_unlink=True)
 
 
 def material(name, color, roughness=0.72):
@@ -100,6 +109,111 @@ def boot(name, mat, x):
     return mesh_object(name, verts, faces, mat, (x, -.04, -.98))
 
 
+def create_shared_rig():
+    armature_data = bpy.data.armatures.new("FloorballHumanoid")
+    armature = bpy.data.objects.new("Armature", armature_data)
+    bpy.context.collection.objects.link(armature)
+    bpy.context.view_layer.objects.active = armature
+    armature.select_set(True)
+    bpy.ops.object.mode_set(mode="EDIT")
+    bones = {
+        "Root": ((0, 0, -1.02), (0, 0, -.92), None),
+        "Hips": ((0, 0, -.36), (0, 0, -.12), "Root"),
+        "Spine": ((0, 0, -.12), (0, 0, .18), "Hips"),
+        "Chest": ((0, 0, .18), (0, 0, .48), "Spine"),
+        "Neck": ((0, 0, .48), (0, 0, .60), "Chest"),
+        "Head": ((0, 0, .60), (0, 0, 1.04), "Neck"),
+        "UpperArm.L": ((-.20, 0, .40), (-.34, 0, .12), "Chest"),
+        "Forearm.L": ((-.34, 0, .12), (-.34, 0, -.12), "UpperArm.L"),
+        "Hand.L": ((-.34, 0, -.12), (-.34, 0, -.28), "Forearm.L"),
+        "UpperArm.R": ((.20, 0, .40), (.34, 0, .12), "Chest"),
+        "Forearm.R": ((.34, 0, .12), (.34, 0, -.12), "UpperArm.R"),
+        "Hand.R": ((.34, 0, -.12), (.34, 0, -.28), "Forearm.R"),
+        "Thigh.L": ((-.16, 0, -.20), (-.16, 0, -.52), "Hips"),
+        "Shin.L": ((-.16, 0, -.52), (-.16, 0, -.86), "Thigh.L"),
+        "Foot.L": ((-.16, 0, -.86), (-.16, -.24, -.98), "Shin.L"),
+        "Thigh.R": ((.16, 0, -.20), (.16, 0, -.52), "Hips"),
+        "Shin.R": ((.16, 0, -.52), (.16, 0, -.86), "Thigh.R"),
+        "Foot.R": ((.16, 0, -.86), (.16, -.24, -.98), "Shin.R"),
+    }
+    for name, (head, tail, parent_name) in bones.items():
+        bone = armature_data.edit_bones.new(name)
+        bone.head, bone.tail = head, tail
+        if parent_name:
+            bone.parent = armature_data.edit_bones[parent_name]
+    bpy.ops.object.mode_set(mode="OBJECT")
+    return armature
+
+
+def bind_character_to_rig(armature):
+    bone_for_part = {
+        "Torso": "Chest", "JerseyStripe": "Chest", "Shorts": "Hips",
+        "LeftArm": "UpperArm.L", "LeftHand": "Hand.L", "RightArm": "UpperArm.R", "RightHand": "Hand.R",
+        "LeftLeg": "Thigh.L", "LeftBoot": "Foot.L", "RightLeg": "Thigh.R", "RightBoot": "Foot.R",
+        "LambWoolCollar": "Chest",
+    }
+    for obj in list(bpy.context.scene.objects):
+        if obj.type != "MESH":
+            continue
+        bone_name = bone_for_part.get(obj.name, "Head")
+        group = obj.vertex_groups.new(name=bone_name)
+        group.add(range(len(obj.data.vertices)), 1.0, "REPLACE")
+        modifier = obj.modifiers.new(name="SharedHumanoidRig", type="ARMATURE")
+        modifier.object = armature
+        obj.parent = armature
+
+
+def add_pose_animation(armature, name, length, poses, loop=True):
+    action = bpy.data.actions.new(name=name)
+    armature.animation_data_create()
+    armature.animation_data.action = action
+    for bone in armature.pose.bones:
+        bone.rotation_mode = "XYZ"
+        bone.rotation_euler = (0, 0, 0)
+        bone.location = (0, 0, 0)
+    for frame, bone_poses in poses.items():
+        for bone_name, rotation in bone_poses.items():
+            bone = armature.pose.bones[bone_name]
+            bone.rotation_euler = rotation
+            bone.keyframe_insert(data_path="rotation_euler", frame=frame, group=bone_name)
+    action.frame_start = 1
+    action.frame_end = length
+    action.use_cyclic = loop
+    armature.animation_data.action = None
+
+
+def author_animation_set(armature):
+    add_pose_animation(armature, "idle", 40, {
+        1: {"Chest": (0, 0, -.03), "UpperArm.L": (-.45, 0, -.12), "UpperArm.R": (-.58, 0, .18)},
+        20: {"Chest": (.025, 0, .03), "UpperArm.L": (-.49, 0, -.12), "UpperArm.R": (-.54, 0, .18)},
+        40: {"Chest": (0, 0, -.03), "UpperArm.L": (-.45, 0, -.12), "UpperArm.R": (-.58, 0, .18)},
+    })
+    run_a = {"Thigh.L": (.72, 0, 0), "Thigh.R": (-.72, 0, 0), "Shin.L": (-.30, 0, 0), "UpperArm.L": (-.62, 0, -.12), "UpperArm.R": (-.36, 0, .18)}
+    run_b = {"Thigh.L": (-.72, 0, 0), "Thigh.R": (.72, 0, 0), "Shin.R": (-.30, 0, 0), "UpperArm.L": (-.36, 0, -.12), "UpperArm.R": (-.62, 0, .18)}
+    add_pose_animation(armature, "run", 20, {1: run_a, 10: run_b, 20: run_a})
+    add_pose_animation(armature, "backpedal", 24, {1: run_b, 12: run_a, 24: run_b})
+    add_pose_animation(armature, "strafe_left", 24, {1: {"Thigh.L": (0, 0, -.46), "Thigh.R": (0, 0, .22)}, 12: {"Thigh.L": (0, 0, .18), "Thigh.R": (0, 0, -.42)}, 24: {"Thigh.L": (0, 0, -.46), "Thigh.R": (0, 0, .22)}})
+    add_pose_animation(armature, "strafe_right", 24, {1: {"Thigh.L": (0, 0, .22), "Thigh.R": (0, 0, -.46)}, 12: {"Thigh.L": (0, 0, -.42), "Thigh.R": (0, 0, .18)}, 24: {"Thigh.L": (0, 0, .22), "Thigh.R": (0, 0, -.46)}})
+    add_pose_animation(armature, "slap_shot", 24, {
+        1: {"Hips": (0, 0, 0), "Chest": (0, 0, 0), "UpperArm.L": (-.5, 0, -.12), "UpperArm.R": (-.58, 0, .18)},
+        9: {"Hips": (0, 0, -.28), "Chest": (-.10, 0, -.62), "UpperArm.L": (-.30, -.22, -.55), "UpperArm.R": (-.36, .30, -.48)},
+        15: {"Hips": (0, 0, .22), "Chest": (.14, 0, .52), "UpperArm.L": (-.78, .12, .44), "UpperArm.R": (-.82, -.18, .58)},
+        24: {"Hips": (0, 0, 0), "Chest": (0, 0, 0), "UpperArm.L": (-.5, 0, -.12), "UpperArm.R": (-.58, 0, .18)},
+    }, loop=False)
+
+
+def finalize_character(team):
+    armature = create_shared_rig()
+    bind_character_to_rig(armature)
+    author_animation_set(armature)
+    bpy.context.scene.render.fps = 30
+    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(SOURCE_OUT, "%s_player.blend" % team))
+    bpy.ops.export_scene.gltf(
+        filepath=os.path.join(OUT, "%s_player.glb" % team), export_format="GLB", export_yup=True,
+        export_animations=True, export_animation_mode="ACTIONS", export_apply=False,
+    )
+
+
 def add_common(team):
     jersey = material("LambsGreen" if team == "lamb" else "PiratesBlack", (0.05, .48, .19) if team == "lamb" else (.035, .045, .065))
     accent = material("White" if team == "lamb" else "IceBlue", (.94, .96, .94) if team == "lamb" else (.30, .76, .90))
@@ -121,14 +235,13 @@ def add_common(team):
 
 
 def build_lamb():
-    bpy.ops.object.select_all(action="SELECT")
-    bpy.ops.object.delete(use_global=False)
+    clear_scene()
     wool = material("NaturalWool", (.90, .89, .82), .93)
     face = material("SheepFace", (.34, .29, .25), .88)
     black = material("EyesAndNose", (.012, .014, .016), .55)
     pink = material("InnerEar", (.50, .33, .31), .85)
     add_common("lamb")
-    organic_form("Head", (.31,.27,.32), wool, (0, 0, .78), rings=11, segments=22, wool=.075)
+    organic_form("HeadVisual", (.31,.27,.32), wool, (0, 0, .78), rings=11, segments=22, wool=.075)
     organic_form("LambFace", (.17,.19,.25), face, (0, -.19, .73), rings=9, segments=18, muzzle=.22)
     organic_form("Muzzle", (.12,.13,.10), face, (0, -.34, .62), rings=7, segments=16, muzzle=.12)
     lens("LeftLambEar", (.20,.065,.09), face, (-.27, -.01, .85), (0,.12,-.22))
@@ -142,12 +255,11 @@ def build_lamb():
     # The named fleece crown is one continuous, rippled modeled surface.
     crown = lathe("LambWool", [(-.08,.19),(0,.30),(.10,.24)], wool, (0,0,.98), segments=22, ripple=.16)
     crown.scale.y = .88
-    bpy.ops.export_scene.gltf(filepath=os.path.join(OUT, "lamb_player.glb"), export_format="GLB", export_yup=True, export_apply=True)
+    finalize_character("lamb")
 
 
 def build_pirate():
-    bpy.ops.object.select_all(action="SELECT")
-    bpy.ops.object.delete(use_global=False)
+    clear_scene()
     skin = material("PirateSkin", (.58, .34, .22), .82)
     hair = material("PirateHair", (.12, .055, .03), .92)
     white = material("EyeWhite", (.92, .90, .82), .72)
@@ -155,7 +267,7 @@ def build_pirate():
     blue = material("PirateBlue", (.27, .72, .88), .65)
     gold = material("PirateGold", (.85, .58, .12), .42)
     add_common("pirate")
-    organic_form("Head", (.255,.235,.30), skin, (0,0,.76), rings=11, segments=22, muzzle=.05)
+    organic_form("HeadVisual", (.255,.235,.30), skin, (0,0,.76), rings=11, segments=22, muzzle=.05)
     lens("LeftHumanEar", (.065,.045,.095), skin, (-.255, 0, .76))
     lens("RightHumanEar", (.065,.045,.095), skin, (.255, 0, .76))
     organic_form("LeftEye", (.055,.025,.040), white, (-.085,-.235,.80), rings=7, segments=14)
@@ -183,7 +295,7 @@ def build_pirate():
     hat = mesh_object("PirateTricorne", verts, faces, black)
     lathe("HatCrown", [(1.00,.22),(1.12,.25),(1.25,.16)], black, segments=22)
     lathe("HatBand", [(1.045,.225),(1.075,.235),(1.105,.225)], gold, segments=22)
-    bpy.ops.export_scene.gltf(filepath=os.path.join(OUT, "pirate_player.glb"), export_format="GLB", export_yup=True, export_apply=True)
+    finalize_character("pirate")
 
 
 build_lamb()
