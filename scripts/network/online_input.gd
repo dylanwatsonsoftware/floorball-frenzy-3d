@@ -5,6 +5,7 @@ const PlayerMotorScript = preload("res://scripts/gameplay/player_motor.gd")
 const DEFAULT_SNAPSHOT_SECONDS := 1.0 / 30.0
 const MAX_REPLICA_PREDICTION_STEP := 0.05
 const MAX_SNAPSHOT_AGE_SECONDS := 0.15
+const MAX_BALL_CORRECTION_PER_SNAPSHOT := 0.28
 
 
 static func compose_movement_input(keyboard_or_controller: Vector2, mobile_joystick: Vector2) -> Vector2:
@@ -38,7 +39,8 @@ static func reconcile_ball_position(current: Vector3, authoritative: Vector3) ->
 	if error < 0.18:
 		return current
 	var weight := 0.18 if error < 1.2 else 0.72
-	return current.lerp(authoritative, weight)
+	var correction := (authoritative - current) * weight
+	return current + correction.limit_length(MAX_BALL_CORRECTION_PER_SNAPSHOT)
 
 
 static func discard_acknowledged_inputs(inputs: Array, acknowledged_sequence: int) -> Array:
