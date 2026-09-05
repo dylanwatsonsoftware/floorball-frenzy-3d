@@ -1,6 +1,7 @@
 class_name OnlineInput
 extends RefCounted
 
+const PlayerMotorScript = preload("res://scripts/gameplay/player_motor.gd")
 const DEFAULT_SNAPSHOT_SECONDS := 1.0 / 30.0
 const MAX_REPLICA_PREDICTION_STEP := 0.05
 const MAX_SNAPSHOT_AGE_SECONDS := 0.15
@@ -12,6 +13,12 @@ static func compose_movement_input(keyboard_or_controller: Vector2, mobile_joyst
 
 static func predict_position(current: Vector3, movement: Vector2, delta: float, speed: float) -> Vector3:
 	return current + Vector3(movement.x, 0.0, movement.y).limit_length(1.0) * speed * maxf(delta, 0.0)
+
+
+static func predict_player_state(position: Vector3, velocity: Vector3, movement: Vector2, delta: float, speed_multiplier: float) -> Dictionary:
+	var step_delta := maxf(delta, 0.0)
+	var next_velocity: Vector3 = PlayerMotorScript.step_velocity(velocity, movement, step_delta, speed_multiplier)
+	return {"position": position + next_velocity * step_delta, "velocity": next_velocity}
 
 
 static func predict_replica_position(current: Vector3, authoritative_velocity: Vector3, delta: float) -> Vector3:
@@ -47,6 +54,19 @@ static func replay_inputs(authoritative_position: Vector3, inputs: Array) -> Vec
 	for input: Dictionary in inputs:
 		replayed = predict_position(replayed, input.get("move", Vector2.ZERO), float(input.get("delta", 0.0)), float(input.get("speed", 0.0)))
 	return replayed
+
+
+static func replay_player_inputs(authoritative_position: Vector3, authoritative_velocity: Vector3, inputs: Array) -> Dictionary:
+	var state := {"position": authoritative_position, "velocity": authoritative_velocity}
+	for input: Dictionary in inputs:
+		state = predict_player_state(
+			state.position,
+			state.velocity,
+			input.get("move", Vector2.ZERO),
+			float(input.get("delta", 0.0)),
+			float(input.get("speed_multiplier", 1.0))
+		)
+	return state
 
 
 static func estimate_clock_offset_ms(received_at_ms: int, host_sent_at_ms: int, round_trip_ms: float) -> float:

@@ -171,7 +171,9 @@ func _apply_snapshot(snapshot: Dictionary) -> void:
 			var authoritative_position := _array_to_vector3(state.get("p", []))
 			var authoritative_velocity := _array_to_vector3(state.get("v", []))
 			if is_local_actor and not is_new_faceoff:
-				authoritative_position = OnlineInputScript.replay_inputs(authoritative_position, _pending_inputs)
+				var replayed_state: Dictionary = OnlineInputScript.replay_player_inputs(authoritative_position, authoritative_velocity, _pending_inputs)
+				authoritative_position = replayed_state.position
+				authoritative_velocity = replayed_state.velocity
 				authoritative_position.x = clampf(authoritative_position.x, -RINK_HALF_LENGTH, RINK_HALF_LENGTH)
 				authoritative_position.z = clampf(authoritative_position.z, -RINK_HALF_WIDTH, RINK_HALF_WIDTH)
 				_latest_player_prediction_error = actor.global_position.distance_to(authoritative_position)
@@ -274,12 +276,12 @@ func _predict_local_player(movement: Vector2, delta: float) -> void:
 	if actor == null:
 		return
 	var has_ball := _ball.has_method("is_controlled_by_actor") and bool(_ball.call("is_controlled_by_actor", actor.call("get_actor_id")))
-	var prediction_speed: float = OnlineInputScript.prediction_speed(has_ball)
-	var predicted := OnlineInputScript.predict_position(actor.global_position, movement, delta, prediction_speed)
-	predicted.x = clampf(predicted.x, -RINK_HALF_LENGTH, RINK_HALF_LENGTH)
-	predicted.z = clampf(predicted.z, -RINK_HALF_WIDTH, RINK_HALF_WIDTH)
-	actor.global_position = predicted
-	actor.velocity = Vector3(movement.x, 0.0, movement.y) * prediction_speed
+	var speed_multiplier := 0.88 if has_ball else 1.0
+	var predicted: Dictionary = OnlineInputScript.predict_player_state(actor.global_position, actor.velocity, movement, delta, speed_multiplier)
+	predicted.position.x = clampf(predicted.position.x, -RINK_HALF_LENGTH, RINK_HALF_LENGTH)
+	predicted.position.z = clampf(predicted.position.z, -RINK_HALF_WIDTH, RINK_HALF_WIDTH)
+	actor.global_position = predicted.position
+	actor.velocity = predicted.velocity
 	if not movement.is_zero_approx():
 		actor.rotation.y = atan2(movement.x, movement.y)
 
@@ -287,7 +289,7 @@ func _predict_local_player(movement: Vector2, delta: float) -> void:
 func _record_pending_input(sequence: int, movement: Vector2, delta: float) -> void:
 	var actor := _arena.call("get_local_human_actor") as CharacterBody3D
 	var has_ball := actor != null and _ball.has_method("is_controlled_by_actor") and bool(_ball.call("is_controlled_by_actor", actor.call("get_actor_id")))
-	_pending_inputs.append({"seq": sequence, "move": movement, "delta": delta, "speed": OnlineInputScript.prediction_speed(has_ball)})
+	_pending_inputs.append({"seq": sequence, "move": movement, "delta": delta, "speed_multiplier": 0.88 if has_ball else 1.0})
 	if _pending_inputs.size() > 120:
 		_pending_inputs.pop_front()
 
