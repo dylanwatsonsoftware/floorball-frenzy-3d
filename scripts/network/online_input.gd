@@ -27,7 +27,7 @@ static func predict_replica_position(current: Vector3, authoritative_velocity: V
 
 static func reconcile_position(current: Vector3, authoritative: Vector3, locally_predicted: bool) -> Vector3:
 	var error := current.distance_to(authoritative)
-	if locally_predicted and error < 0.32:
+	if locally_predicted and error < 0.06:
 		return current
 	var weight := 0.1 if locally_predicted and error < 2.5 else 0.72
 	return current.lerp(authoritative, weight)

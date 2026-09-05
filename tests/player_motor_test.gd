@@ -14,6 +14,22 @@ func _init() -> void:
 	if accelerated.x <= 0.0:
 		fail("Right input must accelerate along positive X")
 		return
+	var first_frame: Vector3 = script.step_velocity(Vector3.ZERO, Vector2.RIGHT, 1.0 / 60.0)
+	if first_frame.x < 0.65:
+		fail("Movement must respond strongly within the first 60 Hz frame; got %s" % first_frame)
+		return
+	var braking := Vector3(9.0, 0.0, 0.0)
+	for step in 15:
+		braking = script.step_velocity(braking, Vector2.ZERO, 1.0 / 60.0)
+	if braking.length() > 0.05:
+		fail("A released movement input should stop the player within 250 ms; got %s" % braking)
+		return
+	var reversing := Vector3(9.0, 0.0, 0.0)
+	for step in 18:
+		reversing = script.step_velocity(reversing, Vector2.LEFT, 1.0 / 60.0)
+	if reversing.x >= -1.0:
+		fail("A deliberate reversal should cross into the new direction within 300 ms; got %s" % reversing)
+		return
 
 	var capped: Vector3 = script.step_velocity(Vector3(100.0, 0.0, 0.0), Vector2.RIGHT, 1.0)
 	if capped.length() > script.MAX_SPEED + 0.001:

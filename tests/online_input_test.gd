@@ -19,7 +19,7 @@ func _init() -> void:
 		fail("Guest movement should be predicted immediately while awaiting the host; got %s" % predicted)
 		return
 	var shared_step: Dictionary = controller.predict_player_state(Vector3(2.0, 0.75, 3.0), Vector3.ZERO, Vector2.RIGHT, 0.1, 1.0)
-	if not shared_step.position.is_equal_approx(Vector3(2.32, 0.75, 3.0)) or not shared_step.velocity.is_equal_approx(Vector3(3.2, 0.0, 0.0)):
+	if not shared_step.position.is_equal_approx(Vector3(2.42, 0.75, 3.0)) or not shared_step.velocity.is_equal_approx(Vector3(4.2, 0.0, 0.0)):
 		fail("Guest prediction must use PlayerMotor acceleration instead of jumping directly to maximum speed; got %s" % shared_step)
 		return
 	var local_reconciled: Vector3 = controller.reconcile_position(Vector3.ZERO, Vector3(1.0, 0.0, 0.0), true)
@@ -27,7 +27,7 @@ func _init() -> void:
 	if local_reconciled.x >= remote_reconciled.x or local_reconciled.x <= 0.0:
 		fail("Local prediction must receive gentler correction than remote interpolation; local=%s remote=%s" % [local_reconciled, remote_reconciled])
 		return
-	var tiny_correction: Vector3 = controller.reconcile_position(Vector3.ZERO, Vector3(0.2, 0.0, 0.0), true)
+	var tiny_correction: Vector3 = controller.reconcile_position(Vector3.ZERO, Vector3(0.04, 0.0, 0.0), true)
 	if not tiny_correction.is_zero_approx():
 		fail("Tiny authoritative differences should stay inside a prediction dead zone instead of causing micro-stutter; got %s" % tiny_correction)
 		return
@@ -74,11 +74,11 @@ func _init() -> void:
 		{"seq": 8, "move": Vector2.RIGHT, "delta": 0.1, "speed_multiplier": 1.0},
 	]
 	var replayed_state: Dictionary = controller.replay_player_inputs(Vector3.ZERO, Vector3.ZERO, shared_pending_inputs)
-	if not replayed_state.position.is_equal_approx(Vector3(0.96, 0.0, 0.0)) or not replayed_state.velocity.is_equal_approx(Vector3(6.4, 0.0, 0.0)):
+	if not replayed_state.position.is_equal_approx(Vector3(1.26, 0.0, 0.0)) or not replayed_state.velocity.is_equal_approx(Vector3(8.4, 0.0, 0.0)):
 		fail("Guest replay must reproduce consecutive authoritative PlayerMotor steps; got %s" % replayed_state)
 		return
 	var braking_state: Dictionary = controller.predict_player_state(Vector3.ZERO, Vector3(9.0, 0.0, 0.0), Vector2.ZERO, 0.1, 1.0)
-	if not braking_state.velocity.is_equal_approx(Vector3(6.6, 0.0, 0.0)):
+	if not braking_state.velocity.is_equal_approx(Vector3(5.0, 0.0, 0.0)):
 		fail("Guest prediction must reproduce authoritative deceleration when input stops; got %s" % braking_state)
 		return
 	var clock_offset_ms: float = controller.estimate_clock_offset_ms(1120, 1000, 80.0)
