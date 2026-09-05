@@ -135,12 +135,12 @@ func _init() -> void:
 		Vector3.RIGHT,
 		[
 			{"actor_id": &"behind", "position": Vector3(-1.0, 0.75, 0.0)},
-			{"actor_id": &"inside_edge", "position": Vector3(cos(deg_to_rad(79.0)) * 5.0, 0.75, sin(deg_to_rad(79.0)) * 5.0)},
-			{"actor_id": &"outside_edge", "position": Vector3(cos(deg_to_rad(81.0)) * 3.0, 0.75, sin(deg_to_rad(81.0)) * 3.0)},
+			{"actor_id": &"inside_edge", "position": Vector3(cos(deg_to_rad(44.0)) * 5.0, 0.75, sin(deg_to_rad(44.0)) * 5.0)},
+			{"actor_id": &"outside_edge", "position": Vector3(cos(deg_to_rad(46.0)) * 3.0, 0.75, sin(deg_to_rad(46.0)) * 3.0)},
 		]
 	)
 	if forward_target.get("actor_id", &"") != &"inside_edge":
-		fail("A 160-degree pass view must include 79 degrees, reject 81 degrees, and never choose behind; target=%s" % forward_target)
+		fail("A 90-degree pass view must include 44 degrees, reject 46 degrees, and never choose behind; target=%s" % forward_target)
 		return
 	var forward_priority: Dictionary = squad.forward_teammate(&"red_1", Vector3.ZERO, Vector3.RIGHT, [
 		{"actor_id": &"straight", "position": Vector3(8.0, 0.75, 0.0)},
@@ -161,6 +161,14 @@ func _init() -> void:
 	])
 	if not no_forward_target.is_empty():
 		fail("Pass targeting must report no receiver when every teammate is behind the carrier")
+		return
+	if not squad.has_method("attacking_goal_direction"):
+		fail("Shot charging must expose a shared direction toward each team's attacking goal")
+		return
+	var red_goal_direction: Vector2 = squad.attacking_goal_direction(&"red", Vector3(3.0, 0.75, 4.0))
+	var blue_goal_direction: Vector2 = squad.attacking_goal_direction(&"blue", Vector3(-3.0, 0.75, -4.0))
+	if red_goal_direction.dot(Vector2(13.5, -4.0).normalized()) < 0.999 or blue_goal_direction.dot(Vector2(-13.5, 4.0).normalized()) < 0.999:
+		fail("Charged shots must aim at the attacking goal centre for both teams; red=%s blue=%s" % [red_goal_direction, blue_goal_direction])
 		return
 
 	var pass_decision: Dictionary = squad.pass_plan(

@@ -255,6 +255,10 @@ func run_test() -> void:
 	if not local_actor.get_node("AimArrow").visible:
 		fail("Charging a guest shot must immediately show the local aiming arrow without waiting for the host")
 		return
+	var guest_goal_direction := Vector3(-16.5 - local_actor.global_position.x, 0.0, -local_actor.global_position.z).normalized()
+	if Vector3(local_actor.call("get_facing_direction")).dot(guest_goal_direction) < 0.85:
+		fail("Charging a guest shot must immediately turn the guest toward the Pirates' attacking goal")
+		return
 	client_controller.set("_local_shoot_was_pressed", false)
 	client_controller.set("_local_shoot_charge", 0.0)
 	client_ball.call("_hide_aim_arrow")

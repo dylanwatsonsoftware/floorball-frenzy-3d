@@ -12,6 +12,7 @@ const ShotImpactFeedbackScript = preload("res://scripts/presentation/shot_impact
 const SquadLogicScript = preload("res://scripts/simulation/squad_logic.gd")
 const ShotAimIndicatorScript = preload("res://scripts/presentation/shot_aim_indicator.gd")
 const LagCompensatedHitHistoryScript = preload("res://scripts/network/lag_compensated_hit_history.gd")
+const PlayerMotorScript = preload("res://scripts/gameplay/player_motor.gd")
 const MAX_CHARGE_SECONDS := 0.8
 const SHOOT_RANGE := 2.35
 const TRAIL_SPEED_THRESHOLD := 10.0
@@ -200,6 +201,7 @@ func _update_shot_charge(delta: float) -> void:
 			_cancel_active_charge(true)
 			return
 		_charge_seconds = minf(MAX_CHARGE_SECONDS * 2.0, _charge_seconds + delta)
+		_turn_actor_toward_attacking_goal(_slap_actor, delta)
 		var charge_ratio := _charge_seconds / MAX_CHARGE_SECONDS
 		var backswing_ratio := minf(1.0, charge_ratio)
 		_slap_actor.call("set_stick_slap_angle", lerpf(-2.0, StickSlapScript.BACKSWING_ANGLE, backswing_ratio * backswing_ratio))
@@ -559,6 +561,7 @@ func _update_network_blue_actions(delta: float) -> void:
 		OnlineMatch.remote_pass = false
 	if OnlineMatch.remote_shoot:
 		_network_blue_charge = minf(MAX_CHARGE_SECONDS * 2.0, _network_blue_charge + delta)
+		_turn_actor_toward_attacking_goal(actor, delta)
 		actor.call("set_shot_aim_locked", true)
 		actor.call("set_stick_slap_angle", lerpf(-2.0, StickSlapScript.BACKSWING_ANGLE, pow(minf(1.0, _network_blue_charge / MAX_CHARGE_SECONDS), 2.0)))
 	elif _network_blue_was_shooting and _network_blue_charge > 0.0:
@@ -568,6 +571,15 @@ func _update_network_blue_actions(delta: float) -> void:
 		_configure_slap(Vector2(facing.x, facing.z), _network_blue_charge / MAX_CHARGE_SECONDS, StickSlapScript.network_start_elapsed(&"shot", OnlineMatch.remote_rtt_ms / 2000.0))
 		_network_blue_charge = 0.0
 	_network_blue_was_shooting = OnlineMatch.remote_shoot
+
+
+func _turn_actor_toward_attacking_goal(actor: CharacterBody3D, delta: float) -> void:
+	var direction := SquadLogicScript.attacking_goal_direction(actor.call("get_team"), actor.global_position)
+	var next_rotation := PlayerMotorScript.step_facing_rotation(actor.rotation.y, direction, delta, 120.0)
+	if actor.has_method("apply_network_rotation"):
+		actor.call("apply_network_rotation", next_rotation)
+	else:
+		actor.rotation.y = next_rotation
 
 
 func _start_network_pass(actor: CharacterBody3D) -> void:

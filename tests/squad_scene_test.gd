@@ -137,6 +137,9 @@ func run_test() -> void:
 		fail("AI passing setup must begin with blue_2 possession; ball=%s blade=%s facing=%s owner=%s" % [ball.global_position, blue_two_blade_center, blue_two.call("get_facing_direction"), ball.call("get_control_owner_actor_id")])
 		return
 	blue_two.set_physics_process(true)
+	var blue_three := scene.get_node("Arena/BlueTeammate3") as CharacterBody3D
+	blue_three.set_physics_process(false)
+	blue_three.position = Vector3(-3.0, 0.75, 0.0)
 	scene.get_node("Arena/Player").position = Vector3(1.2, 0.75, 0.1)
 	ball.call("_update_ai_pass", 1.0)
 	if ball.call("is_controlled_by_actor", &"blue_2") or Vector2(ball.ball_velocity.x, ball.ball_velocity.z).length() < 7.0:

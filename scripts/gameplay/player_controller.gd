@@ -55,8 +55,8 @@ func _physics_process(delta: float) -> void:
 	if not is_human_controlled():
 		var owner_team: StringName = _ball.call("get_control_owner_team") if _ball.has_method("get_control_owner_team") else &""
 		facing_planar = SquadLogicScript.tactical_facing(Vector2(global_position.x, global_position.z), input_vector, _ball.global_position, owner_team == get_team())
-	if _shot_aim_locked and not is_human_controlled():
-		facing_planar = Vector2.ZERO
+	if _shot_aim_locked:
+		facing_planar = SquadLogicScript.attacking_goal_direction(get_team(), global_position)
 	var command := {"move": input_vector, "facing": facing_planar, "dash_pressed": is_human_controlled() and Input.is_action_just_pressed("dash"), "delta": delta, "speed_multiplier": speed_multiplier}
 	var state := {"position": global_position, "velocity": velocity, "rotation": rotation.y, "dash_cooldown": _dash_cooldown, "dash_remaining": _dash_streak_remaining, "dash_direction": _dash_direction}
 	var next_state: Dictionary = PlayerMotorScript.step_command_state(state, command)

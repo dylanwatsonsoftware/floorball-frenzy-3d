@@ -6,7 +6,7 @@ const PRESSURE_DISTANCE := 3.0
 const PASS_ERROR_RADIANS := 0.12
 const ARRIVAL_STOP_RADIUS := 0.18
 const ARRIVAL_SLOW_RADIUS := 2.4
-const PASS_FIELD_OF_VIEW_DEGREES := 160.0
+const PASS_FIELD_OF_VIEW_DEGREES := 90.0
 const PASS_ANGLE_PENALTY_METRES_PER_RADIAN := 4.0
 
 
@@ -143,6 +143,11 @@ static func forward_teammate(carrier_id: StringName, carrier_position: Vector3, 
 			best_score = score
 			best = teammate
 	return best
+
+
+static func attacking_goal_direction(team: StringName, actor_position: Vector3) -> Vector2:
+	var goal_x := 16.5 if team == &"red" else -16.5
+	return (Vector2(goal_x, 0.0) - _planar(actor_position)).normalized()
 
 
 static func pass_plan(carrier_position: Vector3, teammates: Array, opponent_positions: Array, team: StringName, pass_index: int, carrier_facing: Vector3 = Vector3.ZERO) -> Dictionary:

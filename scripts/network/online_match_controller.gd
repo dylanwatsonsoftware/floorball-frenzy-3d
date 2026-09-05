@@ -403,6 +403,7 @@ func _update_predicted_ball_action(shoot_pressed: bool, pass_pressed: bool, delt
 		_begin_predicted_ball_action(actor, &"pass", 0.38, false)
 	if shoot_pressed and owns_ball and (_predicted_ball_action == null or not bool(_predicted_ball_action.get("active"))):
 		_local_shoot_charge = minf(1.6, _local_shoot_charge + delta)
+		_turn_actor_toward_attacking_goal(actor, delta)
 		actor.call("set_shot_aim_locked", true)
 		var charge_ratio := _local_shoot_charge / 0.8
 		actor.call("set_stick_slap_angle", lerpf(-2.0, StickSlapScript.BACKSWING_ANGLE, pow(minf(1.0, charge_ratio), 2.0)))
@@ -431,6 +432,11 @@ func _update_predicted_ball_action(shoot_pressed: bool, pass_pressed: bool, delt
 		var red_human := StringName(_ball.call("get_human_control_actor_id_for_team", &"red"))
 		var blue_human := StringName(_ball.call("get_human_control_actor_id_for_team", &"blue"))
 		_ball.call("apply_network_control_state", &"", red_human, blue_human)
+
+
+func _turn_actor_toward_attacking_goal(actor: CharacterBody3D, delta: float) -> void:
+	var direction := SquadLogicScript.attacking_goal_direction(actor.call("get_team"), actor.global_position)
+	_apply_actor_rotation(actor, PlayerMotorScript.step_facing_rotation(actor.rotation.y, direction, delta, 120.0))
 
 
 func _begin_predicted_ball_action(actor: CharacterBody3D, action_type: StringName, charge: float, begin_forward_swing: bool) -> void:

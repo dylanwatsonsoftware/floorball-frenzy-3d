@@ -37,7 +37,7 @@ func run_test() -> void:
 	if ball.call("get_human_control_actor_id") != switched_actor:
 		fail("A faceoff reset must preserve the player's explicit selection; switched=%s current=%s" % [switched_actor, ball.call("get_human_control_actor_id")])
 		return
-	# Capture and charge while changing direction. Charging must not freeze facing.
+	# Capture and charge while steering away. Charging must turn toward the goal.
 	ball.ball_velocity = Vector3.ZERO
 	var blade_pocket := red_two.get_node("StickRig/BladePocket") as Marker3D
 	blade_pocket.force_update_transform()
@@ -48,16 +48,16 @@ func run_test() -> void:
 	if not ball.call("is_controlled_by_actor", &"red_2"):
 		fail("Turning-shot setup must begin with red_2 possession")
 		return
-	var initial_facing: Vector3 = red_two.call("get_facing_direction")
 	Input.action_press("shoot")
 	Input.action_press("move_down")
 	for frame in 12:
 		await physics_frame
 	Input.action_release("move_down")
 	var turned_facing: Vector3 = red_two.call("get_facing_direction")
-	if turned_facing.z < 0.55 or turned_facing.is_equal_approx(initial_facing):
+	var goal_direction := Vector3(16.5 - red_two.global_position.x, 0.0, -red_two.global_position.z).normalized()
+	if turned_facing.dot(goal_direction) < 0.94:
 		Input.action_release("shoot")
-		fail("The controlled carrier must be able to turn toward movement while charging; initial=%s turned=%s" % [initial_facing, turned_facing])
+		fail("The controlled carrier must automatically turn toward the attacking goal while charging; goal=%s turned=%s" % [goal_direction, turned_facing])
 		return
 	if not red_two.call("is_human_controlled"):
 		Input.action_release("shoot")
