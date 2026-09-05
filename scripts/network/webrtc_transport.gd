@@ -104,6 +104,20 @@ func send(message: Variant) -> void:
 	_channel.call("put_packet", packet)
 
 
+func get_connection_path() -> StringName:
+	if not OS.has_feature("web"):
+		return &"checking"
+	var detected: Variant = JavaScriptBridge.eval("String(window.__floorballRtcPath || 'checking')", true)
+	var path := StringName(String(detected).to_lower())
+	return path if path in [&"direct", &"relay"] else &"checking"
+
+
+static func classify_connection_path(local_candidate_type: String, remote_candidate_type: String) -> StringName:
+	if local_candidate_type.is_empty() or remote_candidate_type.is_empty():
+		return &"checking"
+	return &"relay" if local_candidate_type == "relay" or remote_candidate_type == "relay" else &"direct"
+
+
 func close() -> void:
 	set_process(false)
 	if _channel != null:

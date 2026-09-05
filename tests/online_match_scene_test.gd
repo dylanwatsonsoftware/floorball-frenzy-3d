@@ -134,7 +134,7 @@ func run_test() -> void:
 		return
 	client_controller.call("set_diagnostics_visible", true)
 	client_controller.call("_refresh_diagnostics")
-	if not diagnostics_label.visible or not diagnostics_label.text.contains("FPS") or not diagnostics_label.text.contains("PLAYER ERR"):
+	if not diagnostics_label.visible or not diagnostics_label.text.contains("FPS") or not diagnostics_label.text.contains("PLAYER ERR") or not diagnostics_label.text.contains("INPUT ACK") or not diagnostics_label.text.contains("PATH"):
 		fail("The diagnostics overlay must expose frame and prediction measurements when enabled")
 		return
 	var client_ball = client_arena.get_node("Ball")

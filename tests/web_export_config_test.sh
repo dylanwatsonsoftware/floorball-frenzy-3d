@@ -5,6 +5,7 @@ test -f export_presets.cfg
 grep -Fq 'platform="Web"' export_presets.cfg
 grep -Fq 'export_path="build/web/index.html"' export_presets.cfg
 grep -Fq 'html/canvas_resize_policy=2' export_presets.cfg
+grep -Fq '__floorballRtcPath' export_presets.cfg
 grep -Fq 'progressive_web_app/orientation=1' export_presets.cfg
 grep -Fq 'progressive_web_app/enabled=true' export_presets.cfg
 grep -Fq 'variant/extensions_support=false' export_presets.cfg

@@ -35,6 +35,7 @@ var _last_remote_dash_sequence := 0
 var _last_faceoff_sequence := -1
 var _pending_inputs: Array = []
 var _last_remote_input_sent_ms := -1
+var _last_input_ack := -1
 var _estimated_rtt_ms := 0.0
 var _host_clock_offset_ms := 0.0
 var _has_clock_offset := false
@@ -147,6 +148,7 @@ func _physics_process(delta: float) -> void:
 		_transport.send(packet)
 		var simulation_command: Dictionary = player_command.to_simulation_step(delta, _local_human_speed_multiplier())
 		_append_pending_command(simulation_command)
+		_diagnostics.record_command_progress(_sequence, _last_input_ack)
 		_predict_local_command(simulation_command)
 		_predict_replicas(delta)
 		_predict_local_pickup(delta)
@@ -222,6 +224,8 @@ func _capture_snapshot() -> Dictionary:
 
 func _apply_snapshot(snapshot: Dictionary) -> void:
 	_update_snapshot_timing(snapshot)
+	_last_input_ack = maxi(_last_input_ack, int(snapshot.get("input_ack", -1)))
+	_diagnostics.record_command_progress(_sequence, _last_input_ack)
 	var actor_by_id := {}
 	var local_actor := _arena.call("get_local_human_actor") as CharacterBody3D
 	var faceoff_sequence := int(snapshot.get("faceoff_seq", 0))
@@ -448,7 +452,9 @@ func _update_snapshot_timing(snapshot: Dictionary) -> void:
 
 func _update_connection_diagnostics() -> void:
 	var loss := OnlineInputScript.packet_loss_percent(_received_snapshots, _missing_snapshots)
-	_status.text = "ONLINE · %s · %s" % [OnlineMatch.room_id, OnlineInputScript.connection_diagnostic_text(_estimated_rtt_ms, loss)]
+	var path := _transport.get_connection_path() if _transport != null else &"checking"
+	_diagnostics.record_connection_path(path)
+	_status.text = "ONLINE · %s · %s · %s" % [OnlineMatch.room_id, OnlineInputScript.connection_diagnostic_text(_estimated_rtt_ms, loss), String(path).to_upper()]
 
 
 func set_diagnostics_visible(is_visible: bool) -> void:
@@ -472,13 +478,20 @@ func _refresh_diagnostics() -> void:
 	if _diagnostics_label == null:
 		return
 	var report: Dictionary = _diagnostics.report()
-	_diagnostics_label.text = "FPS %.0f · FRAME %.1f ms\nRTT %.0f ms · JITTER %.1f ms · LOSS %.1f%%\nSNAPSHOT AGE %.1f ms\nPLAYER ERR %.2f m · BALL ERR %.2f m" % [
+	if _transport != null:
+		_diagnostics.record_connection_path(_transport.get_connection_path())
+		report = _diagnostics.report()
+	_diagnostics_label.text = "FPS %.0f · FRAME %.1f ms\nRTT %.0f ms · JITTER %.1f ms · LOSS %.1f%%\nSNAPSHOT AGE %.1f ms · PATH %s\nINPUT ACK %d/%d · PENDING %d\nPLAYER ERR %.2f m · BALL ERR %.2f m" % [
 		float(report.get("fps", 0.0)),
 		float(report.get("frame_ms", 0.0)),
 		float(report.get("rtt_ms", 0.0)),
 		float(report.get("jitter_ms", 0.0)),
 		float(report.get("loss_percent", 0.0)),
 		float(report.get("snapshot_age_ms", 0.0)),
+		String(report.get("connection_path", &"checking")).to_upper(),
+		int(report.get("input_ack", -1)),
+		int(report.get("input_sent", -1)),
+		int(report.get("unacknowledged_inputs", 0)),
 		float(report.get("player_error_m", 0.0)),
 		float(report.get("ball_error_m", 0.0)),
 	]

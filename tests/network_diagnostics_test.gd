@@ -15,6 +15,8 @@ func _init() -> void:
 	metrics.record_snapshot_sequence(12)
 	metrics.record_snapshot_age(0.08)
 	metrics.record_prediction_error(0.24, 0.42)
+	metrics.record_command_progress(48, 43)
+	metrics.record_connection_path(&"relay")
 	var report: Dictionary = metrics.report()
 	if absf(float(report.get("fps", 0.0)) - 40.0) > 0.01:
 		fail("Diagnostics must report average frame rate; got %s" % report)
@@ -33,6 +35,12 @@ func _init() -> void:
 		return
 	if not is_equal_approx(float(report.get("player_error_m", 0.0)), 0.24) or not is_equal_approx(float(report.get("ball_error_m", 0.0)), 0.42):
 		fail("Diagnostics must expose player and ball prediction errors; got %s" % report)
+		return
+	if int(report.get("input_sent", -1)) != 48 or int(report.get("input_ack", -1)) != 43 or int(report.get("unacknowledged_inputs", -1)) != 5:
+		fail("Diagnostics must expose sent, acknowledged, and outstanding guest commands; got %s" % report)
+		return
+	if StringName(report.get("connection_path", &"")) != &"relay":
+		fail("Diagnostics must distinguish a direct peer path from a TURN relay; got %s" % report)
 		return
 
 	var conditions_script = load("res://scripts/network/network_condition_simulator.gd")

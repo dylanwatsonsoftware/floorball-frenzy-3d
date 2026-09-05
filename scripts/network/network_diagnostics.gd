@@ -12,6 +12,9 @@ var _missing_snapshots := 0
 var _last_snapshot_sequence := -1
 var _player_error_m := 0.0
 var _ball_error_m := 0.0
+var _input_sent := -1
+var _input_ack := -1
+var _connection_path: StringName = &"checking"
 
 
 func record_frame(delta: float) -> void:
@@ -38,6 +41,15 @@ func record_prediction_error(player_error_m: float, ball_error_m: float) -> void
 	_ball_error_m = maxf(ball_error_m, 0.0)
 
 
+func record_command_progress(sent_sequence: int, acknowledged_sequence: int) -> void:
+	_input_sent = maxi(_input_sent, sent_sequence)
+	_input_ack = mini(_input_sent, maxi(_input_ack, acknowledged_sequence))
+
+
+func record_connection_path(path: StringName) -> void:
+	_connection_path = path if path in [&"direct", &"relay"] else &"checking"
+
+
 func report() -> Dictionary:
 	var average_frame_seconds := _average(_frame_seconds)
 	var average_rtt := _average(_round_trip_ms)
@@ -51,6 +63,10 @@ func report() -> Dictionary:
 		"snapshot_age_ms": _average(_snapshot_age_seconds) * 1000.0,
 		"player_error_m": _player_error_m,
 		"ball_error_m": _ball_error_m,
+		"input_sent": _input_sent,
+		"input_ack": _input_ack,
+		"unacknowledged_inputs": maxi(0, _input_sent - _input_ack),
+		"connection_path": _connection_path,
 	}
 
 
