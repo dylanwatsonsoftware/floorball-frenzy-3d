@@ -118,6 +118,8 @@ func _physics_process(delta: float) -> void:
 	if not _shot_aim_locked and not facing_planar.is_zero_approx():
 		rotation.y = PlayerMotorScript.step_facing_rotation(rotation.y, facing_planar, delta)
 		_facing_direction = PlayerMotorScript.facing_from_rotation(rotation.y)
+	if is_human_controlled() and OnlineMatch.is_authority():
+		OnlineMatch.call("mark_remote_command_simulated")
 
 
 

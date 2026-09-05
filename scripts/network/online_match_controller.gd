@@ -167,6 +167,7 @@ func _on_message(message: Dictionary) -> void:
 			return
 		_last_snapshot = seq
 		_last_remote_input_sent_ms = int(message.get("sent_ms", -1))
+		OnlineMatch.call("set_remote_command", seq, _last_remote_input_sent_ms)
 		OnlineMatch.remote_input = _array_to_vector(message.get("move", [0.0, 0.0]))
 		var dash_sequence := int(message.get("dash_seq", 0))
 		if dash_sequence > _last_remote_dash_sequence or (not message.has("dash_seq") and bool(message.get("dash", false))):
@@ -216,7 +217,7 @@ func _capture_snapshot() -> Dictionary:
 		_ball_action_type = pending_action
 		_ball_action_tick = _simulation_tick
 	_last_captured_ball_state = ball_state
-	return {"type": "snapshot", "seq": _sequence, "host_time_ms": Time.get_ticks_msec(), "input_ack": _last_snapshot, "input_echo_ms": _last_remote_input_sent_ms, "actors": actors, "stick_angles": stick_angles, "ball": _vector3_to_array(_ball.global_position), "ball_velocity": _vector3_to_array(_ball.ball_velocity), "owner": owner_id, "ball_attached": not owner_id.is_empty(), "ball_state": String(ball_state), "possession_seq": _possession_sequence, "action_seq": _ball_action_sequence, "action_type": String(_ball_action_type), "action_tick": _ball_action_tick, "red_human": String(_ball.call("get_human_control_actor_id_for_team", &"red")), "blue_human": String(_ball.call("get_human_control_actor_id_for_team", &"blue")), "score": _match_flow.score.duplicate(), "goal_seq": int(match_state.get("goal_seq", 0)), "faceoff_seq": int(match_state.get("faceoff_seq", 0)), "scorer": String(match_state.get("scorer", "")), "phase": String(match_state.get("phase", "play")), "slap_phase": String(slap_phase)}
+	return {"type": "snapshot", "seq": _sequence, "host_time_ms": Time.get_ticks_msec(), "input_ack": int(OnlineMatch.remote_simulated_sequence), "input_echo_ms": int(OnlineMatch.remote_simulated_sent_ms), "actors": actors, "stick_angles": stick_angles, "ball": _vector3_to_array(_ball.global_position), "ball_velocity": _vector3_to_array(_ball.ball_velocity), "owner": owner_id, "ball_attached": not owner_id.is_empty(), "ball_state": String(ball_state), "possession_seq": _possession_sequence, "action_seq": _ball_action_sequence, "action_type": String(_ball_action_type), "action_tick": _ball_action_tick, "red_human": String(_ball.call("get_human_control_actor_id_for_team", &"red")), "blue_human": String(_ball.call("get_human_control_actor_id_for_team", &"blue")), "score": _match_flow.score.duplicate(), "goal_seq": int(match_state.get("goal_seq", 0)), "faceoff_seq": int(match_state.get("faceoff_seq", 0)), "scorer": String(match_state.get("scorer", "")), "phase": String(match_state.get("phase", "play")), "slap_phase": String(slap_phase)}
 
 
 func _apply_snapshot(snapshot: Dictionary) -> void:

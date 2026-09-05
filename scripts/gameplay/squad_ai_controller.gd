@@ -72,6 +72,8 @@ func _physics_process(delta: float) -> void:
 		_facing_direction = PlayerMotorScript.facing_from_rotation(rotation.y)
 	if is_human_controlled() and _mobile_controls != null and _mobile_controls.has_method("set_dash_cooldown_ratio"):
 		_mobile_controls.call("set_dash_cooldown_ratio", get_dash_cooldown_ratio())
+	if is_human_controlled() and OnlineMatch.is_authority() and get_team() == &"blue":
+		OnlineMatch.call("mark_remote_command_simulated")
 
 
 func _human_movement() -> Vector2:

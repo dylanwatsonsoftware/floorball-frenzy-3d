@@ -28,9 +28,22 @@ func run_test() -> void:
 	if match_scene.get_node_or_null("OnlineMatchController") == null:
 		fail("Online matches must attach their authoritative networking controller")
 		return
-	var authority_snapshot: Dictionary = match_scene.get_node("OnlineMatchController").call("_capture_snapshot")
+	var authority_controller := match_scene.get_node("OnlineMatchController")
+	authority_controller.call("_set_authority_waiting", false)
+	var authority_snapshot: Dictionary = authority_controller.call("_capture_snapshot")
 	if not authority_snapshot.has("input_ack"):
 		fail("Authority snapshots must acknowledge the newest processed guest input")
+		return
+	var received_command := {"type": "input", "seq": 77, "tick": 240, "sent_ms": Time.get_ticks_msec(), "rtt_ms": 80.0, "move": [1.0, 0.0], "facing": [1.0, 0.0], "dash_seq": 0, "shoot": false, "pass_seq": 0, "switch_seq": 0}
+	authority_controller.call("_on_message", received_command)
+	var received_but_unsimulated: Dictionary = authority_controller.call("_capture_snapshot")
+	if int(received_but_unsimulated.input_ack) >= 77:
+		fail("The host must not acknowledge a guest command merely because the network layer received it")
+		return
+	await process_frame
+	var simulated_snapshot: Dictionary = authority_controller.call("_capture_snapshot")
+	if int(simulated_snapshot.input_ack) != 77:
+		fail("The authoritative player step must acknowledge the exact guest command it simulated; got %s" % simulated_snapshot.input_ack)
 		return
 	if not authority_snapshot.has("host_time_ms") or not authority_snapshot.has("input_echo_ms"):
 		fail("Authority snapshots must carry host time and echo guest send-time for packet-age estimation")

@@ -32,6 +32,8 @@ func _physics_process(delta: float) -> void:
 	if not movement.is_zero_approx():
 		rotation.y = PlayerMotorScript.step_facing_rotation(rotation.y, movement, delta)
 		_facing_direction = PlayerMotorScript.facing_from_rotation(rotation.y)
+	if is_human_controlled() and OnlineMatch.is_authority() and get_team() == &"blue":
+		OnlineMatch.call("mark_remote_command_simulated")
 
 
 func _human_movement() -> Vector2:
