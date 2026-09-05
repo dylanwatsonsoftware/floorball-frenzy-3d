@@ -80,7 +80,8 @@ Online matches use:
 - WebRTC's unordered, unreliably delivered data channel for real-time gameplay
 - Host-authoritative simulation with guest-side prediction and reconciliation
 - Binary `FFS1` snapshots for players, ball state, possession, score, and timing
-- Live ping and snapshot-loss diagnostics
+- Live frame, ping, jitter, loss, prediction-error, command-acknowledgement, and direct/relay diagnostics
+- Portable guest command/snapshot traces: tap the open diagnostics panel to download a replayable JSON capture
 
 Set `REDIS_URL` for persistent, multi-instance production matchmaking. Without it, the server uses an in-memory lobby suitable for local development and tests. ICE server credentials are fetched through `/api/ice-servers`, with public STUN servers as a fallback.
 

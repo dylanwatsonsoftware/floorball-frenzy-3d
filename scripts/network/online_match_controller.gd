@@ -13,6 +13,7 @@ const SquadLogicScript = preload("res://scripts/simulation/squad_logic.gd")
 const BallInteractionScript = preload("res://scripts/simulation/ball_interaction.gd")
 const PlayerMotorScript = preload("res://scripts/gameplay/player_motor.gd")
 const PlayerCommandScript = preload("res://scripts/simulation/player_command.gd")
+const NetworkTraceScript = preload("res://scripts/network/network_trace.gd")
 const SNAPSHOT_SECONDS := OnlineInputScript.DEFAULT_SNAPSHOT_SECONDS
 const RINK_HALF_LENGTH := 19.1
 const RINK_HALF_WIDTH := 9.1
@@ -65,6 +66,7 @@ var _remote_rotation_targets: Dictionary = {}
 var _predicted_local_switch_actor_id: StringName = &""
 var _predicted_local_switch_input_sequence := -1
 var _local_prediction_state: Dictionary = {}
+var _network_trace: RefCounted
 
 
 func _ready() -> void:
@@ -80,11 +82,14 @@ func _ready() -> void:
 	_status.gui_input.connect(_on_status_input)
 	get_parent().get_node("HUD").add_child(_status)
 	_diagnostics = NetworkDiagnosticsScript.new()
+	_network_trace = NetworkTraceScript.new()
 	_diagnostics_label = Label.new()
 	_diagnostics_label.name = "Diagnostics"
 	_diagnostics_label.position = Vector2(20.0, 48.0)
 	_diagnostics_label.add_theme_font_size_override("font_size", 14)
 	_diagnostics_label.visible = false
+	_diagnostics_label.mouse_filter = Control.MOUSE_FILTER_STOP
+	_diagnostics_label.gui_input.connect(_on_diagnostics_input)
 	add_child(_diagnostics_label)
 	_transport = TransportScript.new()
 	add_child(_transport)
@@ -223,6 +228,8 @@ func _capture_snapshot() -> Dictionary:
 
 
 func _apply_snapshot(snapshot: Dictionary) -> void:
+	if _network_trace != null:
+		_network_trace.call("record_snapshot", snapshot, Time.get_ticks_msec())
 	_update_snapshot_timing(snapshot)
 	_last_input_ack = maxi(_last_input_ack, int(snapshot.get("input_ack", -1)))
 	_diagnostics.record_command_progress(_sequence, _last_input_ack)
@@ -474,6 +481,17 @@ func _on_status_input(event: InputEvent) -> void:
 		set_diagnostics_visible(not _diagnostics_label.visible)
 
 
+func _on_diagnostics_input(event: InputEvent) -> void:
+	var activated := false
+	if event is InputEventScreenTouch:
+		activated = (event as InputEventScreenTouch).pressed
+	elif event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		activated = mouse_event.pressed and mouse_event.button_index == MOUSE_BUTTON_LEFT
+	if activated:
+		_export_network_trace()
+
+
 func _refresh_diagnostics() -> void:
 	if _diagnostics_label == null:
 		return
@@ -481,7 +499,7 @@ func _refresh_diagnostics() -> void:
 	if _transport != null:
 		_diagnostics.record_connection_path(_transport.get_connection_path())
 		report = _diagnostics.report()
-	_diagnostics_label.text = "FPS %.0f · FRAME %.1f ms\nRTT %.0f ms · JITTER %.1f ms · LOSS %.1f%%\nSNAPSHOT AGE %.1f ms · PATH %s\nINPUT ACK %d/%d · PENDING %d\nPLAYER ERR %.2f m · BALL ERR %.2f m" % [
+	_diagnostics_label.text = "FPS %.0f · FRAME %.1f ms\nRTT %.0f ms · JITTER %.1f ms · LOSS %.1f%%\nSNAPSHOT AGE %.1f ms · PATH %s\nINPUT ACK %d/%d · PENDING %d\nPLAYER ERR %.2f m · BALL ERR %.2f m\nTAP TO EXPORT TRACE" % [
 		float(report.get("fps", 0.0)),
 		float(report.get("frame_ms", 0.0)),
 		float(report.get("rtt_ms", 0.0)),
@@ -544,8 +562,27 @@ func _record_pending_input(sequence: int, movement: Vector2, delta: float, dash_
 
 func _append_pending_command(command: Dictionary) -> void:
 	_pending_inputs.append(command)
+	if _network_trace != null:
+		_network_trace.call("record_command", command, Time.get_ticks_msec())
 	if _pending_inputs.size() > 120:
 		_pending_inputs.pop_front()
+
+
+func _trace_json() -> String:
+	return _network_trace.call("to_json") if _network_trace != null else ""
+
+
+func _export_network_trace() -> void:
+	var encoded := _trace_json()
+	if encoded.is_empty():
+		return
+	var filename := "floorball-network-trace-%s-%d.json" % [OnlineMatch.room_id.to_lower(), int(Time.get_unix_time_from_system())]
+	if OS.has_feature("web"):
+		JavaScriptBridge.download_buffer(encoded.to_utf8_buffer(), filename, "application/json")
+	else:
+		var file := FileAccess.open("user://%s" % filename, FileAccess.WRITE)
+		if file != null:
+			file.store_string(encoded)
 
 
 func _local_human_speed_multiplier() -> float:

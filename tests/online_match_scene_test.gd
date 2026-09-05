@@ -134,8 +134,13 @@ func run_test() -> void:
 		return
 	client_controller.call("set_diagnostics_visible", true)
 	client_controller.call("_refresh_diagnostics")
-	if not diagnostics_label.visible or not diagnostics_label.text.contains("FPS") or not diagnostics_label.text.contains("PLAYER ERR") or not diagnostics_label.text.contains("INPUT ACK") or not diagnostics_label.text.contains("PATH"):
+	if not diagnostics_label.visible or not diagnostics_label.text.contains("FPS") or not diagnostics_label.text.contains("PLAYER ERR") or not diagnostics_label.text.contains("INPUT ACK") or not diagnostics_label.text.contains("PATH") or not diagnostics_label.text.contains("TAP TO EXPORT TRACE"):
 		fail("The diagnostics overlay must expose frame and prediction measurements when enabled")
+		return
+	var trace_json: String = client_controller.call("_trace_json")
+	var trace_document = JSON.parse_string(trace_json)
+	if not trace_document is Dictionary or String(trace_document.get("format", "")) != "floorball-network-trace" or (trace_document.get("entries", []) as Array).is_empty():
+		fail("The guest diagnostics panel must retain portable authoritative snapshots for one-tap export")
 		return
 	var client_ball = client_arena.get_node("Ball")
 	var pickup_blade := local_actor.get_node("StickRig/BladePocket") as Marker3D
