@@ -64,6 +64,12 @@ var _local_shoot_was_pressed := false
 var _local_shoot_charge := 0.0
 var _predicted_possession_actor_id: StringName = &""
 var _predicted_possession_remaining := 0.0
+var _pickup_request_sequence := 0
+var _pending_pickup_sequence := -1
+var _pending_pickup_actor_id: StringName = &""
+var _last_remote_pickup_sequence := -1
+var _last_remote_pickup_actor: StringName = &""
+var _last_remote_pickup_command_sequence := -1
 var _remote_rotation_targets: Dictionary = {}
 var _remote_snapshot_buffers: Dictionary = {}
 var _predicted_local_switch_actor_id: StringName = &""
@@ -153,6 +159,9 @@ func _physics_process(delta: float) -> void:
 		# Keep the held flag during the rolling deployment for older hosts; new
 		# hosts use dash_seq as a loss-tolerant one-shot action edge.
 		packet.dash = Input.is_action_pressed("dash")
+		var pickup_request := _pickup_request_packet_fields()
+		packet.pickup_seq = pickup_request.sequence
+		packet.pickup_actor = String(pickup_request.actor)
 		_transport.send(packet)
 		var simulation_command: Dictionary = player_command.to_simulation_step(delta, _local_human_speed_multiplier())
 		_append_pending_command(simulation_command)
@@ -193,6 +202,11 @@ func _on_message(message: Dictionary) -> void:
 		if switch_sequence > _last_remote_switch_sequence and _ball.has_method("switch_human_player_for_team"):
 			_last_remote_switch_sequence = switch_sequence
 			_ball.call("switch_human_player_for_team", &"blue")
+		var pickup_sequence := int(message.get("pickup_seq", -1))
+		if pickup_sequence > _last_remote_pickup_sequence:
+			_last_remote_pickup_sequence = pickup_sequence
+			_last_remote_pickup_actor = StringName(message.get("pickup_actor", ""))
+			_last_remote_pickup_command_sequence = seq
 	elif OnlineMatch.role == &"client" and type == "snapshot":
 		var seq := int(message.get("seq", -1))
 		if seq <= _last_snapshot:
@@ -227,7 +241,15 @@ func _capture_snapshot() -> Dictionary:
 		_ball_action_type = pending_action
 		_ball_action_tick = _simulation_tick
 	_last_captured_ball_state = ball_state
-	return {"type": "snapshot", "seq": _sequence, "host_time_ms": Time.get_ticks_msec(), "input_ack": int(OnlineMatch.remote_simulated_sequence), "input_echo_ms": int(OnlineMatch.remote_simulated_sent_ms), "actors": actors, "stick_angles": stick_angles, "ball": _vector3_to_array(_ball.global_position), "ball_velocity": _vector3_to_array(_ball.ball_velocity), "owner": owner_id, "ball_attached": not owner_id.is_empty(), "ball_state": String(ball_state), "possession_seq": _possession_sequence, "action_seq": _ball_action_sequence, "action_type": String(_ball_action_type), "action_tick": _ball_action_tick, "red_human": String(_ball.call("get_human_control_actor_id_for_team", &"red")), "blue_human": String(_ball.call("get_human_control_actor_id_for_team", &"blue")), "score": _match_flow.score.duplicate(), "goal_seq": int(match_state.get("goal_seq", 0)), "faceoff_seq": int(match_state.get("faceoff_seq", 0)), "scorer": String(match_state.get("scorer", "")), "phase": String(match_state.get("phase", "play")), "slap_phase": String(slap_phase)}
+	var pickup_decision := _authoritative_pickup_decision(owner_name)
+	return {"type": "snapshot", "seq": _sequence, "host_time_ms": Time.get_ticks_msec(), "input_ack": int(OnlineMatch.remote_simulated_sequence), "input_echo_ms": int(OnlineMatch.remote_simulated_sent_ms), "actors": actors, "stick_angles": stick_angles, "ball": _vector3_to_array(_ball.global_position), "ball_velocity": _vector3_to_array(_ball.ball_velocity), "owner": owner_id, "ball_attached": not owner_id.is_empty(), "ball_state": String(ball_state), "possession_seq": _possession_sequence, "action_seq": _ball_action_sequence, "action_type": String(_ball_action_type), "action_tick": _ball_action_tick, "pickup_ack_seq": int(pickup_decision.sequence), "pickup_result": String(pickup_decision.result), "pickup_actor": String(pickup_decision.actor), "red_human": String(_ball.call("get_human_control_actor_id_for_team", &"red")), "blue_human": String(_ball.call("get_human_control_actor_id_for_team", &"blue")), "score": _match_flow.score.duplicate(), "goal_seq": int(match_state.get("goal_seq", 0)), "faceoff_seq": int(match_state.get("faceoff_seq", 0)), "scorer": String(match_state.get("scorer", "")), "phase": String(match_state.get("phase", "play")), "slap_phase": String(slap_phase)}
+
+
+func _authoritative_pickup_decision(owner_id: StringName) -> Dictionary:
+	if _last_remote_pickup_sequence < 0 or _last_remote_pickup_command_sequence > int(OnlineMatch.remote_simulated_sequence):
+		return {"sequence": -1, "result": &"", "actor": &""}
+	var accepted := not _last_remote_pickup_actor.is_empty() and owner_id == _last_remote_pickup_actor
+	return {"sequence": _last_remote_pickup_sequence, "result": &"accepted" if accepted else &"rejected", "actor": _last_remote_pickup_actor}
 
 
 func _apply_snapshot(snapshot: Dictionary) -> void:
@@ -245,6 +267,8 @@ func _apply_snapshot(snapshot: Dictionary) -> void:
 	if is_new_faceoff:
 		_local_prediction_state = {}
 		_remote_snapshot_buffers.clear()
+		_pending_pickup_sequence = -1
+		_pending_pickup_actor_id = &""
 	for actor in _arena.call("get_field_players"):
 		actor_by_id[String(actor.call("get_actor_id"))] = actor
 	var stick_angles: Array = snapshot.get("stick_angles", [])
@@ -297,6 +321,14 @@ func _apply_snapshot(snapshot: Dictionary) -> void:
 			if not ignore_ball_snapshot:
 				_predicted_ball_action.call("finish")
 	var snapshot_owner := StringName(snapshot.get("owner", ""))
+	var pickup_was_rejected := false
+	var pickup_ack := int(snapshot.get("pickup_ack_seq", -1))
+	if _pending_pickup_sequence >= 0 and pickup_ack >= _pending_pickup_sequence:
+		pickup_was_rejected = StringName(snapshot.get("pickup_result", "")) == &"rejected"
+		_pending_pickup_sequence = -1
+		_pending_pickup_actor_id = &""
+		_predicted_possession_actor_id = &""
+		_predicted_possession_remaining = 0.0
 	if not _predicted_possession_actor_id.is_empty():
 		if snapshot_owner == _predicted_possession_actor_id:
 			_predicted_possession_actor_id = &""
@@ -306,6 +338,8 @@ func _apply_snapshot(snapshot: Dictionary) -> void:
 		else:
 			_predicted_possession_actor_id = &""
 			_predicted_possession_remaining = 0.0
+	if pickup_was_rejected:
+		ignore_ball_snapshot = false
 	if ignore_ball_snapshot:
 		_apply_network_score(snapshot)
 		return
@@ -424,6 +458,9 @@ func _predict_local_pickup(delta: float) -> void:
 		return
 	_predicted_possession_actor_id = actor.call("get_actor_id")
 	_predicted_possession_remaining = 0.40
+	_pickup_request_sequence += 1
+	_pending_pickup_sequence = _pickup_request_sequence
+	_pending_pickup_actor_id = _predicted_possession_actor_id
 	_ball_attached_to_owner = true
 	_ball.global_position = OnlineInputScript.follow_possessed_ball(_ball.global_position, blade.global_position, delta)
 	_ball.ball_velocity = actor.velocity
@@ -431,6 +468,10 @@ func _predict_local_pickup(delta: float) -> void:
 		var red_human := StringName(_ball.call("get_human_control_actor_id_for_team", &"red"))
 		var blue_human := StringName(_ball.call("get_human_control_actor_id_for_team", &"blue"))
 		_ball.call("apply_network_control_state", _predicted_possession_actor_id, red_human, blue_human)
+
+
+func _pickup_request_packet_fields() -> Dictionary:
+	return {"sequence": _pending_pickup_sequence, "actor": _pending_pickup_actor_id}
 
 
 func _predict_local_switch(input_sequence: int) -> void:

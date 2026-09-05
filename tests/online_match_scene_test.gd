@@ -34,16 +34,26 @@ func run_test() -> void:
 	if not authority_snapshot.has("input_ack"):
 		fail("Authority snapshots must acknowledge the newest processed guest input")
 		return
-	var received_command := {"type": "input", "seq": 77, "tick": 240, "sent_ms": Time.get_ticks_msec(), "rtt_ms": 80.0, "move": [1.0, 0.0], "facing": [1.0, 0.0], "dash_seq": 0, "shoot": false, "pass_seq": 0, "switch_seq": 0}
+	var received_command := {"type": "input", "seq": 77, "tick": 240, "sent_ms": Time.get_ticks_msec(), "rtt_ms": 80.0, "move": [1.0, 0.0], "facing": [1.0, 0.0], "dash_seq": 0, "shoot": false, "pass_seq": 0, "switch_seq": 0, "pickup_seq": 8, "pickup_actor": "blue_1"}
 	authority_controller.call("_on_message", received_command)
 	var received_but_unsimulated: Dictionary = authority_controller.call("_capture_snapshot")
 	if int(received_but_unsimulated.input_ack) >= 77:
 		fail("The host must not acknowledge a guest command merely because the network layer received it")
 		return
+	if int(received_but_unsimulated.pickup_ack_seq) >= 8:
+		fail("The host must not decide a pickup before simulating the command that carried it")
+		return
 	await process_frame
 	var simulated_snapshot: Dictionary = authority_controller.call("_capture_snapshot")
 	if int(simulated_snapshot.input_ack) != 77:
 		fail("The authoritative player step must acknowledge the exact guest command it simulated; got %s" % simulated_snapshot.input_ack)
+		return
+	if int(simulated_snapshot.pickup_ack_seq) != 8 or simulated_snapshot.pickup_result != "rejected":
+		fail("The host must explicitly reject a simulated pickup not owned by its requesting actor; got %s" % simulated_snapshot)
+		return
+	var accepted_pickup: Dictionary = authority_controller.call("_authoritative_pickup_decision", &"blue_1")
+	if accepted_pickup.result != &"accepted" or accepted_pickup.actor != &"blue_1":
+		fail("The host must explicitly accept a simulated pickup owned by its requesting actor; got %s" % accepted_pickup)
 		return
 	if not authority_snapshot.has("host_time_ms") or not authority_snapshot.has("input_echo_ms"):
 		fail("Authority snapshots must carry host time and echo guest send-time for packet-age estimation")
@@ -158,6 +168,27 @@ func run_test() -> void:
 	if client_ball.call("get_control_owner_actor_id") != local_actor.call("get_actor_id") or client_ball.global_position.distance_to(pickup_blade.global_position) > 0.05:
 		fail("A guest must predict an eligible local blade pickup instead of waiting for a host round trip")
 		return
+	var pickup_sequence := int(client_controller.get("_pickup_request_sequence"))
+	if pickup_sequence <= 0:
+		fail("A predicted guest pickup must create a sequenced authoritative request")
+		return
+	var pickup_packet: Dictionary = client_controller.call("_pickup_request_packet_fields")
+	if pickup_packet.sequence != pickup_sequence or pickup_packet.actor != local_actor.call("get_actor_id"):
+		fail("A pickup request must retain its actor independently of its short visual lease; got %s" % pickup_packet)
+		return
+	var rejected_pickup: Dictionary = client_controller.call("_capture_snapshot")
+	rejected_pickup.owner = ""
+	rejected_pickup.ball_attached = false
+	rejected_pickup.pickup_ack_seq = pickup_sequence
+	rejected_pickup.pickup_result = "rejected"
+	rejected_pickup.pickup_actor = String(local_actor.call("get_actor_id"))
+	client_controller.call("_apply_snapshot", rejected_pickup)
+	if client_ball.call("get_control_owner_actor_id") != &"" or not StringName(client_controller.get("_predicted_possession_actor_id")).is_empty():
+		fail("An explicit host rejection must promptly end the guest's visual possession lease")
+		return
+	client_ball.global_position = pickup_blade.global_position
+	client_ball.ball_velocity = Vector3.ZERO
+	client_controller.call("_predict_local_pickup", 1.0 / 60.0)
 	var possessed_snapshot: Dictionary = client_controller.call("_capture_snapshot")
 	possessed_snapshot.owner = String(remote_actor.call("get_actor_id"))
 	possessed_snapshot.ball_attached = true
