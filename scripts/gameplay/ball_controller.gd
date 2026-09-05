@@ -372,6 +372,12 @@ func get_slap_phase() -> StringName:
 	return _current_slap_phase()
 
 
+func get_pending_action_type() -> StringName:
+	if _slap_elapsed < 0.0:
+		return &""
+	return &"pass" if _pending_pass else &"shot"
+
+
 func _advance_slap(delta: float) -> void:
 	if _slap_elapsed < 0.0:
 		return

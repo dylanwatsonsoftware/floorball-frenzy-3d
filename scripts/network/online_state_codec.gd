@@ -8,7 +8,7 @@ static func is_snapshot_packet(packet: PackedByteArray) -> bool:
 	return packet.size() >= MAGIC_SIZE and packet[0] == 0x46 and packet[1] == 0x46 and packet[2] == 0x53 and packet[3] == 0x31
 
 
-static func encode_snapshot(snapshot: Dictionary) -> PackedByteArray:
+static func encode_snapshot(snapshot: Dictionary, include_extended_ball_state: bool = true) -> PackedByteArray:
 	var stream := StreamPeerBuffer.new()
 	stream.big_endian = false
 	stream.put_u8(0x46)
@@ -39,6 +39,12 @@ static func encode_snapshot(snapshot: Dictionary) -> PackedByteArray:
 	stream.put_utf8_string(String(snapshot.get("scorer", "")))
 	stream.put_utf8_string(String(snapshot.get("phase", "play")))
 	stream.put_u8(1 if bool(snapshot.get("ball_attached", false)) else 0)
+	if include_extended_ball_state:
+		stream.put_utf8_string(String(snapshot.get("ball_state", "possessed" if bool(snapshot.get("ball_attached", false)) else "loose")))
+		stream.put_32(int(snapshot.get("possession_seq", 0)))
+		stream.put_32(int(snapshot.get("action_seq", 0)))
+		stream.put_utf8_string(String(snapshot.get("action_type", "")))
+		stream.put_32(int(snapshot.get("action_tick", 0)))
 	return stream.data_array
 
 
@@ -71,6 +77,11 @@ static func decode_snapshot(packet: PackedByteArray) -> Dictionary:
 	snapshot.scorer = stream.get_utf8_string()
 	snapshot.phase = stream.get_utf8_string()
 	snapshot.ball_attached = stream.get_u8() == 1 if stream.get_available_bytes() > 0 else not String(snapshot.owner).is_empty()
+	snapshot.ball_state = stream.get_utf8_string() if stream.get_available_bytes() > 0 else ("possessed" if snapshot.ball_attached else "loose")
+	snapshot.possession_seq = stream.get_32() if stream.get_available_bytes() >= 4 else 0
+	snapshot.action_seq = stream.get_32() if stream.get_available_bytes() >= 4 else 0
+	snapshot.action_type = stream.get_utf8_string() if stream.get_available_bytes() > 0 else ""
+	snapshot.action_tick = stream.get_32() if stream.get_available_bytes() >= 4 else 0
 	return snapshot
 
 

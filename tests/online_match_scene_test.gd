@@ -116,9 +116,26 @@ func run_test() -> void:
 	if client_ball.global_position.distance_to(local_blade_pocket.global_position) > 0.05 or client_ball.global_position.x <= local_ball_start.x:
 		fail("The guest-owned ball must follow the guest's locally predicted blade immediately")
 		return
+	client_controller.call("_begin_predicted_ball_action", local_actor, &"pass", 0.38, false)
+	for action_step in 3:
+		client_controller.call("_update_predicted_ball_action", false, false, 0.11)
+	if client_ball.ball_velocity.length() < 7.5 or client_ball.call("get_control_owner_actor_id") != &"":
+		fail("A guest pass must release from the blade locally before its host round trip")
+		return
+	var predicted_pass_position: Vector3 = client_ball.global_position
+	var stale_possession_snapshot: Dictionary = local_possession_snapshot.duplicate(true)
+	stale_possession_snapshot.action_seq = 0
+	stale_possession_snapshot.ball_state = "possessed"
+	client_controller.call("_apply_snapshot", stale_possession_snapshot)
+	if client_ball.global_position.distance_to(predicted_pass_position) > 0.01:
+		fail("A stale possession snapshot must not pull a locally predicted guest pass back onto the stick")
+		return
 	var released_snapshot: Dictionary = local_possession_snapshot.duplicate(true)
 	released_snapshot.owner = ""
 	released_snapshot.ball_attached = false
+	released_snapshot.ball_state = "passing"
+	released_snapshot.action_seq = 1
+	released_snapshot.action_type = "pass"
 	released_snapshot.ball = _vector3_array(client_ball.global_position)
 	released_snapshot.ball_velocity = [8.0, 0.18, 0.0]
 	client_controller.call("_apply_snapshot", released_snapshot)
