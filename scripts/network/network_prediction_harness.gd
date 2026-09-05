@@ -99,6 +99,54 @@ static func compare_frame_rates(duration_seconds: float) -> Dictionary:
 	return {"distance_m": at_30.distance_to(at_60), "at_30": at_30, "at_60": at_60}
 
 
+static func run_remote_profile(profile_name: StringName, duration_seconds: float, seed: int = 1) -> Dictionary:
+	var profile: Dictionary = ConditionsScript.profile(profile_name)
+	var conditions = ConditionsScript.new(int(profile.rtt_ms), float(profile.loss_percent) / 100.0, int(profile.jitter_ms), seed + 2027)
+	var host_position := Vector3.ZERO
+	var host_velocity := Vector3.ZERO
+	var replica_position := Vector3.ZERO
+	var replica_velocity := Vector3.ZERO
+	var packets: Array = []
+	var corrections: Array[float] = []
+	var snapshot_sequence := 0
+	var last_snapshot := -1
+	var total_ticks := ceili((duration_seconds + 1.5) / FIXED_DELTA)
+	for tick in total_ticks:
+		var now_ms := roundi(float(tick) * FIXED_DELTA * 1000.0)
+		var trace_time := float(tick) * FIXED_DELTA
+		var movement := _trace_input(trace_time) if trace_time < duration_seconds else Vector2.ZERO
+		var host_step: Dictionary = OnlineInputScript.predict_player_state(host_position, host_velocity, movement, FIXED_DELTA, 1.0)
+		host_position = host_step.position
+		host_velocity = host_step.velocity
+		replica_position = OnlineInputScript.predict_replica_position(replica_position, replica_velocity, FIXED_DELTA)
+		if tick % SNAPSHOT_INTERVAL_TICKS == 0:
+			snapshot_sequence += 1
+			var schedule: Dictionary = conditions.schedule(snapshot_sequence, now_ms)
+			if not bool(schedule.dropped):
+				packets.append({"delivery_ms": schedule.delivery_ms, "sent_ms": now_ms, "seq": snapshot_sequence, "position": host_position, "velocity": host_velocity})
+		var remaining: Array = []
+		for packet: Dictionary in packets:
+			if int(packet.delivery_ms) <= now_ms:
+				if int(packet.seq) <= last_snapshot:
+					continue
+				last_snapshot = int(packet.seq)
+				var age := float(now_ms - int(packet.sent_ms)) / 1000.0
+				var target: Vector3 = OnlineInputScript.project_snapshot_position(packet.position, packet.velocity, age)
+				var reconciled: Vector3 = OnlineInputScript.reconcile_position(replica_position, target, false)
+				corrections.append(replica_position.distance_to(reconciled))
+				replica_position = reconciled
+				replica_velocity = packet.velocity
+			else:
+				remaining.append(packet)
+		packets = remaining
+	corrections.sort()
+	return {
+		"maximum_correction_m": corrections.back() if not corrections.is_empty() else INF,
+		"p95_correction_m": _percentile(corrections, 0.95),
+		"final_error_m": replica_position.distance_to(host_position),
+	}
+
+
 static func _simulate_with_render_rate(duration_seconds: float, render_rate: int) -> Vector3:
 	var position := Vector3.ZERO
 	var velocity := Vector3.ZERO

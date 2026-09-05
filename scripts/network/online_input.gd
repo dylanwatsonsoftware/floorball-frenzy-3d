@@ -6,6 +6,7 @@ const DEFAULT_SNAPSHOT_SECONDS := 1.0 / 30.0
 const MAX_REPLICA_PREDICTION_STEP := 0.05
 const MAX_SNAPSHOT_AGE_SECONDS := 0.15
 const MAX_BALL_CORRECTION_PER_SNAPSHOT := 0.28
+const MAX_REMOTE_CORRECTION_PER_SNAPSHOT := 0.28
 
 
 static func compose_movement_input(keyboard_or_controller: Vector2, mobile_joystick: Vector2) -> Vector2:
@@ -30,8 +31,10 @@ static func reconcile_position(current: Vector3, authoritative: Vector3, locally
 	var error := current.distance_to(authoritative)
 	if locally_predicted and error < 0.06:
 		return current
-	var weight := 0.1 if locally_predicted and error < 2.5 else 0.72
-	return current.lerp(authoritative, weight)
+	if locally_predicted:
+		return current.lerp(authoritative, 0.1 if error < 2.5 else 0.72)
+	var correction := (authoritative - current) * 0.72
+	return current + correction.limit_length(MAX_REMOTE_CORRECTION_PER_SNAPSHOT)
 
 
 static func reconcile_ball_position(current: Vector3, authoritative: Vector3) -> Vector3:
