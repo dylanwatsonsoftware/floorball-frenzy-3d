@@ -46,8 +46,13 @@ func _physics_process(delta: float) -> void:
 	_dash_cooldown = maxf(0.0, _dash_cooldown - delta)
 	_dash_streak_remaining = maxf(0.0, _dash_streak_remaining - delta)
 	_update_dash_feedback()
-	if is_human_controlled() and Input.is_action_just_pressed("dash"):
+	var human_dash_pressed := Input.is_action_just_pressed("dash")
+	if is_human_controlled() and OnlineMatch.is_authority() and get_team() == &"blue":
+		human_dash_pressed = OnlineMatch.remote_dash
+	if is_human_controlled() and human_dash_pressed:
 		try_dash(movement)
+		if OnlineMatch.is_authority() and get_team() == &"blue":
+			OnlineMatch.remote_dash = false
 	if is_dashing():
 		velocity = _dash_direction * PlayerMotorScript.DASH_SPEED
 	else:
@@ -159,6 +164,18 @@ func try_dash(input_vector: Vector2 = Vector2.ZERO) -> bool:
 
 func get_dash_cooldown_ratio() -> float:
 	return clampf(_dash_cooldown / PlayerMotorScript.DASH_COOLDOWN, 0.0, 1.0)
+
+
+func get_network_dash_state() -> Dictionary:
+	return {"cooldown": _dash_cooldown, "remaining": _dash_streak_remaining, "direction": _dash_direction}
+
+
+func apply_network_dash_state(cooldown: float, remaining: float, direction: Vector3) -> void:
+	_dash_cooldown = maxf(0.0, cooldown)
+	_dash_streak_remaining = maxf(0.0, remaining)
+	if not direction.is_zero_approx():
+		_dash_direction = direction.normalized()
+	_update_dash_feedback()
 
 
 func reset_for_faceoff() -> void:

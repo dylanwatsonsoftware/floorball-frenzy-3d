@@ -93,6 +93,91 @@ static func run_profile(profile_name: StringName, duration_seconds: float, seed:
 	}
 
 
+static func run_dash_profile(profile_name: StringName, seed: int = 1) -> Dictionary:
+	var profile: Dictionary = ConditionsScript.profile(profile_name)
+	var input_conditions = ConditionsScript.new(int(profile.rtt_ms), float(profile.loss_percent) / 100.0, int(profile.jitter_ms), seed + 3109)
+	var snapshot_conditions = ConditionsScript.new(int(profile.rtt_ms), float(profile.loss_percent) / 100.0, int(profile.jitter_ms), seed + 4211)
+	var host_state := _initial_command_state()
+	var client_state := _initial_command_state()
+	var host_movement := Vector2.ZERO
+	var host_dash_sequence := 0
+	var sent_dash_sequence := 0
+	var acknowledged_sequence := -1
+	var command_sequence := 0
+	var snapshot_sequence := 0
+	var last_snapshot_sequence := -1
+	var pending_inputs: Array = []
+	var input_packets: Array = []
+	var snapshot_packets: Array = []
+	var corrections: Array[float] = []
+	var predicted_immediately := false
+	var snap_count := 0
+	for tick in 240:
+		var now_ms := roundi(float(tick) * FIXED_DELTA * 1000.0)
+		var movement := Vector2.RIGHT if tick < 150 else Vector2.ZERO
+		var dash_pressed := tick == 30
+		if dash_pressed:
+			sent_dash_sequence += 1
+		command_sequence += 1
+		var command := {"seq": command_sequence, "move": movement, "facing": movement, "dash_pressed": dash_pressed, "dash_seq": sent_dash_sequence, "delta": FIXED_DELTA, "speed_multiplier": 1.0}
+		pending_inputs.append(command)
+		var input_schedule: Dictionary = input_conditions.schedule(command_sequence, now_ms)
+		if not bool(input_schedule.dropped):
+			input_packets.append({"delivery_ms": input_schedule.delivery_ms, "command": command})
+		client_state = OnlineInputScript.predict_player_command_state(client_state, command)
+		if dash_pressed:
+			predicted_immediately = bool(client_state.dash_started) and client_state.velocity.length() >= 14.99
+
+		var host_dash_pressed := false
+		var remaining_inputs: Array = []
+		for packet: Dictionary in input_packets:
+			if int(packet.delivery_ms) <= now_ms:
+				var delivered: Dictionary = packet.command
+				if int(delivered.seq) > acknowledged_sequence:
+					host_movement = delivered.move
+					acknowledged_sequence = int(delivered.seq)
+					if int(delivered.dash_seq) > host_dash_sequence:
+						host_dash_sequence = int(delivered.dash_seq)
+						host_dash_pressed = true
+			else:
+				remaining_inputs.append(packet)
+		input_packets = remaining_inputs
+		var host_command := {"move": host_movement, "facing": host_movement, "dash_pressed": host_dash_pressed, "delta": FIXED_DELTA, "speed_multiplier": 1.0}
+		host_state = OnlineInputScript.predict_player_command_state(host_state, host_command)
+
+		if tick % SNAPSHOT_INTERVAL_TICKS == 0:
+			snapshot_sequence += 1
+			var snapshot_schedule: Dictionary = snapshot_conditions.schedule(snapshot_sequence, now_ms)
+			if not bool(snapshot_schedule.dropped):
+				snapshot_packets.append({"delivery_ms": snapshot_schedule.delivery_ms, "seq": snapshot_sequence, "ack": acknowledged_sequence, "state": host_state.duplicate()})
+		var remaining_snapshots: Array = []
+		for packet: Dictionary in snapshot_packets:
+			if int(packet.delivery_ms) <= now_ms:
+				if int(packet.seq) <= last_snapshot_sequence:
+					continue
+				last_snapshot_sequence = int(packet.seq)
+				pending_inputs = OnlineInputScript.discard_acknowledged_inputs(pending_inputs, int(packet.ack))
+				var replayed: Dictionary = OnlineInputScript.replay_player_commands(packet.state, pending_inputs)
+				var error: float = client_state.position.distance_to(replayed.position)
+				if error >= 2.5:
+					snap_count += 1
+				var reconciled_position := OnlineInputScript.reconcile_position(client_state.position, replayed.position, true)
+				corrections.append(client_state.position.distance_to(reconciled_position))
+				client_state = replayed
+				client_state.position = reconciled_position
+			else:
+				remaining_snapshots.append(packet)
+		snapshot_packets = remaining_snapshots
+	corrections.sort()
+	return {
+		"predicted_immediately": predicted_immediately,
+		"maximum_correction_m": corrections.back() if not corrections.is_empty() else INF,
+		"p95_correction_m": _percentile(corrections, 0.95),
+		"final_error_m": client_state.position.distance_to(host_state.position),
+		"snap_count": snap_count,
+	}
+
+
 static func compare_frame_rates(duration_seconds: float) -> Dictionary:
 	var at_30 := _simulate_with_render_rate(duration_seconds, 30)
 	var at_60 := _simulate_with_render_rate(duration_seconds, 60)
@@ -160,6 +245,10 @@ static func _simulate_with_render_rate(duration_seconds: float, render_rate: int
 			velocity = step.velocity
 			accumulator -= FIXED_DELTA
 	return position
+
+
+static func _initial_command_state() -> Dictionary:
+	return {"position": Vector3.ZERO, "velocity": Vector3.ZERO, "rotation": 0.0, "dash_cooldown": 0.0, "dash_remaining": 0.0, "dash_direction": Vector3.RIGHT}
 
 
 static func _trace_input(time_seconds: float) -> Vector2:

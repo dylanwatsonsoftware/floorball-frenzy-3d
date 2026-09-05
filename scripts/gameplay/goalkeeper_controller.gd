@@ -112,6 +112,14 @@ func get_dash_cooldown_ratio() -> float:
 	return 1.0
 
 
+func get_network_dash_state() -> Dictionary:
+	return {"cooldown": PlayerMotorScript.DASH_COOLDOWN, "remaining": 0.0, "direction": _facing_direction}
+
+
+func apply_network_dash_state(_cooldown: float, _remaining: float, _direction: Vector3) -> void:
+	pass
+
+
 func reset_for_faceoff() -> void:
 	velocity = Vector3.ZERO
 	_shot_aim_locked = false

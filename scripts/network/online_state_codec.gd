@@ -49,6 +49,11 @@ static func encode_snapshot(snapshot: Dictionary, include_extended_ball_state: b
 		stream.put_u8(stick_angles.size())
 		for angle: Variant in stick_angles:
 			stream.put_float(float(angle))
+		stream.put_u8(actors.size())
+		for actor: Dictionary in actors:
+			stream.put_float(float(actor.get("dc", 0.0)))
+			stream.put_float(float(actor.get("dr", 0.0)))
+			_put_vector3(stream, actor.get("dd", []))
 	return stream.data_array
 
 
@@ -93,6 +98,14 @@ static func decode_snapshot(packet: PackedByteArray) -> Dictionary:
 				break
 			stick_angles.append(stream.get_float())
 	snapshot.stick_angles = stick_angles
+	if stream.get_available_bytes() > 0:
+		var dash_state_count := mini(stream.get_u8(), actors.size())
+		for actor_index in dash_state_count:
+			if stream.get_available_bytes() < 20:
+				break
+			actors[actor_index].dc = stream.get_float()
+			actors[actor_index].dr = stream.get_float()
+			actors[actor_index].dd = _get_vector3(stream)
 	return snapshot
 
 

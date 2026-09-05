@@ -12,6 +12,7 @@ const StickSlapScript = preload("res://scripts/simulation/stick_slap.gd")
 const SquadLogicScript = preload("res://scripts/simulation/squad_logic.gd")
 const BallInteractionScript = preload("res://scripts/simulation/ball_interaction.gd")
 const PlayerMotorScript = preload("res://scripts/gameplay/player_motor.gd")
+const PlayerCommandScript = preload("res://scripts/simulation/player_command.gd")
 const SNAPSHOT_SECONDS := OnlineInputScript.DEFAULT_SNAPSHOT_SECONDS
 const RINK_HALF_LENGTH := 19.1
 const RINK_HALF_WIDTH := 9.1
@@ -27,8 +28,10 @@ var _match_flow: Node
 var _mobile_controls: Control
 var _pass_sequence := 0
 var _switch_sequence := 0
+var _dash_sequence := 0
 var _last_remote_pass_sequence := 0
 var _last_remote_switch_sequence := 0
+var _last_remote_dash_sequence := 0
 var _last_faceoff_sequence := -1
 var _pending_inputs: Array = []
 var _last_remote_input_sent_ms := -1
@@ -60,6 +63,7 @@ var _predicted_possession_remaining := 0.0
 var _remote_rotation_targets: Dictionary = {}
 var _predicted_local_switch_actor_id: StringName = &""
 var _predicted_local_switch_input_sequence := -1
+var _local_prediction_state: Dictionary = {}
 
 
 func _ready() -> void:
@@ -129,13 +133,21 @@ func _physics_process(delta: float) -> void:
 		var pass_pressed := Input.is_action_just_pressed("pass")
 		var shoot_pressed := Input.is_action_pressed("shoot")
 		var switch_pressed := Input.is_action_just_pressed("switch_player")
+		var dash_pressed := Input.is_action_just_pressed("dash")
 		_pass_sequence = OnlineInputScript.next_action_sequence(_pass_sequence, pass_pressed)
 		_switch_sequence = OnlineInputScript.next_action_sequence(_switch_sequence, switch_pressed)
+		_dash_sequence = OnlineInputScript.next_action_sequence(_dash_sequence, dash_pressed)
 		if switch_pressed:
 			_predict_local_switch(_sequence)
-		_transport.send({"type": "input", "seq": _sequence, "tick": _simulation_tick, "sent_ms": Time.get_ticks_msec(), "rtt_ms": _estimated_rtt_ms, "move": _vector_to_array(movement), "dash": Input.is_action_pressed("dash"), "shoot": shoot_pressed, "pass_seq": _pass_sequence, "switch_seq": _switch_sequence})
-		_record_pending_input(_sequence, movement, delta)
-		_predict_local_player(movement, delta)
+		var player_command = PlayerCommandScript.create(_sequence, _simulation_tick, movement, movement, shoot_pressed, _pass_sequence, _switch_sequence, _dash_sequence, dash_pressed)
+		var packet: Dictionary = player_command.to_network_packet(Time.get_ticks_msec(), _estimated_rtt_ms)
+		# Keep the held flag during the rolling deployment for older hosts; new
+		# hosts use dash_seq as a loss-tolerant one-shot action edge.
+		packet.dash = Input.is_action_pressed("dash")
+		_transport.send(packet)
+		var simulation_command: Dictionary = player_command.to_simulation_step(delta, _local_human_speed_multiplier())
+		_append_pending_command(simulation_command)
+		_predict_local_command(simulation_command)
 		_predict_replicas(delta)
 		_predict_local_pickup(delta)
 		_update_predicted_ball_action(shoot_pressed, pass_pressed, delta)
@@ -156,7 +168,10 @@ func _on_message(message: Dictionary) -> void:
 		_last_snapshot = seq
 		_last_remote_input_sent_ms = int(message.get("sent_ms", -1))
 		OnlineMatch.remote_input = _array_to_vector(message.get("move", [0.0, 0.0]))
-		OnlineMatch.remote_dash = bool(message.get("dash", false))
+		var dash_sequence := int(message.get("dash_seq", 0))
+		if dash_sequence > _last_remote_dash_sequence or (not message.has("dash_seq") and bool(message.get("dash", false))):
+			_last_remote_dash_sequence = dash_sequence
+			OnlineMatch.remote_dash = true
 		OnlineMatch.remote_shoot = bool(message.get("shoot", false))
 		OnlineMatch.remote_rtt_ms = clampf(float(message.get("rtt_ms", 0.0)), 0.0, 500.0)
 		var pass_sequence := int(message.get("pass_seq", 0))
@@ -184,7 +199,8 @@ func _capture_snapshot() -> Dictionary:
 	var actors: Array = []
 	var stick_angles: Array = []
 	for actor in _arena.call("get_field_players"):
-		actors.append({"id": String(actor.call("get_actor_id")), "p": _vector3_to_array(actor.global_position), "v": _vector3_to_array(actor.velocity), "r": actor.rotation.y})
+		var dash_state: Dictionary = actor.call("get_network_dash_state") if actor.has_method("get_network_dash_state") else {}
+		actors.append({"id": String(actor.call("get_actor_id")), "p": _vector3_to_array(actor.global_position), "v": _vector3_to_array(actor.velocity), "r": actor.rotation.y, "dc": float(dash_state.get("cooldown", 0.0)), "dr": float(dash_state.get("remaining", 0.0)), "dd": _vector3_to_array(dash_state.get("direction", Vector3.ZERO))})
 		stick_angles.append(float(actor.get_meta("stick_slap_angle", 0.0)))
 	var match_state: Dictionary = _match_flow.call("get_network_state") if _match_flow.has_method("get_network_state") else {}
 	var owner_id := String(_ball.call("get_control_owner_actor_id"))
@@ -211,6 +227,8 @@ func _apply_snapshot(snapshot: Dictionary) -> void:
 	var is_new_faceoff := faceoff_sequence > _last_faceoff_sequence
 	_last_faceoff_sequence = maxi(_last_faceoff_sequence, faceoff_sequence)
 	_pending_inputs = [] if is_new_faceoff else OnlineInputScript.discard_acknowledged_inputs(_pending_inputs, int(snapshot.get("input_ack", -1)))
+	if is_new_faceoff:
+		_local_prediction_state = {}
 	for actor in _arena.call("get_field_players"):
 		actor_by_id[String(actor.call("get_actor_id"))] = actor
 	var stick_angles: Array = snapshot.get("stick_angles", [])
@@ -223,16 +241,24 @@ func _apply_snapshot(snapshot: Dictionary) -> void:
 			var authoritative_position := _array_to_vector3(state.get("p", []))
 			var authoritative_velocity := _array_to_vector3(state.get("v", []))
 			if is_local_actor and not is_new_faceoff:
-				var replayed_state: Dictionary = OnlineInputScript.replay_player_inputs(authoritative_position, authoritative_velocity, _pending_inputs)
+				var authoritative_state := {"position": authoritative_position, "velocity": authoritative_velocity, "rotation": float(state.get("r", actor.rotation.y)), "dash_cooldown": float(state.get("dc", 0.0)), "dash_remaining": float(state.get("dr", 0.0)), "dash_direction": _array_to_vector3(state.get("dd", []))}
+				var replayed_state: Dictionary = OnlineInputScript.replay_player_commands(authoritative_state, _pending_inputs)
 				authoritative_position = replayed_state.position
 				authoritative_velocity = replayed_state.velocity
 				authoritative_position.x = clampf(authoritative_position.x, -RINK_HALF_LENGTH, RINK_HALF_LENGTH)
 				authoritative_position.z = clampf(authoritative_position.z, -RINK_HALF_WIDTH, RINK_HALF_WIDTH)
+				replayed_state.position = authoritative_position
+				_local_prediction_state = replayed_state
 				_latest_player_prediction_error = actor.global_position.distance_to(authoritative_position)
 			elif not is_new_faceoff:
 				authoritative_position = OnlineInputScript.project_snapshot_position(authoritative_position, authoritative_velocity, _snapshot_age_seconds)
 			actor.global_position = authoritative_position if is_new_faceoff else OnlineInputScript.reconcile_position(actor.global_position, authoritative_position, is_local_actor)
 			actor.velocity = authoritative_velocity
+			if is_local_actor and not _local_prediction_state.is_empty():
+				_local_prediction_state.position = actor.global_position
+			if actor.has_method("apply_network_dash_state"):
+				var applied_dash_state: Dictionary = _local_prediction_state if is_local_actor and not _local_prediction_state.is_empty() else {"dash_cooldown": float(state.get("dc", 0.0)), "dash_remaining": float(state.get("dr", 0.0)), "dash_direction": _array_to_vector3(state.get("dd", []))}
+				actor.call("apply_network_dash_state", float(applied_dash_state.get("dash_cooldown", 0.0)), float(applied_dash_state.get("dash_remaining", 0.0)), applied_dash_state.get("dash_direction", Vector3.ZERO))
 			var authoritative_rotation := float(state.get("r", actor.rotation.y))
 			if is_new_faceoff or is_local_actor:
 				var replicated_rotation := authoritative_rotation if is_new_faceoff else OnlineInputScript.reconcile_rotation(actor.rotation.y, authoritative_rotation, true, actively_steering)
@@ -470,31 +496,48 @@ func _movement_input() -> Vector2:
 	return OnlineInputScript.compose_movement_input(Input.get_vector("move_left", "move_right", "move_up", "move_down"), mobile)
 
 
-func _predict_local_player(movement: Vector2, delta: float) -> void:
+func _predict_local_player(movement: Vector2, delta: float, dash_pressed: bool = false) -> void:
+	var command := {"move": movement, "facing": movement, "dash_pressed": dash_pressed, "delta": delta, "speed_multiplier": _local_human_speed_multiplier()}
+	_predict_local_command(command)
+
+
+func _predict_local_command(command: Dictionary) -> void:
 	var actor := _arena.call("get_local_human_actor") as CharacterBody3D
 	if actor == null:
 		return
-	var has_ball := _ball.has_method("is_controlled_by_actor") and bool(_ball.call("is_controlled_by_actor", actor.call("get_actor_id")))
-	var speed_multiplier := PlayerMotorScript.movement_speed_multiplier(true, has_ball)
-	var predicted: Dictionary = OnlineInputScript.predict_player_state(actor.global_position, actor.velocity, movement, delta, speed_multiplier)
+	if _local_prediction_state.is_empty():
+		_local_prediction_state = {"position": actor.global_position, "velocity": actor.velocity, "rotation": actor.rotation.y, "dash_cooldown": 0.0, "dash_remaining": 0.0, "dash_direction": actor.call("get_facing_direction")}
+	var predicted: Dictionary = OnlineInputScript.predict_player_command_state(_local_prediction_state, command)
 	predicted.position.x = clampf(predicted.position.x, -RINK_HALF_LENGTH, RINK_HALF_LENGTH)
 	predicted.position.z = clampf(predicted.position.z, -RINK_HALF_WIDTH, RINK_HALF_WIDTH)
+	_local_prediction_state = predicted
 	actor.global_position = predicted.position
 	actor.velocity = predicted.velocity
-	if not movement.is_zero_approx():
-		var predicted_rotation := PlayerMotorScript.step_facing_rotation(actor.rotation.y, movement, delta)
+	if actor.has_method("apply_network_dash_state"):
+		actor.call("apply_network_dash_state", float(predicted.dash_cooldown), float(predicted.dash_remaining), predicted.dash_direction)
+	var facing_input: Vector2 = command.get("facing", command.get("move", Vector2.ZERO))
+	if not facing_input.is_zero_approx():
+		var predicted_rotation := float(predicted.rotation)
 		if actor.has_method("apply_network_rotation"):
 			actor.call("apply_network_rotation", predicted_rotation)
 		else:
 			actor.rotation.y = predicted_rotation
 
 
-func _record_pending_input(sequence: int, movement: Vector2, delta: float) -> void:
-	var actor := _arena.call("get_local_human_actor") as CharacterBody3D
-	var has_ball := actor != null and _ball.has_method("is_controlled_by_actor") and bool(_ball.call("is_controlled_by_actor", actor.call("get_actor_id")))
-	_pending_inputs.append({"seq": sequence, "move": movement, "delta": delta, "speed_multiplier": PlayerMotorScript.movement_speed_multiplier(true, has_ball)})
+func _record_pending_input(sequence: int, movement: Vector2, delta: float, dash_pressed: bool = false) -> void:
+	_append_pending_command({"seq": sequence, "move": movement, "facing": movement, "dash_pressed": dash_pressed, "delta": delta, "speed_multiplier": _local_human_speed_multiplier()})
+
+
+func _append_pending_command(command: Dictionary) -> void:
+	_pending_inputs.append(command)
 	if _pending_inputs.size() > 120:
 		_pending_inputs.pop_front()
+
+
+func _local_human_speed_multiplier() -> float:
+	var actor := _arena.call("get_local_human_actor") as CharacterBody3D
+	var has_ball := actor != null and _ball.has_method("is_controlled_by_actor") and bool(_ball.call("is_controlled_by_actor", actor.call("get_actor_id")))
+	return PlayerMotorScript.movement_speed_multiplier(true, has_ball)
 
 
 func _predict_replicas(delta: float) -> void:

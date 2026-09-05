@@ -26,6 +26,10 @@ static func predict_player_state(position: Vector3, velocity: Vector3, movement:
 	return {"position": position + next_velocity * step_delta, "velocity": next_velocity}
 
 
+static func predict_player_command_state(state: Dictionary, command: Dictionary) -> Dictionary:
+	return PlayerMotorScript.step_command_state(state, command)
+
+
 static func predict_replica_position(current: Vector3, authoritative_velocity: Vector3, delta: float) -> Vector3:
 	return current + authoritative_velocity * clampf(delta, 0.0, MAX_REPLICA_PREDICTION_STEP)
 
@@ -82,6 +86,13 @@ static func replay_player_inputs(authoritative_position: Vector3, authoritative_
 			float(input.get("delta", 0.0)),
 			float(input.get("speed_multiplier", 1.0))
 		)
+	return state
+
+
+static func replay_player_commands(authoritative_state: Dictionary, inputs: Array) -> Dictionary:
+	var state := authoritative_state.duplicate()
+	for input: Dictionary in inputs:
+		state = predict_player_command_state(state, input)
 	return state
 
 

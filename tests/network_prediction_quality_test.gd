@@ -20,6 +20,14 @@ func _init() -> void:
 		if int(quality.get("snap_count", 1)) != 0:
 			fail("The 150 ms / 2%% loss quality gate must not require hard player snaps; seed=%d result=%s" % [seed, quality])
 			return
+	for seed in range(1, 21):
+		var dash_quality: Dictionary = harness_script.run_dash_profile(&"quality_gate", seed)
+		if not bool(dash_quality.get("predicted_immediately", false)):
+			fail("Guest dash input must react locally before the host round trip; seed=%d result=%s" % [seed, dash_quality])
+			return
+		if float(dash_quality.get("maximum_correction_m", INF)) > 0.30 or float(dash_quality.get("final_error_m", INF)) > 0.15 or int(dash_quality.get("snap_count", 1)) != 0:
+			fail("Guest dashes must reconcile without routine snaps at 150 ms RTT / 2%% loss; seed=%d result=%s" % [seed, dash_quality])
+			return
 	var degraded: Dictionary = harness_script.run_profile(&"degraded", 12.0, 17)
 	if float(degraded.get("maximum_correction_m", INF)) > 0.65 or int(degraded.get("snap_count", 1)) != 0 or float(degraded.get("final_error_m", INF)) > 0.30:
 		fail("A 250 ms / 5%% loss connection should degrade gently and recover without hard snaps; got %s" % degraded)

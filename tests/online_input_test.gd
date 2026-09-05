@@ -22,6 +22,25 @@ func _init() -> void:
 	if not shared_step.position.is_equal_approx(Vector3(2.42, 0.75, 3.0)) or not shared_step.velocity.is_equal_approx(Vector3(4.2, 0.0, 0.0)):
 		fail("Guest prediction must use PlayerMotor acceleration instead of jumping directly to maximum speed; got %s" % shared_step)
 		return
+	var command_state := {
+		"position": Vector3.ZERO,
+		"velocity": Vector3.ZERO,
+		"rotation": 0.0,
+		"dash_cooldown": 0.0,
+		"dash_remaining": 0.0,
+		"dash_direction": Vector3.RIGHT,
+	}
+	var dash_command := {"move": Vector2.RIGHT, "facing": Vector2.RIGHT, "dash_pressed": true, "delta": 1.0 / 60.0, "speed_multiplier": 1.0}
+	var dash_step: Dictionary = controller.predict_player_command_state(command_state, dash_command)
+	if float(dash_step.get("dash_remaining", 0.0)) <= 0.0 or not is_equal_approx(dash_step.velocity.length(), 15.0) or dash_step.position.x <= 0.20:
+		fail("A guest dash command must move immediately through the shared simulation; got %s" % dash_step)
+		return
+	var held_dash_command := dash_command.duplicate()
+	held_dash_command.dash_pressed = false
+	var dash_followup: Dictionary = controller.predict_player_command_state(dash_step, held_dash_command)
+	if not is_equal_approx(dash_followup.velocity.length(), 15.0) or float(dash_followup.dash_remaining) >= float(dash_step.dash_remaining):
+		fail("Dash duration must continue deterministically without retriggering from held input; got %s" % dash_followup)
+		return
 	var local_reconciled: Vector3 = controller.reconcile_position(Vector3.ZERO, Vector3(1.0, 0.0, 0.0), true)
 	var remote_reconciled: Vector3 = controller.reconcile_position(Vector3.ZERO, Vector3(1.0, 0.0, 0.0), false)
 	if local_reconciled.x >= remote_reconciled.x or local_reconciled.x <= 0.0:

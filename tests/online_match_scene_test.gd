@@ -61,6 +61,15 @@ func run_test() -> void:
 	if local_actor == null or local_actor.call("get_team") != &"blue":
 		fail("A guest must resolve the Pirates human as its locally controlled player")
 		return
+	var dash_start: Vector3 = local_actor.global_position
+	client_controller.call("_predict_local_player", Vector2.RIGHT, 1.0 / 60.0, true)
+	if local_actor.velocity.length() < 14.99 or local_actor.global_position.x <= dash_start.x + 0.20 or not bool(local_actor.call("is_dashing")):
+		fail("A guest dash must move its local player immediately instead of waiting for host acknowledgement; position=%s velocity=%s" % [local_actor.global_position, local_actor.velocity])
+		return
+	local_actor.call("apply_network_dash_state", 0.0, 0.0, Vector3.RIGHT)
+	local_actor.global_position = dash_start
+	local_actor.velocity = Vector3.ZERO
+	client_controller.set("_local_prediction_state", {})
 	for child_name in ["ControlRing", "AimArrow", "PlayerMarker"]:
 		if local_actor.get_node_or_null(child_name) == null:
 			fail("The guest-controlled player is missing its %s" % child_name)
@@ -247,12 +256,16 @@ func run_test() -> void:
 	var faceoff_snapshot: Dictionary = goal_snapshot.duplicate(true)
 	faceoff_snapshot.phase = "play"
 	faceoff_snapshot.faceoff_seq = 1
+	client_controller.call("_predict_local_player", Vector2.RIGHT, 1.0 / 60.0, true)
 	for actor_state: Dictionary in faceoff_snapshot.actors:
 		if actor_state.id == String(local_actor.call("get_actor_id")):
 			actor_state.p = [-5.0, 0.75, 0.0]
 	client_controller.call("_apply_snapshot", faceoff_snapshot)
 	if not local_actor.global_position.is_equal_approx(Vector3(-5.0, 0.75, 0.0)):
 		fail("A synchronized faceoff must snap deliberately after the celebration instead of drifting through lag correction")
+		return
+	if bool(local_actor.call("is_dashing")):
+		fail("A synchronized faceoff must clear outstanding predicted dash state")
 		return
 	if not (client_match.get_node("HUD/MessageLabel") as Label).text.is_empty():
 		fail("The goal message must clear when the authoritative match returns to play")

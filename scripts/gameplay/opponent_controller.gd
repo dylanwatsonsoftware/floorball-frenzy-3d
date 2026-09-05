@@ -93,6 +93,8 @@ func _physics_process(delta: float) -> void:
 		decision.wants_dash = OnlineMatch.remote_dash if OnlineMatch.is_authority() else Input.is_action_just_pressed("dash")
 	if decision.wants_dash:
 		try_dash(decision.movement)
+		if is_human_controlled() and OnlineMatch.is_authority():
+			OnlineMatch.remote_dash = false
 	if is_dashing():
 		velocity = _dash_direction * PlayerMotorScript.DASH_SPEED
 	else:
@@ -194,6 +196,18 @@ func is_dashing() -> bool:
 
 func get_dash_cooldown_ratio() -> float:
 	return clampf(_dash_cooldown / PlayerMotorScript.DASH_COOLDOWN, 0.0, 1.0)
+
+
+func get_network_dash_state() -> Dictionary:
+	return {"cooldown": _dash_cooldown, "remaining": _dash_streak_remaining, "direction": _dash_direction}
+
+
+func apply_network_dash_state(cooldown: float, remaining: float, direction: Vector3) -> void:
+	_dash_cooldown = maxf(0.0, cooldown)
+	_dash_streak_remaining = maxf(0.0, remaining)
+	if not direction.is_zero_approx():
+		_dash_direction = direction.normalized()
+	_update_dash_streak()
 
 
 func has_parry_window() -> bool:

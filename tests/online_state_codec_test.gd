@@ -8,7 +8,7 @@ func _init() -> void:
 		return
 	var actors: Array = []
 	for index in range(12):
-		actors.append({"id": "red_%d" % index, "p": [float(index), 0.75, -2.0], "v": [1.0, 0.0, 0.5], "r": 0.25})
+		actors.append({"id": "red_%d" % index, "p": [float(index), 0.75, -2.0], "v": [1.0, 0.0, 0.5], "r": 0.25, "dc": 0.8, "dr": 0.12 if index == 7 else 0.0, "dd": [1.0, 0.0, 0.0]})
 	var snapshot := {
 		"type": "snapshot", "seq": 42, "host_time_ms": 123456, "input_ack": 37, "input_echo_ms": 123400,
 		"actors": actors, "ball": [1.0, 0.22, 2.0], "ball_velocity": [8.0, 0.18, -1.0],
@@ -34,6 +34,9 @@ func _init() -> void:
 		return
 	if decoded.actors[7].id != "red_7" or not is_equal_approx(float(decoded.actors[7].p[0]), 7.0):
 		fail("Binary actor state did not survive a round trip")
+		return
+	if not is_equal_approx(float(decoded.actors[7].dc), 0.8) or not is_equal_approx(float(decoded.actors[7].dr), 0.12) or not is_equal_approx(float(decoded.actors[7].dd[0]), 1.0):
+		fail("Authoritative dash state must survive snapshots so guest replay can continue an acknowledged dash; got %s" % decoded.actors[7])
 		return
 	if decoded.score != {"red": 2, "blue": 3} or decoded.owner != "blue_1" or not decoded.ball_attached:
 		fail("Binary match and possession state did not survive a round trip")
