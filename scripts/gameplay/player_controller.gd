@@ -239,6 +239,7 @@ func _update_heat_presentation() -> void:
 
 
 func set_stick_slap_angle(angle_degrees: float) -> void:
+	set_meta("stick_slap_angle", angle_degrees)
 	var stick_rig := get_node_or_null("StickRig") as Node3D
 	if stick_rig != null:
 		StickSwingPoseScript.apply(stick_rig, angle_degrees)

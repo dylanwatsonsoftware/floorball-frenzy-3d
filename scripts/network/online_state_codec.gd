@@ -45,6 +45,10 @@ static func encode_snapshot(snapshot: Dictionary, include_extended_ball_state: b
 		stream.put_32(int(snapshot.get("action_seq", 0)))
 		stream.put_utf8_string(String(snapshot.get("action_type", "")))
 		stream.put_32(int(snapshot.get("action_tick", 0)))
+		var stick_angles: Array = snapshot.get("stick_angles", [])
+		stream.put_u8(stick_angles.size())
+		for angle: Variant in stick_angles:
+			stream.put_float(float(angle))
 	return stream.data_array
 
 
@@ -82,6 +86,13 @@ static func decode_snapshot(packet: PackedByteArray) -> Dictionary:
 	snapshot.action_seq = stream.get_32() if stream.get_available_bytes() >= 4 else 0
 	snapshot.action_type = stream.get_utf8_string() if stream.get_available_bytes() > 0 else ""
 	snapshot.action_tick = stream.get_32() if stream.get_available_bytes() >= 4 else 0
+	var stick_angles: Array = []
+	if stream.get_available_bytes() > 0:
+		for _index in range(stream.get_u8()):
+			if stream.get_available_bytes() < 4:
+				break
+			stick_angles.append(stream.get_float())
+	snapshot.stick_angles = stick_angles
 	return snapshot
 
 

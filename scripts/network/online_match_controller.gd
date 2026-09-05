@@ -182,8 +182,10 @@ func _on_message(message: Dictionary) -> void:
 
 func _capture_snapshot() -> Dictionary:
 	var actors: Array = []
+	var stick_angles: Array = []
 	for actor in _arena.call("get_field_players"):
 		actors.append({"id": String(actor.call("get_actor_id")), "p": _vector3_to_array(actor.global_position), "v": _vector3_to_array(actor.velocity), "r": actor.rotation.y})
+		stick_angles.append(float(actor.get_meta("stick_slap_angle", 0.0)))
 	var match_state: Dictionary = _match_flow.call("get_network_state") if _match_flow.has_method("get_network_state") else {}
 	var owner_id := String(_ball.call("get_control_owner_actor_id"))
 	var slap_phase := StringName(_ball.call("get_slap_phase")) if _ball.has_method("get_slap_phase") else &"idle"
@@ -198,7 +200,7 @@ func _capture_snapshot() -> Dictionary:
 		_ball_action_type = pending_action
 		_ball_action_tick = _simulation_tick
 	_last_captured_ball_state = ball_state
-	return {"type": "snapshot", "seq": _sequence, "host_time_ms": Time.get_ticks_msec(), "input_ack": _last_snapshot, "input_echo_ms": _last_remote_input_sent_ms, "actors": actors, "ball": _vector3_to_array(_ball.global_position), "ball_velocity": _vector3_to_array(_ball.ball_velocity), "owner": owner_id, "ball_attached": not owner_id.is_empty(), "ball_state": String(ball_state), "possession_seq": _possession_sequence, "action_seq": _ball_action_sequence, "action_type": String(_ball_action_type), "action_tick": _ball_action_tick, "red_human": String(_ball.call("get_human_control_actor_id_for_team", &"red")), "blue_human": String(_ball.call("get_human_control_actor_id_for_team", &"blue")), "score": _match_flow.score.duplicate(), "goal_seq": int(match_state.get("goal_seq", 0)), "faceoff_seq": int(match_state.get("faceoff_seq", 0)), "scorer": String(match_state.get("scorer", "")), "phase": String(match_state.get("phase", "play")), "slap_phase": String(slap_phase)}
+	return {"type": "snapshot", "seq": _sequence, "host_time_ms": Time.get_ticks_msec(), "input_ack": _last_snapshot, "input_echo_ms": _last_remote_input_sent_ms, "actors": actors, "stick_angles": stick_angles, "ball": _vector3_to_array(_ball.global_position), "ball_velocity": _vector3_to_array(_ball.ball_velocity), "owner": owner_id, "ball_attached": not owner_id.is_empty(), "ball_state": String(ball_state), "possession_seq": _possession_sequence, "action_seq": _ball_action_sequence, "action_type": String(_ball_action_type), "action_tick": _ball_action_tick, "red_human": String(_ball.call("get_human_control_actor_id_for_team", &"red")), "blue_human": String(_ball.call("get_human_control_actor_id_for_team", &"blue")), "score": _match_flow.score.duplicate(), "goal_seq": int(match_state.get("goal_seq", 0)), "faceoff_seq": int(match_state.get("faceoff_seq", 0)), "scorer": String(match_state.get("scorer", "")), "phase": String(match_state.get("phase", "play")), "slap_phase": String(slap_phase)}
 
 
 func _apply_snapshot(snapshot: Dictionary) -> void:
@@ -211,6 +213,8 @@ func _apply_snapshot(snapshot: Dictionary) -> void:
 	_pending_inputs = [] if is_new_faceoff else OnlineInputScript.discard_acknowledged_inputs(_pending_inputs, int(snapshot.get("input_ack", -1)))
 	for actor in _arena.call("get_field_players"):
 		actor_by_id[String(actor.call("get_actor_id"))] = actor
+	var stick_angles: Array = snapshot.get("stick_angles", [])
+	var state_index := 0
 	for state: Dictionary in snapshot.get("actors", []):
 		var actor: CharacterBody3D = actor_by_id.get(String(state.get("id", "")))
 		if actor != null:
@@ -235,6 +239,10 @@ func _apply_snapshot(snapshot: Dictionary) -> void:
 				_apply_actor_rotation(actor, replicated_rotation)
 			else:
 				_remote_rotation_targets[String(actor.call("get_actor_id"))] = authoritative_rotation
+			var has_local_action_prediction := is_local_actor and (_local_shoot_was_pressed or (_predicted_ball_action != null and bool(_predicted_ball_action.get("active"))))
+			if state_index < stick_angles.size() and not has_local_action_prediction:
+				actor.call("set_stick_slap_angle", float(stick_angles[state_index]))
+		state_index += 1
 	_last_authoritative_action_sequence = maxi(_last_authoritative_action_sequence, int(snapshot.get("action_seq", 0)))
 	var ignore_ball_snapshot := false
 	if _predicted_ball_action != null and bool(_predicted_ball_action.get("active")):

@@ -76,8 +76,8 @@ func is_shot_aim_locked() -> bool:
 	return _shot_aim_locked
 
 
-func set_stick_slap_angle(_angle_degrees: float) -> void:
-	pass
+func set_stick_slap_angle(angle_degrees: float) -> void:
+	set_meta("stick_slap_angle", angle_degrees)
 
 
 func get_actor_id() -> StringName:

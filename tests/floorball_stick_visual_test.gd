@@ -83,6 +83,9 @@ func run_test() -> void:
 		var body_rig := actor.get_node("BodyRig") as Node3D
 		var resting_grip_world: Vector3 = grip.to_global(grip.get_aabb().get_center())
 		actor.call("set_stick_slap_angle", slap.BACKSWING_ANGLE)
+		if not is_equal_approx(float(actor.get_meta("stick_slap_angle", 0.0)), slap.BACKSWING_ANGLE):
+			fail("Player controllers must expose their current stick pose for network replication")
+			return
 		grip.force_update_transform()
 		var wound_grip_world: Vector3 = grip.to_global(grip.get_aabb().get_center())
 		if wound_grip_world.distance_to(resting_grip_world) > 0.18:

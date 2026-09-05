@@ -35,6 +35,13 @@ func run_test() -> void:
 	if not authority_snapshot.has("host_time_ms") or not authority_snapshot.has("input_echo_ms"):
 		fail("Authority snapshots must carry host time and echo guest send-time for packet-age estimation")
 		return
+	var authority_action_actor: CharacterBody3D = arena.call("get_field_players")[0]
+	authority_action_actor.call("set_stick_slap_angle", 32.0)
+	authority_snapshot = match_scene.get_node("OnlineMatchController").call("_capture_snapshot")
+	if authority_snapshot.get("stick_angles", []).size() != authority_snapshot.actors.size() or not is_equal_approx(float(authority_snapshot.stick_angles[0]), 32.0):
+		fail("Authority snapshots must include every player's current stick/torso action pose")
+		return
+	authority_action_actor.call("set_stick_slap_angle", 0.0)
 	match_scene.queue_free()
 	await process_frame
 	root.get_node("OnlineMatch").call("stop")
@@ -45,6 +52,7 @@ func run_test() -> void:
 	await process_frame
 	await process_frame
 	var client_arena := client_match.get_node("Arena")
+	var client_controller := client_match.get_node("OnlineMatchController")
 	for replicated_actor in client_arena.call("get_field_players"):
 		if replicated_actor.physics_interpolation_mode != Node.PHYSICS_INTERPOLATION_MODE_OFF:
 			fail("Guest replicas must use network smoothing without a second physics-interpolation pass")
@@ -76,11 +84,18 @@ func run_test() -> void:
 	if remote_actor.get_node("ControlRing").visible:
 		fail("Only the local player should receive the ground control ring")
 		return
+	var remote_pose_snapshot: Dictionary = client_controller.call("_capture_snapshot")
+	remote_pose_snapshot.stick_angles = []
+	for actor_state: Dictionary in remote_pose_snapshot.actors:
+		remote_pose_snapshot.stick_angles.append(38.0 if actor_state.id == String(remote_actor.call("get_actor_id")) else 0.0)
+	client_controller.call("_apply_snapshot", remote_pose_snapshot)
+	if not is_equal_approx(float(remote_actor.get_meta("stick_slap_angle", 0.0)), 38.0) or absf((remote_actor.get_node("BodyRig") as Node3D).rotation.y) < 0.1:
+		fail("A guest must render the replicated opponent stick swing and torso twist")
+		return
 	var camera_actor: CharacterBody3D = client_arena.call("get_camera_actor", client_arena.get_node("Ball"))
 	if camera_actor != local_actor:
 		fail("The guest camera must follow the locally controlled Pirates player")
 		return
-	var client_controller := client_match.get_node("OnlineMatchController")
 	var diagnostics_label := client_controller.get_node_or_null("Diagnostics") as Label
 	if diagnostics_label == null:
 		fail("Online matches need an optional diagnostics overlay for measuring guest prediction")
