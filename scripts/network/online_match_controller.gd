@@ -475,7 +475,7 @@ func _predict_local_player(movement: Vector2, delta: float) -> void:
 	if actor == null:
 		return
 	var has_ball := _ball.has_method("is_controlled_by_actor") and bool(_ball.call("is_controlled_by_actor", actor.call("get_actor_id")))
-	var speed_multiplier := 0.88 if has_ball else 1.0
+	var speed_multiplier := PlayerMotorScript.movement_speed_multiplier(true, has_ball)
 	var predicted: Dictionary = OnlineInputScript.predict_player_state(actor.global_position, actor.velocity, movement, delta, speed_multiplier)
 	predicted.position.x = clampf(predicted.position.x, -RINK_HALF_LENGTH, RINK_HALF_LENGTH)
 	predicted.position.z = clampf(predicted.position.z, -RINK_HALF_WIDTH, RINK_HALF_WIDTH)
@@ -492,7 +492,7 @@ func _predict_local_player(movement: Vector2, delta: float) -> void:
 func _record_pending_input(sequence: int, movement: Vector2, delta: float) -> void:
 	var actor := _arena.call("get_local_human_actor") as CharacterBody3D
 	var has_ball := actor != null and _ball.has_method("is_controlled_by_actor") and bool(_ball.call("is_controlled_by_actor", actor.call("get_actor_id")))
-	_pending_inputs.append({"seq": sequence, "move": movement, "delta": delta, "speed_multiplier": 0.88 if has_ball else 1.0})
+	_pending_inputs.append({"seq": sequence, "move": movement, "delta": delta, "speed_multiplier": PlayerMotorScript.movement_speed_multiplier(true, has_ball)})
 	if _pending_inputs.size() > 120:
 		_pending_inputs.pop_front()
 

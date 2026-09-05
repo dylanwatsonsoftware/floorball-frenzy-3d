@@ -123,4 +123,4 @@ static func next_action_sequence(current: int, just_pressed: bool) -> int:
 
 
 static func prediction_speed(has_ball: bool) -> float:
-	return 9.0 * (0.88 if has_ball else 1.0)
+	return PlayerMotorScript.MAX_SPEED * PlayerMotorScript.movement_speed_multiplier(true, has_ball)

@@ -149,3 +149,14 @@ Every networking milestone should be exercised against this minimum matrix:
 6. Predicted pickup, pass, shot, and goal presentation.
 7. Rigged-player and animation vertical slice.
 8. Full-team migration and presentation polish.
+
+## Implementation evidence
+
+This section records what is proven in the current repository; unchecked work remains part of the roadmap rather than being implied complete.
+
+| Milestone | Proven evidence | Remaining validation |
+| --- | --- | --- |
+| 1 — diagnostics | In-game FPS/frame/RTT/jitter/loss/snapshot-age/prediction-error HUD; deterministic network-condition profiles and seeded schedules | Persistable input/state trace capture and real-device baseline reports |
+| 2 — shared player simulation | `PlayerMotor` drives authoritative and predicted movement; human/AI and possession speed modifiers have one shared rule; 30/60 FPS fixed-step equivalence test | Unify dash and complete action commands into the same tick-based command path |
+| 3 — guest reconciliation | Input sequence acknowledgements, outstanding-input replay, timestamped snapshots, remote extrapolation, rotation smoothing; seeded player gate passes at 150 ms RTT / 2% loss | Real-device validation and explicit remote interpolation buffer under bursty delivery |
+| 4 — ball/action prediction | Explicit owner/state/generation/action metadata, possessed blade following, immediate predicted pass/shot, stale-snapshot rejection; seeded pass/shot gate passes at 150 ms RTT / 2% loss | Lag-compensated host hit history, pickup accept/reject events, predicted goal presentation, and real-device validation |

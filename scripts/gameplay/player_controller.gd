@@ -61,13 +61,8 @@ func _physics_process(delta: float) -> void:
 	if is_dashing():
 		velocity = _dash_direction * PlayerMotorScript.DASH_SPEED
 	else:
-		var speed_multiplier := HeatSystemScript.speed_multiplier(_fuego_remaining)
-		if not is_human_controlled():
-			speed_multiplier *= PlayerMotorScript.AI_SPEED_MULTIPLIER
-		if _ball != null and _ball.has_method("is_controlled_by_actor") and bool(_ball.call("is_controlled_by_actor", get_actor_id())):
-			speed_multiplier *= PlayerMotorScript.BALL_CARRIER_SPEED_MULTIPLIER
-		else:
-			speed_multiplier *= PlayerMotorScript.OFF_BALL_SPEED_MULTIPLIER
+		var has_ball := _ball != null and _ball.has_method("is_controlled_by_actor") and bool(_ball.call("is_controlled_by_actor", get_actor_id()))
+		var speed_multiplier := PlayerMotorScript.movement_speed_multiplier(is_human_controlled(), has_ball, HeatSystemScript.speed_multiplier(_fuego_remaining))
 		velocity = PlayerMotorScript.step_velocity(velocity, input_vector, delta, speed_multiplier)
 	move_and_slide()
 	var boundary := RinkCollisionScript.constrain_body(global_position, velocity, RINK_HALF_LENGTH, RINK_HALF_WIDTH, 1.8)

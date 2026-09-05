@@ -17,6 +17,11 @@ static func combine_inputs(primary: Vector2, secondary: Vector2) -> Vector2:
 	return (primary + secondary).limit_length(1.0)
 
 
+static func movement_speed_multiplier(is_human: bool, has_ball: bool, base_multiplier: float = 1.0) -> float:
+	var control_multiplier := BALL_CARRIER_SPEED_MULTIPLIER if has_ball else OFF_BALL_SPEED_MULTIPLIER
+	return maxf(0.0, base_multiplier) * control_multiplier * (1.0 if is_human else AI_SPEED_MULTIPLIER)
+
+
 static func step_velocity(current: Vector3, input_vector: Vector2, delta: float, speed_multiplier: float = 1.0) -> Vector3:
 	var planar := Vector3(current.x, 0.0, current.z)
 	var input_direction := input_vector.limit_length(1.0)

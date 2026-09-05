@@ -126,8 +126,8 @@ func _init() -> void:
 	if controller.next_action_sequence(4, false) != 4 or controller.next_action_sequence(4, true) != 5:
 		fail("Discrete online actions need persistent sequence numbers so unreliable packets can be repeated safely")
 		return
-	if not is_equal_approx(controller.prediction_speed(false), 9.0) or not is_equal_approx(controller.prediction_speed(true), 7.92):
-		fail("Guest prediction must use the same carrier speed penalty as the host simulation")
+	if not is_equal_approx(controller.prediction_speed(false), 9.72) or not is_equal_approx(controller.prediction_speed(true), 7.92):
+		fail("Guest prediction must use the same off-ball boost and carrier penalty as the host simulation")
 		return
 	var constants: Dictionary = controller.get_script_constant_map()
 	if not constants.has("DEFAULT_SNAPSHOT_SECONDS") or float(constants.get("DEFAULT_SNAPSHOT_SECONDS", 1.0)) > 1.0 / 30.0 + 0.0001:

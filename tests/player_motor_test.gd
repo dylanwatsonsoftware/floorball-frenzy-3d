@@ -51,6 +51,15 @@ func _init() -> void:
 	if ai_support_speed <= ai_carrier_speed * 1.15 or ai_support_speed >= script.MAX_SPEED:
 		fail("AI support must outrun its carrier without matching full human pace")
 		return
+	var human_off_ball_multiplier: float = script.movement_speed_multiplier(true, false)
+	var human_carrier_multiplier: float = script.movement_speed_multiplier(true, true)
+	var ai_off_ball_multiplier: float = script.movement_speed_multiplier(false, false)
+	if not is_equal_approx(human_off_ball_multiplier, script.OFF_BALL_SPEED_MULTIPLIER) or not is_equal_approx(human_carrier_multiplier, script.BALL_CARRIER_SPEED_MULTIPLIER):
+		fail("Every solo, host, and guest human must use the same possession speed rule")
+		return
+	if not is_equal_approx(ai_off_ball_multiplier, script.AI_SPEED_MULTIPLIER * script.OFF_BALL_SPEED_MULTIPLIER):
+		fail("Only AI-controlled players should receive the global AI speed handicap")
+		return
 
 	var slowed: Vector3 = script.step_velocity(Vector3(5.0, 0.0, 0.0), Vector2.ZERO, 0.1)
 	if slowed.length() >= 5.0:
