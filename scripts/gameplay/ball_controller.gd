@@ -555,7 +555,7 @@ func _update_network_blue_actions(delta: float) -> void:
 	elif _network_blue_was_shooting and _network_blue_charge > 0.0:
 		_slap_actor = actor
 		var facing: Vector3 = actor.call("get_facing_direction")
-		_configure_slap(Vector2(facing.x, facing.z), _network_blue_charge / MAX_CHARGE_SECONDS, StickSlapScript.BACKSWING_SECONDS)
+		_configure_slap(Vector2(facing.x, facing.z), _network_blue_charge / MAX_CHARGE_SECONDS, StickSlapScript.network_start_elapsed(&"shot", OnlineMatch.remote_rtt_ms / 2000.0))
 		_network_blue_charge = 0.0
 	_network_blue_was_shooting = OnlineMatch.remote_shoot
 
@@ -571,7 +571,7 @@ func _start_network_pass(actor: CharacterBody3D) -> void:
 	var target: Dictionary = SquadLogicScript.forward_teammate(actor.call("get_actor_id"), actor.global_position, facing, teammates)
 	var direction := Vector2(facing.x, facing.z) if target.is_empty() else Vector2(target.position.x - actor.global_position.x, target.position.z - actor.global_position.z)
 	_slap_actor = actor
-	_configure_slap(direction, 0.38, 0.0, true)
+	_configure_slap(direction, 0.38, StickSlapScript.network_start_elapsed(&"pass", OnlineMatch.remote_rtt_ms / 2000.0), true)
 	_pending_soft_pass = target.is_empty()
 
 

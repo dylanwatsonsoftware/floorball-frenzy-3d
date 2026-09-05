@@ -116,7 +116,7 @@ func _physics_process(delta: float) -> void:
 		var shoot_pressed := Input.is_action_pressed("shoot")
 		_pass_sequence = OnlineInputScript.next_action_sequence(_pass_sequence, pass_pressed)
 		_switch_sequence = OnlineInputScript.next_action_sequence(_switch_sequence, Input.is_action_just_pressed("switch_player"))
-		_transport.send({"type": "input", "seq": _sequence, "tick": _simulation_tick, "sent_ms": Time.get_ticks_msec(), "move": _vector_to_array(movement), "dash": Input.is_action_pressed("dash"), "shoot": shoot_pressed, "pass_seq": _pass_sequence, "switch_seq": _switch_sequence})
+		_transport.send({"type": "input", "seq": _sequence, "tick": _simulation_tick, "sent_ms": Time.get_ticks_msec(), "rtt_ms": _estimated_rtt_ms, "move": _vector_to_array(movement), "dash": Input.is_action_pressed("dash"), "shoot": shoot_pressed, "pass_seq": _pass_sequence, "switch_seq": _switch_sequence})
 		_record_pending_input(_sequence, movement, delta)
 		_predict_local_player(movement, delta)
 		_predict_replicas(delta)
@@ -140,6 +140,7 @@ func _on_message(message: Dictionary) -> void:
 		OnlineMatch.remote_input = _array_to_vector(message.get("move", [0.0, 0.0]))
 		OnlineMatch.remote_dash = bool(message.get("dash", false))
 		OnlineMatch.remote_shoot = bool(message.get("shoot", false))
+		OnlineMatch.remote_rtt_ms = clampf(float(message.get("rtt_ms", 0.0)), 0.0, 500.0)
 		var pass_sequence := int(message.get("pass_seq", 0))
 		if pass_sequence > _last_remote_pass_sequence:
 			_last_remote_pass_sequence = pass_sequence

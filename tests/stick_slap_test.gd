@@ -33,6 +33,17 @@ func _init() -> void:
 	if before_contact > 0.01 or at_contact < 0.12 or completed < 0.24:
 		fail("The player must stay planted during wind-up, then step through contact; step=%s/%s/%s" % [before_contact, at_contact, completed])
 		return
+	var compensated_pass_start: float = slap.network_start_elapsed(&"pass", 0.075)
+	var compensated_shot_start: float = slap.network_start_elapsed(&"shot", 0.075)
+	if slap.CONTACT_SECONDS - compensated_pass_start > 0.25:
+		fail("A remote pass should compensate for measured one-way transit before host contact")
+		return
+	if slap.CONTACT_SECONDS - compensated_shot_start > 0.05:
+		fail("A remote shot release should not repeat network transit as extra forward-swing delay")
+		return
+	if slap.network_start_elapsed(&"pass", 1.0) >= slap.CONTACT_SECONDS:
+		fail("Network compensation must never skip authoritative stick contact")
+		return
 	print("Stick slap timing is valid.")
 	quit(0)
 

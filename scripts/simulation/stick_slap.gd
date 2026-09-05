@@ -9,6 +9,7 @@ const TOTAL_SECONDS := BACKSWING_SECONDS + FORWARD_SECONDS + RECOVERY_SECONDS
 const BACKSWING_ANGLE := -82.0
 const CONTACT_ANGLE := 42.0
 const FORWARD_STEP_DISTANCE := 0.30
+const NETWORK_CONTACT_GUARD_SECONDS := 1.0 / 120.0
 
 
 static func phase_at(elapsed: float) -> StringName:
@@ -47,3 +48,9 @@ static func forward_step_at(elapsed: float) -> float:
 	var progress := clampf((elapsed - BACKSWING_SECONDS) / FORWARD_SECONDS, 0.0, 1.0)
 	var eased := 1.0 - pow(1.0 - progress, 2.0)
 	return FORWARD_STEP_DISTANCE * eased
+
+
+static func network_start_elapsed(action_type: StringName, estimated_one_way_seconds: float) -> float:
+	var transit := clampf(estimated_one_way_seconds, 0.0, 0.12)
+	var base := BACKSWING_SECONDS if action_type == &"shot" else 0.0
+	return minf(CONTACT_SECONDS - NETWORK_CONTACT_GUARD_SECONDS, base + transit)
