@@ -41,7 +41,7 @@ func step(delta: float, blade_position: Vector3) -> Dictionary:
 		velocity = inherited_velocity
 		if StickSlapScript.crossed_contact(previous_elapsed, elapsed):
 			attached = false
-			velocity = BallSimulationScript.pass_velocity(direction, inherited_velocity) if action_type == &"pass" else BallSimulationScript.shot_velocity(direction, charge, inherited_velocity)
+			velocity = BallSimulationScript.pass_velocity(direction, inherited_velocity, charge) if action_type == &"pass" else BallSimulationScript.shot_velocity(direction, charge, inherited_velocity)
 			var remaining := maxf(0.0, elapsed - StickSlapScript.CONTACT_SECONDS)
 			if remaining > 0.0:
 				var released: Dictionary = BallSimulationScript.step(position, velocity, remaining)

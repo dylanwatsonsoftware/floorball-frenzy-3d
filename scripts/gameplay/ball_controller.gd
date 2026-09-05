@@ -148,13 +148,13 @@ func launch(planar_direction: Vector2, charge: float, inherited_velocity: Vector
 			_award_heat(shooter, 30.0)
 
 
-func _launch_pass(planar_direction: Vector2, inherited_velocity: Vector3, passer: StringName, soft_touch: bool = false) -> void:
+func _launch_pass(planar_direction: Vector2, inherited_velocity: Vector3, passer: StringName, soft_touch: bool = false, strength: float = BallSimulationScript.MIN_PASS_STRENGTH) -> void:
 	_pickup_lock_actor_id = _slap_actor.call("get_actor_id") if _slap_actor != null else &""
 	_pickup_lock_seconds = PASSER_PICKUP_LOCK_SECONDS
 	_control_owner = -1
 	_ai_possession_seconds = 0.0
 	_reset_ai_shot()
-	ball_velocity = BallSimulationScript.soft_touch_velocity(planar_direction, inherited_velocity) if soft_touch else BallSimulationScript.pass_velocity(planar_direction, inherited_velocity)
+	ball_velocity = BallSimulationScript.soft_touch_velocity(planar_direction, inherited_velocity) if soft_touch else BallSimulationScript.pass_velocity(planar_direction, inherited_velocity, strength)
 	_scoop_remaining = 0.0
 	_set_shot_trail_style(false, false, false)
 	record_touch(passer)
@@ -345,7 +345,8 @@ func pass_to_closest_teammate() -> bool:
 	_cancel_active_charge(false)
 	_slap_actor = carrier
 	var offset := Vector2(facing.x, facing.z) if target.is_empty() else Vector2(target.position.x - carrier.global_position.x, target.position.z - carrier.global_position.z)
-	_configure_slap(offset, 0.38, 0.0, true)
+	var pass_strength := BallSimulationScript.MIN_PASS_STRENGTH if target.is_empty() else BallSimulationScript.pass_strength_for_distance(offset.length())
+	_configure_slap(offset, pass_strength, 0.0, true)
 	_pending_soft_pass = target.is_empty()
 	_slap_actor.call("set_stick_slap_angle", StickSlapScript.angle_at(0.0))
 	return true
@@ -403,7 +404,7 @@ func _advance_slap(delta: float) -> void:
 	if StickSlapScript.crossed_contact(previous_elapsed, _slap_elapsed) and (_ball_in_slap_actor_blade() or _pending_lag_compensated_contact):
 		var slap_team: StringName = _slap_actor.call("get_team")
 		if _pending_pass:
-			_launch_pass(_pending_slap_direction, _slap_actor.velocity, slap_team, _pending_soft_pass)
+			_launch_pass(_pending_slap_direction, _slap_actor.velocity, slap_team, _pending_soft_pass, _pending_slap_charge)
 		else:
 			launch(_pending_slap_direction, _pending_slap_charge, _slap_actor.velocity, _pending_one_touch, slap_team, _pending_bolt)
 		_play_contact_feedback(_pending_slap_charge, _pending_bolt)
@@ -594,7 +595,8 @@ func _start_network_pass(actor: CharacterBody3D) -> void:
 	var direction := Vector2(facing.x, facing.z) if target.is_empty() else Vector2(target.position.x - actor.global_position.x, target.position.z - actor.global_position.z)
 	_slap_actor = actor
 	_pending_lag_compensated_contact = _lag_compensated_network_hit(actor, OnlineMatch.remote_rtt_ms)
-	_configure_slap(direction, 0.38, StickSlapScript.network_start_elapsed(&"pass", OnlineMatch.remote_rtt_ms / 2000.0), true)
+	var pass_strength := BallSimulationScript.MIN_PASS_STRENGTH if target.is_empty() else BallSimulationScript.pass_strength_for_distance(direction.length())
+	_configure_slap(direction, pass_strength, StickSlapScript.network_start_elapsed(&"pass", OnlineMatch.remote_rtt_ms / 2000.0), true)
 	_pending_soft_pass = target.is_empty()
 
 

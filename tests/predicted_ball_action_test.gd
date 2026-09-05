@@ -16,6 +16,12 @@ func _init() -> void:
 	if at_contact.attached or at_contact.velocity.x < 8.0:
 		fail("A predicted pass must release locally at the slap contact frame; got %s" % at_contact)
 		return
+	var long_action = action_script.new()
+	long_action.begin(9, &"pass", Vector3.ZERO, Vector2.RIGHT, Vector3.ZERO, 1.0)
+	var long_contact: Dictionary = long_action.step(0.32, Vector3.ZERO)
+	if long_contact.velocity.x <= at_contact.velocity.x + 2.0:
+		fail("Guest prediction must preserve the extra power of a long automatic pass; short=%s long=%s" % [at_contact.velocity, long_contact.velocity])
+		return
 	var moving: Dictionary = action.step(1.0 / 60.0, Vector3.ZERO)
 	if moving.position.x <= at_contact.position.x:
 		fail("A released predicted pass must simulate locally between snapshots; got %s" % moving)

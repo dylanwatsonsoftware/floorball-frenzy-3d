@@ -24,16 +24,25 @@ const FLOOR_BOUNCE := 0.42
 const WALL_BOUNCE := 0.78
 const ROLLING_DECELERATION := 1.8
 const MIN_VERTICAL_BOUNCE := 0.6
+const MIN_PASS_STRENGTH := 0.38
+const MAX_PASS_STRENGTH := 1.0
+const MIN_FULL_PASS_DISTANCE := 4.0
+const MAX_FULL_PASS_DISTANCE := 14.0
 
 
 static func shot_velocity(aim: Vector2, charge: float, inherited_velocity: Vector3 = Vector3.ZERO, one_touch: bool = false, bolt: bool = false) -> Vector3:
 	return shot_plan(aim, charge, inherited_velocity, one_touch, bolt).velocity
 
 
-static func pass_velocity(aim: Vector2, inherited_velocity: Vector3 = Vector3.ZERO) -> Vector3:
+static func pass_strength_for_distance(distance: float) -> float:
+	return remap(clampf(distance, MIN_FULL_PASS_DISTANCE, MAX_FULL_PASS_DISTANCE), MIN_FULL_PASS_DISTANCE, MAX_FULL_PASS_DISTANCE, MIN_PASS_STRENGTH, MAX_PASS_STRENGTH)
+
+
+static func pass_velocity(aim: Vector2, inherited_velocity: Vector3 = Vector3.ZERO, strength: float = MIN_PASS_STRENGTH) -> Vector3:
 	var direction := aim.normalized() if not aim.is_zero_approx() else Vector2.RIGHT
-	var planar := direction * 8.5 + Vector2(inherited_velocity.x, inherited_velocity.z) * 0.2
-	planar = planar.limit_length(9.8)
+	var pass_speed := lerpf(8.5, 12.0, inverse_lerp(MIN_PASS_STRENGTH, MAX_PASS_STRENGTH, clampf(strength, MIN_PASS_STRENGTH, MAX_PASS_STRENGTH)))
+	var planar := direction * pass_speed + Vector2(inherited_velocity.x, inherited_velocity.z) * 0.2
+	planar = planar.limit_length(12.8)
 	return Vector3(planar.x, 0.18, planar.y)
 
 

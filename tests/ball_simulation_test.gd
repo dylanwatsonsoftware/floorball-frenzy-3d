@@ -36,6 +36,12 @@ func _init() -> void:
 	if pass_speed < 7.0 or pass_speed > 10.0 or pass_velocity.y > 0.5:
 		fail("A floorball pass must stay grounded and catchable instead of behaving like a shot; got %s" % pass_velocity)
 		return
+	var short_pass_strength: float = script.pass_strength_for_distance(4.0)
+	var long_pass_strength: float = script.pass_strength_for_distance(14.0)
+	var long_pass_velocity: Vector3 = script.pass_velocity(Vector2.RIGHT, Vector3.ZERO, long_pass_strength)
+	if short_pass_strength < 0.35 or long_pass_strength < 0.95 or long_pass_velocity.length() <= script.pass_velocity(Vector2.RIGHT, Vector3.ZERO, short_pass_strength).length() + 2.0:
+		fail("Automatic passes must kick significantly harder for a distant receiver; short=%s long=%s velocity=%s" % [short_pass_strength, long_pass_strength, long_pass_velocity])
+		return
 	if not script.has_method("soft_touch_velocity"):
 		fail("A pass attempt with no forward receiver needs a short push velocity")
 		return

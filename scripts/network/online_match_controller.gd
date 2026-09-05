@@ -451,6 +451,7 @@ func _begin_predicted_ball_action(actor: CharacterBody3D, action_type: StringNam
 		var target: Dictionary = SquadLogicScript.forward_teammate(actor.call("get_actor_id"), actor.global_position, actor.call("get_facing_direction"), teammates)
 		if not target.is_empty():
 			direction = Vector2(target.position.x - actor.global_position.x, target.position.z - actor.global_position.z)
+			charge = BallSimulationScript.pass_strength_for_distance(direction.length())
 	var blade := actor.get_node_or_null("StickRig/BladePocket") as Marker3D
 	var origin := _ball.global_position
 	if blade != null:
