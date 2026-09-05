@@ -107,6 +107,8 @@ func _on_disconnected() -> void:
 
 func _physics_process(delta: float) -> void:
 	_simulation_tick += 1
+	if Input.is_action_just_pressed("toggle_network_diagnostics"):
+		set_diagnostics_visible(not _diagnostics_label.visible)
 	_diagnostics.record_frame(delta)
 	_diagnostics_refresh_elapsed += delta
 	if _diagnostics_refresh_elapsed >= 0.25:

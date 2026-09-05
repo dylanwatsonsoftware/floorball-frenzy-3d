@@ -80,6 +80,9 @@ func run_test() -> void:
 	if diagnostics_label == null:
 		fail("Online matches need an optional diagnostics overlay for measuring guest prediction")
 		return
+	if not InputMap.has_action("toggle_network_diagnostics"):
+		fail("Developers need an input action to toggle online diagnostics on real devices")
+		return
 	client_controller.call("set_diagnostics_visible", true)
 	client_controller.call("_refresh_diagnostics")
 	if not diagnostics_label.visible or not diagnostics_label.text.contains("FPS") or not diagnostics_label.text.contains("PLAYER ERR"):
