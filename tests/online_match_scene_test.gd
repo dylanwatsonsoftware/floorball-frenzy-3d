@@ -76,6 +76,15 @@ func run_test() -> void:
 		fail("The guest camera must follow the locally controlled Pirates player")
 		return
 	var client_controller := client_match.get_node("OnlineMatchController")
+	var diagnostics_label := client_controller.get_node_or_null("Diagnostics") as Label
+	if diagnostics_label == null:
+		fail("Online matches need an optional diagnostics overlay for measuring guest prediction")
+		return
+	client_controller.call("set_diagnostics_visible", true)
+	client_controller.call("_refresh_diagnostics")
+	if not diagnostics_label.visible or not diagnostics_label.text.contains("FPS") or not diagnostics_label.text.contains("PLAYER ERR"):
+		fail("The diagnostics overlay must expose frame and prediction measurements when enabled")
+		return
 	var client_ball = client_arena.get_node("Ball")
 	var possessed_snapshot: Dictionary = client_controller.call("_capture_snapshot")
 	possessed_snapshot.owner = String(remote_actor.call("get_actor_id"))

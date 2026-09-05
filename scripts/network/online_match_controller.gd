@@ -6,6 +6,7 @@ const TransportScript = preload("res://scripts/network/webrtc_transport.gd")
 const OnlineInputScript = preload("res://scripts/network/online_input.gd")
 const BallSimulationScript = preload("res://scripts/simulation/ball_simulation.gd")
 const StateCodecScript = preload("res://scripts/network/online_state_codec.gd")
+const NetworkDiagnosticsScript = preload("res://scripts/network/network_diagnostics.gd")
 const SNAPSHOT_SECONDS := OnlineInputScript.DEFAULT_SNAPSHOT_SECONDS
 const RINK_HALF_LENGTH := 19.1
 const RINK_HALF_WIDTH := 9.1
@@ -33,6 +34,11 @@ var _snapshot_age_seconds := 0.0
 var _received_snapshots := 0
 var _missing_snapshots := 0
 var _ball_attached_to_owner := false
+var _diagnostics: RefCounted
+var _diagnostics_label: Label
+var _diagnostics_refresh_elapsed := 0.0
+var _latest_player_prediction_error := 0.0
+var _latest_ball_prediction_error := 0.0
 
 
 func _ready() -> void:
@@ -45,6 +51,13 @@ func _ready() -> void:
 	_status.add_theme_font_size_override("font_size", 18)
 	_status.text = "ONLINE · ROOM %s" % OnlineMatch.room_id
 	get_parent().get_node("HUD").add_child(_status)
+	_diagnostics = NetworkDiagnosticsScript.new()
+	_diagnostics_label = Label.new()
+	_diagnostics_label.name = "Diagnostics"
+	_diagnostics_label.position = Vector2(20.0, 48.0)
+	_diagnostics_label.add_theme_font_size_override("font_size", 14)
+	_diagnostics_label.visible = false
+	add_child(_diagnostics_label)
 	_transport = TransportScript.new()
 	add_child(_transport)
 	_transport.status_changed.connect(func(text: String) -> void: _status.text = "ONLINE · %s · %s" % [OnlineMatch.room_id, text])
@@ -76,6 +89,11 @@ func _on_disconnected() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	_diagnostics.record_frame(delta)
+	_diagnostics_refresh_elapsed += delta
+	if _diagnostics_refresh_elapsed >= 0.25:
+		_diagnostics_refresh_elapsed = 0.0
+		_refresh_diagnostics()
 	if OnlineMatch.role == &"client":
 		_sequence += 1
 		var movement := _movement_input()
@@ -120,6 +138,7 @@ func _on_message(message: Dictionary) -> void:
 			_missing_snapshots += maxi(0, seq - _last_snapshot - 1)
 		_received_snapshots += 1
 		_last_snapshot = seq
+		_diagnostics.record_snapshot_sequence(seq)
 		_apply_snapshot(message)
 		_update_connection_diagnostics()
 
@@ -155,6 +174,7 @@ func _apply_snapshot(snapshot: Dictionary) -> void:
 				authoritative_position = OnlineInputScript.replay_inputs(authoritative_position, _pending_inputs)
 				authoritative_position.x = clampf(authoritative_position.x, -RINK_HALF_LENGTH, RINK_HALF_LENGTH)
 				authoritative_position.z = clampf(authoritative_position.z, -RINK_HALF_WIDTH, RINK_HALF_WIDTH)
+				_latest_player_prediction_error = actor.global_position.distance_to(authoritative_position)
 			elif not is_new_faceoff:
 				authoritative_position = OnlineInputScript.project_snapshot_position(authoritative_position, authoritative_velocity, _snapshot_age_seconds)
 			actor.global_position = authoritative_position if is_new_faceoff else OnlineInputScript.reconcile_position(actor.global_position, authoritative_position, is_local_actor)
@@ -175,6 +195,8 @@ func _apply_snapshot(snapshot: Dictionary) -> void:
 		var aged_ball: Dictionary = BallSimulationScript.step(authoritative_ball, authoritative_ball_velocity, _snapshot_age_seconds)
 		authoritative_ball = aged_ball.position
 		authoritative_ball_velocity = aged_ball.velocity
+	_latest_ball_prediction_error = _ball.global_position.distance_to(authoritative_ball)
+	_diagnostics.record_prediction_error(_latest_player_prediction_error, _latest_ball_prediction_error)
 	_ball.global_position = authoritative_ball if is_new_faceoff or not possession.is_empty() else OnlineInputScript.reconcile_ball_position(_ball.global_position, authoritative_ball)
 	_ball.ball_velocity = authoritative_ball_velocity
 	var score: Dictionary = snapshot.get("score", {})
@@ -198,16 +220,40 @@ func _update_snapshot_timing(snapshot: Dictionary) -> void:
 	if echoed_input_ms >= 0:
 		var rtt_sample := maxf(0.0, float(received_at_ms - echoed_input_ms))
 		_estimated_rtt_ms = rtt_sample if _estimated_rtt_ms <= 0.0 else lerpf(_estimated_rtt_ms, rtt_sample, 0.15)
+		_diagnostics.record_round_trip(rtt_sample)
 	var host_time_ms := int(snapshot.get("host_time_ms", received_at_ms))
 	var offset_sample := OnlineInputScript.estimate_clock_offset_ms(received_at_ms, host_time_ms, _estimated_rtt_ms)
 	_host_clock_offset_ms = offset_sample if not _has_clock_offset else lerpf(_host_clock_offset_ms, offset_sample, 0.1)
 	_has_clock_offset = true
 	_snapshot_age_seconds = OnlineInputScript.snapshot_age_seconds(received_at_ms, host_time_ms, _host_clock_offset_ms)
+	_diagnostics.record_snapshot_age(_snapshot_age_seconds)
 
 
 func _update_connection_diagnostics() -> void:
 	var loss := OnlineInputScript.packet_loss_percent(_received_snapshots, _missing_snapshots)
 	_status.text = "ONLINE · %s · %s" % [OnlineMatch.room_id, OnlineInputScript.connection_diagnostic_text(_estimated_rtt_ms, loss)]
+
+
+func set_diagnostics_visible(is_visible: bool) -> void:
+	_diagnostics_label.visible = is_visible
+	if is_visible:
+		_refresh_diagnostics()
+
+
+func _refresh_diagnostics() -> void:
+	if _diagnostics_label == null:
+		return
+	var report: Dictionary = _diagnostics.report()
+	_diagnostics_label.text = "FPS %.0f · FRAME %.1f ms\nRTT %.0f ms · JITTER %.1f ms · LOSS %.1f%%\nSNAPSHOT AGE %.1f ms\nPLAYER ERR %.2f m · BALL ERR %.2f m" % [
+		float(report.get("fps", 0.0)),
+		float(report.get("frame_ms", 0.0)),
+		float(report.get("rtt_ms", 0.0)),
+		float(report.get("jitter_ms", 0.0)),
+		float(report.get("loss_percent", 0.0)),
+		float(report.get("snapshot_age_ms", 0.0)),
+		float(report.get("player_error_m", 0.0)),
+		float(report.get("ball_error_m", 0.0)),
+	]
 
 
 func _set_authority_waiting(waiting: bool) -> void:
