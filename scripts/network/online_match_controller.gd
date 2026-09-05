@@ -152,7 +152,9 @@ func _physics_process(delta: float) -> void:
 		var pass_pressed := Input.is_action_just_pressed("pass")
 		var shoot_pressed := Input.is_action_pressed("shoot")
 		var switch_pressed := Input.is_action_just_pressed("switch_player")
-		var dash_pressed := Input.is_action_just_pressed("dash")
+		var local_actor := _arena.call("get_local_human_actor") as CharacterBody3D
+		var local_is_goalkeeper := local_actor != null and StringName(local_actor.get_meta("role", &"field")) == &"goalkeeper"
+		var dash_pressed := Input.is_action_just_pressed("dash") and not local_is_goalkeeper
 		_pass_sequence = OnlineInputScript.next_action_sequence(_pass_sequence, pass_pressed)
 		_switch_sequence = OnlineInputScript.next_action_sequence(_switch_sequence, switch_pressed)
 		_dash_sequence = OnlineInputScript.next_action_sequence(_dash_sequence, dash_pressed)
@@ -648,7 +650,8 @@ func _export_network_trace() -> void:
 func _local_human_speed_multiplier() -> float:
 	var actor := _arena.call("get_local_human_actor") as CharacterBody3D
 	var has_ball := actor != null and _ball.has_method("is_controlled_by_actor") and bool(_ball.call("is_controlled_by_actor", actor.call("get_actor_id")))
-	return PlayerMotorScript.movement_speed_multiplier(true, has_ball)
+	var role_multiplier := PlayerMotorScript.GOALKEEPER_SPEED_MULTIPLIER if actor != null and StringName(actor.get_meta("role", &"field")) == &"goalkeeper" else 1.0
+	return PlayerMotorScript.movement_speed_multiplier(true, has_ball) * role_multiplier
 
 
 func _predict_replicas(delta: float) -> void:

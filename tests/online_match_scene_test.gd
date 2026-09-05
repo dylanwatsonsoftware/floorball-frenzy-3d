@@ -1,5 +1,7 @@
 extends SceneTree
 
+const PlayerMotorScript = preload("res://scripts/gameplay/player_motor.gd")
+
 
 func _init() -> void:
 	call_deferred("run_test")
@@ -84,6 +86,17 @@ func run_test() -> void:
 	if local_actor == null or local_actor.call("get_team") != &"blue":
 		fail("A guest must resolve the Pirates human as its locally controlled player")
 		return
+	var guest_goalkeeper: CharacterBody3D
+	for candidate in client_arena.call("get_team_players", &"blue"):
+		if StringName(candidate.get_meta("role", &"field")) == &"goalkeeper":
+			guest_goalkeeper = candidate
+			break
+	client_arena.get_node("Ball").call("apply_network_control_state", &"", &"red_1", guest_goalkeeper.call("get_actor_id"))
+	var goalkeeper_multiplier := float(client_controller.call("_local_human_speed_multiplier"))
+	if not is_equal_approx(goalkeeper_multiplier, PlayerMotorScript.GOALKEEPER_SPEED_MULTIPLIER * PlayerMotorScript.OFF_BALL_SPEED_MULTIPLIER):
+		fail("Guest goalkeeper prediction must use the same role-adjusted command speed as the host; got %s" % goalkeeper_multiplier)
+		return
+	client_arena.get_node("Ball").call("apply_network_control_state", &"", &"red_1", local_actor.call("get_actor_id"))
 	var dash_start: Vector3 = local_actor.global_position
 	client_controller.call("_predict_local_player", Vector2.RIGHT, 1.0 / 60.0, true)
 	if local_actor.velocity.length() < 14.99 or local_actor.global_position.x <= dash_start.x + 0.20 or not bool(local_actor.call("is_dashing")):

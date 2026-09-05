@@ -60,6 +60,9 @@ func _init() -> void:
 	if not is_equal_approx(ai_off_ball_multiplier, script.AI_SPEED_MULTIPLIER * script.OFF_BALL_SPEED_MULTIPLIER):
 		fail("Only AI-controlled players should receive the global AI speed handicap")
 		return
+	if script.GOALKEEPER_SPEED_MULTIPLIER >= 1.0 or script.GOALKEEPER_SPEED_MULTIPLIER <= 0.5:
+		fail("The shared command simulation needs a modest explicit goalkeeper movement role modifier")
+		return
 
 	var slowed: Vector3 = script.step_velocity(Vector3(5.0, 0.0, 0.0), Vector2.ZERO, 0.1)
 	if slowed.length() >= 5.0:

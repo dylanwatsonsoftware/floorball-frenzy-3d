@@ -50,12 +50,9 @@ func _physics_process(delta: float) -> void:
 			_dash_streak.visible = false
 		return
 
-	_dash_cooldown = maxf(0.0, _dash_cooldown - delta)
 	_opening_grace_remaining = maxf(0.0, _opening_grace_remaining - delta)
 	if _player.velocity.length_squared() > 0.04:
 		_opening_grace_remaining = minf(_opening_grace_remaining, ACTIVE_PLAYER_GRACE_SECONDS)
-	_dash_streak_remaining = maxf(0.0, _dash_streak_remaining - delta)
-	_update_dash_streak()
 	var has_possession := _ball.has_method("is_controlled_by_actor") and bool(_ball.call("is_controlled_by_actor", get_actor_id()))
 	var decision := SimpleAIScript.decide(
 		global_position,
@@ -91,15 +88,30 @@ func _physics_process(delta: float) -> void:
 	if is_human_controlled():
 		decision.movement = OnlineMatch.remote_input if OnlineMatch.is_authority() else Input.get_vector("move_left", "move_right", "move_up", "move_down")
 		decision.wants_dash = OnlineMatch.remote_dash if OnlineMatch.is_authority() else Input.is_action_just_pressed("dash")
-	if decision.wants_dash:
-		try_dash(decision.movement)
-		if is_human_controlled() and OnlineMatch.is_authority():
-			OnlineMatch.remote_dash = false
-	if is_dashing():
-		velocity = _dash_direction * PlayerMotorScript.DASH_SPEED
-	else:
-		var speed_multiplier := PlayerMotorScript.movement_speed_multiplier(is_human_controlled(), has_possession, HeatSystemScript.speed_multiplier(_fuego_remaining))
-		velocity = PlayerMotorScript.step_velocity(velocity, decision.movement, delta, speed_multiplier)
+	var facing_planar: Vector2 = decision.shot_direction if decision.wants_shot else SquadLogicScript.tactical_facing(
+		Vector2(global_position.x, global_position.z),
+		decision.movement,
+		_ball.global_position,
+		owner_team == &"blue"
+	)
+	if _shot_aim_locked and not is_human_controlled():
+		facing_planar = Vector2.ZERO
+	var speed_multiplier := PlayerMotorScript.movement_speed_multiplier(is_human_controlled(), has_possession, HeatSystemScript.speed_multiplier(_fuego_remaining))
+	var command := {"move": decision.movement, "facing": facing_planar, "dash_pressed": bool(decision.wants_dash), "delta": delta, "speed_multiplier": speed_multiplier}
+	var state := {"position": global_position, "velocity": velocity, "rotation": rotation.y, "dash_cooldown": _dash_cooldown, "dash_remaining": _dash_streak_remaining, "dash_direction": _dash_direction}
+	var next_state: Dictionary = PlayerMotorScript.step_command_state(state, command)
+	velocity = next_state.velocity
+	rotation.y = next_state.rotation
+	_facing_direction = PlayerMotorScript.facing_from_rotation(rotation.y)
+	_dash_cooldown = next_state.dash_cooldown
+	_dash_streak_remaining = next_state.dash_remaining
+	_dash_direction = next_state.dash_direction
+	if bool(next_state.dash_started):
+		_parry_window_remaining = PARRY_WINDOW_SECONDS
+		add_heat(5.0)
+	_update_dash_streak()
+	if decision.wants_dash and is_human_controlled() and OnlineMatch.is_authority():
+		OnlineMatch.remote_dash = false
 	move_and_slide()
 	var boundary := RinkCollisionScript.constrain_body(global_position, velocity, RINK_HALF_LENGTH, RINK_HALF_WIDTH, 1.8)
 	global_position = boundary.position
@@ -109,15 +121,6 @@ func _physics_process(delta: float) -> void:
 		global_position = frame_start_position
 		velocity = Vector3.ZERO
 
-	var facing_planar: Vector2 = decision.shot_direction if decision.wants_shot else SquadLogicScript.tactical_facing(
-		Vector2(global_position.x, global_position.z),
-		decision.movement,
-		_ball.global_position,
-		owner_team == &"blue"
-	)
-	if not _shot_aim_locked and not facing_planar.is_zero_approx():
-		rotation.y = PlayerMotorScript.step_facing_rotation(rotation.y, facing_planar, delta)
-		_facing_direction = PlayerMotorScript.facing_from_rotation(rotation.y)
 	if is_human_controlled() and OnlineMatch.is_authority():
 		OnlineMatch.call("mark_remote_command_simulated")
 

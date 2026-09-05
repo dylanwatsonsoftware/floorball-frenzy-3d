@@ -43,33 +43,33 @@ func _physics_process(delta: float) -> void:
 		return
 	_opening_grace_remaining = maxf(0.0, _opening_grace_remaining - delta)
 	var movement := _human_movement() if is_human_controlled() else Vector2.ZERO if get_team() == &"blue" and _opening_grace_remaining > 0.0 else _ai_movement()
-	_dash_cooldown = maxf(0.0, _dash_cooldown - delta)
-	_dash_streak_remaining = maxf(0.0, _dash_streak_remaining - delta)
-	_update_dash_feedback()
 	var human_dash_pressed := Input.is_action_just_pressed("dash")
 	if is_human_controlled() and OnlineMatch.is_authority() and get_team() == &"blue":
 		human_dash_pressed = OnlineMatch.remote_dash
-	if is_human_controlled() and human_dash_pressed:
-		try_dash(movement)
-		if OnlineMatch.is_authority() and get_team() == &"blue":
-			OnlineMatch.remote_dash = false
-	if is_dashing():
-		velocity = _dash_direction * PlayerMotorScript.DASH_SPEED
-	else:
-		var has_ball := _ball.has_method("is_controlled_by_actor") and bool(_ball.call("is_controlled_by_actor", get_actor_id()))
-		var speed_multiplier := PlayerMotorScript.movement_speed_multiplier(is_human_controlled(), has_ball)
-		velocity = PlayerMotorScript.step_velocity(velocity, movement, delta, speed_multiplier)
-	move_and_slide()
-	var boundary := RinkCollisionScript.constrain_body(global_position, velocity, RINK_HALF_LENGTH, RINK_HALF_WIDTH, 1.8)
-	global_position = boundary.position
-	velocity = boundary.velocity
+	var has_ball := _ball.has_method("is_controlled_by_actor") and bool(_ball.call("is_controlled_by_actor", get_actor_id()))
+	var speed_multiplier := PlayerMotorScript.movement_speed_multiplier(is_human_controlled(), has_ball)
 	var facing_planar := movement
 	if not is_human_controlled():
 		var owner_team: StringName = _ball.call("get_control_owner_team") if _ball.has_method("get_control_owner_team") else &""
 		facing_planar = SquadLogicScript.tactical_facing(Vector2(global_position.x, global_position.z), movement, _ball.global_position, owner_team == get_team())
-	if (is_human_controlled() or not _shot_aim_locked) and not facing_planar.is_zero_approx():
-		rotation.y = PlayerMotorScript.step_facing_rotation(rotation.y, facing_planar, delta)
-		_facing_direction = PlayerMotorScript.facing_from_rotation(rotation.y)
+	if _shot_aim_locked and not is_human_controlled():
+		facing_planar = Vector2.ZERO
+	var command := {"move": movement, "facing": facing_planar, "dash_pressed": is_human_controlled() and human_dash_pressed, "delta": delta, "speed_multiplier": speed_multiplier}
+	var state := {"position": global_position, "velocity": velocity, "rotation": rotation.y, "dash_cooldown": _dash_cooldown, "dash_remaining": _dash_streak_remaining, "dash_direction": _dash_direction}
+	var next_state: Dictionary = PlayerMotorScript.step_command_state(state, command)
+	velocity = next_state.velocity
+	rotation.y = next_state.rotation
+	_facing_direction = PlayerMotorScript.facing_from_rotation(rotation.y)
+	_dash_cooldown = next_state.dash_cooldown
+	_dash_streak_remaining = next_state.dash_remaining
+	_dash_direction = next_state.dash_direction
+	_update_dash_feedback()
+	if is_human_controlled() and human_dash_pressed and OnlineMatch.is_authority() and get_team() == &"blue":
+		OnlineMatch.remote_dash = false
+	move_and_slide()
+	var boundary := RinkCollisionScript.constrain_body(global_position, velocity, RINK_HALF_LENGTH, RINK_HALF_WIDTH, 1.8)
+	global_position = boundary.position
+	velocity = boundary.velocity
 	if is_human_controlled() and _mobile_controls != null and _mobile_controls.has_method("set_dash_cooldown_ratio"):
 		_mobile_controls.call("set_dash_cooldown_ratio", get_dash_cooldown_ratio())
 	if is_human_controlled() and OnlineMatch.is_authority() and get_team() == &"blue":
