@@ -118,6 +118,9 @@ func run_test() -> void:
 	client_controller.call("_apply_snapshot", possessed_snapshot)
 	var remote_blade_pocket := remote_actor.get_node("StickRig/BladePocket") as Marker3D
 	remote_blade_pocket.force_update_transform()
+	if client_ball.get_parent() != remote_actor:
+		fail("A possessed replica ball must share its carrier transform so packet corrections cannot make it skate around the stick")
+		return
 	if client_ball.global_position.distance_to(remote_blade_pocket.global_position) > 0.05:
 		fail("A possessed guest replica ball must attach to its authoritative owner's blade instead of reconciling stale ball coordinates")
 		return
@@ -150,7 +153,7 @@ func run_test() -> void:
 	for action_step in 3:
 		client_controller.call("_update_predicted_ball_action", false, false, 0.11)
 	if client_ball.ball_velocity.length() < 7.5 or client_ball.call("get_control_owner_actor_id") != &"":
-		fail("A guest pass must release from the blade locally before its host round trip")
+		fail("A guest pass must release from the blade locally before its host round trip; velocity=%s owner=%s parent=%s" % [client_ball.ball_velocity, client_ball.call("get_control_owner_actor_id"), client_ball.get_parent().name])
 		return
 	if client_ball.call("get_human_control_actor_id_for_team", &"red") != alternate_red_human.call("get_actor_id"):
 		fail("A guest's predicted pass must preserve the authoritative opponent selection instead of temporarily jumping to red_1")
@@ -172,6 +175,9 @@ func run_test() -> void:
 	released_snapshot.ball = _vector3_array(client_ball.global_position)
 	released_snapshot.ball_velocity = [8.0, 0.18, 0.0]
 	client_controller.call("_apply_snapshot", released_snapshot)
+	if client_ball.get_parent() != client_arena:
+		fail("A released replica ball must return to the arena before loose-ball prediction")
+		return
 	var release_start: Vector3 = client_ball.global_position
 	client_controller.call("_predict_replicas", 1.0 / 60.0)
 	if client_ball.global_position.x <= release_start.x:

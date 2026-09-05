@@ -255,6 +255,7 @@ func _apply_snapshot(snapshot: Dictionary) -> void:
 	_ball_attached_to_owner = bool(snapshot.get("ball_attached", not snapshot_owner.is_empty()))
 	if _ball.has_method("apply_network_control_state"):
 		_ball.call("apply_network_control_state", snapshot_owner, StringName(snapshot.get("red_human", "red_1")), StringName(snapshot.get("blue_human", "blue_1")))
+	_set_ball_replica_parent(snapshot_owner if _ball_attached_to_owner else &"")
 	var possession := _network_possession(snapshot_owner) if _ball_attached_to_owner else {}
 	var authoritative_ball := _array_to_vector3(snapshot.get("ball", []))
 	var authoritative_ball_velocity := _array_to_vector3(snapshot.get("ball_velocity", []))
@@ -309,6 +310,7 @@ func _update_predicted_ball_action(shoot_pressed: bool, pass_pressed: bool, delt
 	_ball.global_position = predicted.position
 	_ball.ball_velocity = predicted.velocity
 	_ball_attached_to_owner = bool(predicted.attached)
+	_set_ball_replica_parent(actor.call("get_actor_id") if _ball_attached_to_owner else &"")
 	if not _ball_attached_to_owner and _ball.has_method("apply_network_control_state"):
 		var red_human := StringName(_ball.call("get_human_control_actor_id_for_team", &"red"))
 		var blue_human := StringName(_ball.call("get_human_control_actor_id_for_team", &"blue"))
@@ -353,6 +355,7 @@ func _predict_local_pickup(_delta: float) -> void:
 	_predicted_possession_actor_id = actor.call("get_actor_id")
 	_predicted_possession_remaining = 0.40
 	_ball_attached_to_owner = true
+	_set_ball_replica_parent(_predicted_possession_actor_id)
 	_ball.global_position = blade.global_position
 	_ball.ball_velocity = actor.velocity
 	if _ball.has_method("apply_network_control_state"):
@@ -498,6 +501,23 @@ func _network_possession(owner_id: StringName) -> Dictionary:
 		blade_pocket.force_update_transform()
 		return {"position": blade_pocket.global_position, "velocity": actor.velocity}
 	return {}
+
+
+func _set_ball_replica_parent(owner_id: StringName) -> void:
+	var target_parent: Node = _arena
+	if not owner_id.is_empty():
+		for actor in _arena.call("get_field_players"):
+			if actor.call("get_actor_id") == owner_id:
+				target_parent = actor
+				break
+	if _ball.get_parent() == target_parent:
+		return
+	# A possessed ball and its carrier must share a render transform. Otherwise a
+	# packet-time carrier correction can be displayed one frame apart from the
+	# independently positioned ball, which looks like the ball is skating around
+	# the blade even though both physics coordinates agree.
+	_ball.reparent(target_parent, true)
+	_ball.reset_physics_interpolation()
 
 
 func _vector_to_array(value: Vector2) -> Array:

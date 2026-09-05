@@ -25,6 +25,7 @@ var _camera_look_target := Vector3.ZERO
 var _camera_tracking_initialized := false
 var _camera_charge_pullback := 0.0
 var _client_charge_seconds := 0.0
+var _ball: MeshInstance3D
 
 
 func _ready() -> void:
@@ -36,7 +37,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if not _follow_action_camera or _camera == null:
 		return
-	var ball := get_node_or_null("Ball") as MeshInstance3D
+	var ball := _ball
 	if ball == null:
 		return
 	var action_actor := get_camera_actor(ball)
@@ -65,7 +66,7 @@ func _process(delta: float) -> void:
 
 func get_local_human_actor() -> CharacterBody3D:
 	var local_team := OnlineMatch.local_team() if OnlineMatch.enabled else &"red"
-	var ball := get_node_or_null("Ball")
+	var ball := _ball
 	if ball == null or not ball.has_method("get_human_control_actor_id_for_team"):
 		return null
 	var local_actor_id: StringName = ball.call("get_human_control_actor_id_for_team", local_team)
@@ -864,6 +865,7 @@ func _build_ball() -> void:
 	trail.add_child(core)
 	ball.add_child(trail)
 	add_child(ball)
+	_ball = ball
 
 
 func _flat_triangle_mesh() -> ArrayMesh:
