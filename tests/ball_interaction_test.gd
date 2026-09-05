@@ -100,8 +100,8 @@ func _init() -> void:
 		0.1,
 		0
 	)
-	if bumped.controller == 0:
-		fail("Opponent body contact must still knock the ball out of retained stick possession")
+	if bumped.controller != 0:
+		fail("Ordinary opponent overlap must not strip settled possession; a deliberate dash or stick challenge should be required; got %s" % bumped)
 		return
 	var team_owner := player.duplicate()
 	team_owner.team = &"red"

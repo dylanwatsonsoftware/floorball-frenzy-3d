@@ -54,6 +54,11 @@ static func step(ball_position: Vector3, ball_velocity: Vector3, participants: A
 		if distance >= BODY_CONTACT_DISTANCE:
 			continue
 		body_controller = body_index
+		# Report an opponent touching a carried ball so deliberate mechanics such
+		# as dash steals can react, but do not let ordinary body overlap displace
+		# the ball or transfer possession away from a settled carrier.
+		if previous_controller >= 0 and body_index != previous_controller:
+			continue
 
 		var fallback := Vector2(participant.facing.x, participant.facing.z).normalized()
 		var normal := planar_offset.normalized() if distance > 0.001 else fallback
@@ -71,7 +76,7 @@ static func step(ball_position: Vector3, ball_velocity: Vector3, participants: A
 	var controller := -1
 	if ball_position.y > CONTROL_HEIGHT:
 		return _result(next_position, next_velocity, controller, body_controller)
-	var blocked_controller := previous_controller if body_controller >= 0 and body_controller != previous_controller else -1
+	var blocked_controller := -1
 	if previous_controller >= 0 and previous_controller < participants.size() and previous_controller != blocked_controller:
 		var previous_owner: Dictionary = participants[previous_controller]
 		var previous_pocket := blade_pocket(previous_owner)
