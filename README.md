@@ -117,8 +117,7 @@ godot --headless --path . --script tests/online_state_codec_test.gd
 
 ```text
 assets/          Runtime models and UI artwork
-art_source/      Editable Blender source files
-blender_source/  Combined Blender equipment scene
+blender_source/  Editable Blender source files for equipment and characters
 scenes/          Main menu and match scenes
 scripts/
   gameplay/      Player, ball, goalkeeper, and match controllers
@@ -129,4 +128,6 @@ server/          Vercel matchmaking and signaling functions
 tests/           Gameplay, presentation, networking, and deployment tests
 ```
 
-The `.blend` files are the editable source of truth for authored equipment. Exported, game-ready GLB files live in `assets/models` and should remain suitable for phone and web rendering budgets.
+The `.blend` files in `blender_source/` are the editable source of truth for all authored equipment and characters. Exported, game-ready GLB files live in `assets/models` and should remain suitable for phone and web rendering budgets.
+
+Whenever a model is changed, save its `.blend` file **after** exporting the GLB and commit both files together. Character models should be rebuilt with `blender --background --factory-startup --python tools/build_character_models.py`; that script performs a final source save and verifies it. Run `python3 tests/blender_source_contract_test.py` before committing any model work. It fails when a runtime model has no valid reusable source or when an export is newer than its source.

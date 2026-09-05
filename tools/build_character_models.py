@@ -207,11 +207,20 @@ def finalize_character(team):
     bind_character_to_rig(armature)
     author_animation_set(armature)
     bpy.context.scene.render.fps = 30
-    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(SOURCE_OUT, "%s_player.blend" % team))
+    source_path = os.path.join(SOURCE_OUT, "%s_player.blend" % team)
+    export_path = os.path.join(OUT, "%s_player.glb" % team)
+    bpy.ops.wm.save_as_mainfile(filepath=source_path)
     bpy.ops.export_scene.gltf(
-        filepath=os.path.join(OUT, "%s_player.glb" % team), export_format="GLB", export_yup=True,
+        filepath=export_path, export_format="GLB", export_yup=True,
         export_animations=True, export_animation_mode="ACTIONS", export_apply=False,
     )
+    # Exporters can alter scene state. Keep the reusable .blend as the final,
+    # authoritative artifact and fail the build if Blender did not write it.
+    bpy.ops.wm.save_as_mainfile(filepath=source_path)
+    if not os.path.isfile(source_path) or os.path.getsize(source_path) < 1024:
+        raise RuntimeError("Blender source was not saved correctly: %s" % source_path)
+    if os.path.getmtime(source_path) < os.path.getmtime(export_path):
+        raise RuntimeError("Blender source is older than its export: %s" % source_path)
 
 
 def add_common(team):
