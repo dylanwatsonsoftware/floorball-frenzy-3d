@@ -10,6 +10,7 @@ const NetworkDiagnosticsScript = preload("res://scripts/network/network_diagnost
 const PredictedBallActionScript = preload("res://scripts/network/predicted_ball_action.gd")
 const StickSlapScript = preload("res://scripts/simulation/stick_slap.gd")
 const SquadLogicScript = preload("res://scripts/simulation/squad_logic.gd")
+const BallInteractionScript = preload("res://scripts/simulation/ball_interaction.gd")
 const SNAPSHOT_SECONDS := OnlineInputScript.DEFAULT_SNAPSHOT_SECONDS
 const RINK_HALF_LENGTH := 19.1
 const RINK_HALF_WIDTH := 9.1
@@ -53,6 +54,8 @@ var _predicted_ball_action: RefCounted
 var _last_authoritative_action_sequence := 0
 var _local_shoot_was_pressed := false
 var _local_shoot_charge := 0.0
+var _predicted_possession_actor_id: StringName = &""
+var _predicted_possession_remaining := 0.0
 
 
 func _ready() -> void:
@@ -110,6 +113,9 @@ func _physics_process(delta: float) -> void:
 		_diagnostics_refresh_elapsed = 0.0
 		_refresh_diagnostics()
 	if OnlineMatch.role == &"client":
+		_predicted_possession_remaining = maxf(0.0, _predicted_possession_remaining - delta)
+		if _predicted_possession_remaining <= 0.0:
+			_predicted_possession_actor_id = &""
 		_sequence += 1
 		var movement := _movement_input()
 		var pass_pressed := Input.is_action_just_pressed("pass")
@@ -120,6 +126,7 @@ func _physics_process(delta: float) -> void:
 		_record_pending_input(_sequence, movement, delta)
 		_predict_local_player(movement, delta)
 		_predict_replicas(delta)
+		_predict_local_pickup(delta)
 		_update_predicted_ball_action(shoot_pressed, pass_pressed, delta)
 		return
 	_snapshot_elapsed += delta
@@ -222,6 +229,15 @@ func _apply_snapshot(snapshot: Dictionary) -> void:
 			if not ignore_ball_snapshot:
 				_predicted_ball_action.call("finish")
 	var snapshot_owner := StringName(snapshot.get("owner", ""))
+	if not _predicted_possession_actor_id.is_empty():
+		if snapshot_owner == _predicted_possession_actor_id:
+			_predicted_possession_actor_id = &""
+			_predicted_possession_remaining = 0.0
+		elif snapshot_owner.is_empty() and _predicted_possession_remaining > 0.0:
+			ignore_ball_snapshot = true
+		else:
+			_predicted_possession_actor_id = &""
+			_predicted_possession_remaining = 0.0
 	if ignore_ball_snapshot:
 		_apply_network_score(snapshot)
 		return
@@ -300,6 +316,32 @@ func _begin_predicted_ball_action(actor: CharacterBody3D, action_type: StringNam
 		blade.force_update_transform()
 		origin = blade.global_position
 	_predicted_ball_action.call("begin", _last_authoritative_action_sequence + 1, action_type, origin, direction, actor.velocity, charge, begin_forward_swing)
+
+
+func _predict_local_pickup(_delta: float) -> void:
+	if _ball_attached_to_owner or (_predicted_ball_action != null and bool(_predicted_ball_action.get("active"))):
+		return
+	if _ball.global_position.y > BallInteractionScript.CONTROL_HEIGHT or Vector2(_ball.ball_velocity.x, _ball.ball_velocity.z).length() > BallInteractionScript.MAX_CONTROL_SPEED:
+		return
+	var actor := _arena.call("get_local_human_actor") as CharacterBody3D
+	if actor == null:
+		return
+	var blade := actor.get_node_or_null("StickRig/BladePocket") as Marker3D
+	if blade == null:
+		return
+	blade.force_update_transform()
+	var participant := {"position": actor.global_position, "velocity": actor.velocity, "facing": actor.call("get_facing_direction"), "blade_target": blade.global_position}
+	if not BallInteractionScript.is_in_blade_pocket(_ball.global_position, participant):
+		return
+	_predicted_possession_actor_id = actor.call("get_actor_id")
+	_predicted_possession_remaining = 0.40
+	_ball_attached_to_owner = true
+	_ball.global_position = blade.global_position
+	_ball.ball_velocity = actor.velocity
+	if _ball.has_method("apply_network_control_state"):
+		var red_human := StringName(_ball.call("get_human_control_actor_id_for_team", &"red"))
+		var blue_human := StringName(_ball.call("get_human_control_actor_id_for_team", &"blue"))
+		_ball.call("apply_network_control_state", _predicted_possession_actor_id, red_human, blue_human)
 
 
 func _set_client_replica_mode() -> void:

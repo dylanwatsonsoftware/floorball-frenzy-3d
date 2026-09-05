@@ -86,6 +86,15 @@ func run_test() -> void:
 		fail("The diagnostics overlay must expose frame and prediction measurements when enabled")
 		return
 	var client_ball = client_arena.get_node("Ball")
+	var pickup_blade := local_actor.get_node("StickRig/BladePocket") as Marker3D
+	pickup_blade.force_update_transform()
+	client_ball.global_position = Vector3(pickup_blade.global_position.x, 0.22, pickup_blade.global_position.z)
+	client_ball.ball_velocity = Vector3.ZERO
+	client_ball.call("apply_network_control_state", &"", &"red_1", local_actor.call("get_actor_id"))
+	client_controller.call("_predict_local_pickup", 1.0 / 60.0)
+	if client_ball.call("get_control_owner_actor_id") != local_actor.call("get_actor_id") or client_ball.global_position.distance_to(pickup_blade.global_position) > 0.05:
+		fail("A guest must predict an eligible local blade pickup instead of waiting for a host round trip")
+		return
 	var possessed_snapshot: Dictionary = client_controller.call("_capture_snapshot")
 	possessed_snapshot.owner = String(remote_actor.call("get_actor_id"))
 	possessed_snapshot.ball_attached = true
