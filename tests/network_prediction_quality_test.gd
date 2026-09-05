@@ -6,18 +6,23 @@ func _init() -> void:
 	if harness_script == null:
 		fail("Guest prediction needs a repeatable end-to-end quality harness")
 		return
-	var quality: Dictionary = harness_script.run_profile(&"quality_gate", 12.0, 11)
-	if float(quality.get("maximum_correction_m", INF)) > 0.30:
-		fail("Quality-gate prediction corrections must stay under 30 cm; got %s" % quality)
-		return
-	if float(quality.get("p95_correction_m", INF)) > 0.20:
-		fail("95%% of quality-gate prediction corrections must stay under 20 cm; got %s" % quality)
-		return
-	if float(quality.get("final_error_m", INF)) > 0.15:
-		fail("Guest and host must converge after the input trace ends; got %s" % quality)
-		return
-	if int(quality.get("snap_count", 1)) != 0:
-		fail("The 150 ms / 2%% loss quality gate must not require hard player snaps; got %s" % quality)
+	for seed in range(1, 21):
+		var quality: Dictionary = harness_script.run_profile(&"quality_gate", 12.0, seed)
+		if float(quality.get("maximum_correction_m", INF)) > 0.30:
+			fail("Quality-gate prediction corrections must stay under 30 cm for every seed; seed=%d result=%s" % [seed, quality])
+			return
+		if float(quality.get("p95_correction_m", INF)) > 0.20:
+			fail("95%% of quality-gate prediction corrections must stay under 20 cm; seed=%d result=%s" % [seed, quality])
+			return
+		if float(quality.get("final_error_m", INF)) > 0.15:
+			fail("Guest and host must converge after the input trace ends; seed=%d result=%s" % [seed, quality])
+			return
+		if int(quality.get("snap_count", 1)) != 0:
+			fail("The 150 ms / 2%% loss quality gate must not require hard player snaps; seed=%d result=%s" % [seed, quality])
+			return
+	var degraded: Dictionary = harness_script.run_profile(&"degraded", 12.0, 17)
+	if float(degraded.get("maximum_correction_m", INF)) > 0.65 or int(degraded.get("snap_count", 1)) != 0 or float(degraded.get("final_error_m", INF)) > 0.30:
+		fail("A 250 ms / 5%% loss connection should degrade gently and recover without hard snaps; got %s" % degraded)
 		return
 	var frame_rates: Dictionary = harness_script.compare_frame_rates(10.0)
 	if float(frame_rates.get("distance_m", INF)) > 0.02:
