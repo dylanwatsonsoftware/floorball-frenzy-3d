@@ -67,6 +67,8 @@ func _ready() -> void:
 	_status.position = Vector2(20.0, 20.0)
 	_status.add_theme_font_size_override("font_size", 18)
 	_status.text = "ONLINE · ROOM %s" % OnlineMatch.room_id
+	_status.mouse_filter = Control.MOUSE_FILTER_STOP
+	_status.gui_input.connect(_on_status_input)
 	get_parent().get_node("HUD").add_child(_status)
 	_diagnostics = NetworkDiagnosticsScript.new()
 	_diagnostics_label = Label.new()
@@ -382,6 +384,17 @@ func set_diagnostics_visible(is_visible: bool) -> void:
 	_diagnostics_label.visible = is_visible
 	if is_visible:
 		_refresh_diagnostics()
+
+
+func _on_status_input(event: InputEvent) -> void:
+	var activated: bool = false
+	if event is InputEventScreenTouch:
+		activated = (event as InputEventScreenTouch).pressed
+	elif event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		activated = mouse_event.pressed and mouse_event.button_index == MOUSE_BUTTON_LEFT
+	if activated:
+		set_diagnostics_visible(not _diagnostics_label.visible)
 
 
 func _refresh_diagnostics() -> void:
