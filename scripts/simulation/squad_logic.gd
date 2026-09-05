@@ -104,6 +104,8 @@ static func is_closest_to_ball(actor_id: StringName, actor_position: Vector3, te
 		var teammate_distance := _planar(teammate.position).distance_squared_to(_planar(ball_position))
 		if teammate_distance < own_distance - 0.001:
 			return false
+		if absf(teammate_distance - own_distance) <= 0.001 and String(teammate.actor_id) < String(actor_id):
+			return false
 	return true
 
 

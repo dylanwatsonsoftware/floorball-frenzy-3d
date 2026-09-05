@@ -16,6 +16,18 @@ func _init() -> void:
 	if squad.human_actor_id(&"", &"") != &"":
 		fail("All red players must remain AI-controlled while the ball is loose")
 		return
+	var tied_pressers := [
+		{"actor_id": &"blue_3", "position": Vector3(2.0, 0.75, 0.0)},
+		{"actor_id": &"blue_2", "position": Vector3(-2.0, 0.75, 0.0)},
+		{"actor_id": &"blue_4", "position": Vector3(6.0, 0.75, 0.0)},
+	]
+	var assigned_pressers := 0
+	for defender in tied_pressers:
+		if squad.is_closest_to_ball(defender.actor_id, defender.position, tied_pressers, Vector3.ZERO):
+			assigned_pressers += 1
+	if assigned_pressers != 1 or not squad.is_closest_to_ball(&"blue_2", Vector3(-2.0, 0.75, 0.0), tied_pressers, Vector3.ZERO):
+		fail("A defending team must deterministically assign exactly one presser, including equal-distance ties; count=%d" % assigned_pressers)
+		return
 
 	var upper_support: Vector2 = squad.support_target(&"red", 1, Vector3.ZERO, true)
 	var lower_support: Vector2 = squad.support_target(&"red", 2, Vector3.ZERO, true)
