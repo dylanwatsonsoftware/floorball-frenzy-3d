@@ -3,6 +3,7 @@ extends CharacterBody3D
 const PlayerMotorScript = preload("res://scripts/gameplay/player_motor.gd")
 const GoalkeeperAIScript = preload("res://scripts/simulation/goalkeeper_ai.gd")
 const SquadLogicScript = preload("res://scripts/simulation/squad_logic.gd")
+const KEEPER_SPEED_MULTIPLIER := PlayerMotorScript.GOALKEEPER_SPEED_MULTIPLIER
 
 var _ball: Node3D
 var _mobile_controls: Control
@@ -26,7 +27,7 @@ func _physics_process(delta: float) -> void:
 		return
 	var movement := _human_movement() if is_human_controlled() else _ai_movement()
 	var has_ball := _ball.has_method("is_controlled_by_actor") and bool(_ball.call("is_controlled_by_actor", get_actor_id()))
-	var speed_multiplier := PlayerMotorScript.movement_speed_multiplier(is_human_controlled(), has_ball) * PlayerMotorScript.GOALKEEPER_SPEED_MULTIPLIER
+	var speed_multiplier := PlayerMotorScript.movement_speed_multiplier(is_human_controlled(), has_ball) * KEEPER_SPEED_MULTIPLIER
 	var command := {"move": movement, "facing": movement if not _shot_aim_locked or is_human_controlled() else Vector2.ZERO, "dash_pressed": false, "delta": delta, "speed_multiplier": speed_multiplier}
 	var state := {"position": global_position, "velocity": velocity, "rotation": rotation.y, "dash_cooldown": PlayerMotorScript.DASH_COOLDOWN, "dash_remaining": 0.0, "dash_direction": _facing_direction}
 	var next_state: Dictionary = PlayerMotorScript.step_command_state(state, command)
@@ -35,8 +36,9 @@ func _physics_process(delta: float) -> void:
 	_facing_direction = PlayerMotorScript.facing_from_rotation(rotation.y)
 	move_and_slide()
 	_constrain_to_goal_area()
-	if is_human_controlled() and OnlineMatch.is_authority() and get_team() == &"blue":
-		OnlineMatch.call("mark_remote_command_simulated")
+	var online_match := get_node_or_null("/root/OnlineMatch")
+	if is_human_controlled() and online_match != null and bool(online_match.call("is_authority")) and get_team() == &"blue":
+		online_match.call("mark_remote_command_simulated")
 
 
 func _human_movement() -> Vector2:
