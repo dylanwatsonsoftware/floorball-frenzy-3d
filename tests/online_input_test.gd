@@ -41,6 +41,19 @@ func _init() -> void:
 	if remote_heading <= 0.0 or remote_heading >= deg_to_rad(90.0):
 		fail("Remote character turns should be visibly smoothed toward the authoritative heading")
 		return
+	var remote_turn_step: float = controller.interpolate_remote_rotation(0.0, PI * 0.5, 1.0 / 60.0)
+	if remote_turn_step <= 0.0 or remote_turn_step >= PI * 0.25:
+		fail("A remote turn must advance every frame without snapping most of the way to a new snapshot; got %s" % remote_turn_step)
+		return
+	var remote_turn_30 := 0.0
+	for frame in 30:
+		remote_turn_30 = controller.interpolate_remote_rotation(remote_turn_30, PI * 0.5, 1.0 / 30.0)
+	var remote_turn_60 := 0.0
+	for frame in 60:
+		remote_turn_60 = controller.interpolate_remote_rotation(remote_turn_60, PI * 0.5, 1.0 / 60.0)
+	if absf(angle_difference(remote_turn_30, remote_turn_60)) > 0.001:
+		fail("Remote rotation smoothing must be frame-rate independent; 30fps=%s 60fps=%s" % [remote_turn_30, remote_turn_60])
+		return
 	var replica_step: Vector3 = controller.predict_replica_position(Vector3(2.0, 0.75, 3.0), Vector3(6.0, 0.0, -3.0), 1.0 / 60.0)
 	if not replica_step.is_equal_approx(Vector3(2.1, 0.75, 2.95)):
 		fail("Remote replicas should continue along their last authoritative velocity between snapshots; got %s" % replica_step)

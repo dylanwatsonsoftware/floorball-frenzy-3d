@@ -10,6 +10,7 @@ const DASH_COOLDOWN := 1.1
 const BALL_CARRIER_SPEED_MULTIPLIER := 0.88
 const OFF_BALL_SPEED_MULTIPLIER := 1.08
 const AI_SPEED_MULTIPLIER := 0.88
+const FACING_RESPONSE := 12.0
 
 
 static func combine_inputs(primary: Vector2, secondary: Vector2) -> Vector2:
@@ -34,3 +35,16 @@ static func start_dash(input_vector: Vector2, cooldown_remaining: float, facing:
 	if direction.is_zero_approx():
 		direction = Vector3(facing.x, 0.0, facing.z).normalized()
 	return {"started": true, "velocity": direction * DASH_SPEED, "cooldown": DASH_COOLDOWN}
+
+
+static func step_facing_rotation(current_rotation: float, desired_direction: Vector2, delta: float, response: float = FACING_RESPONSE) -> float:
+	if desired_direction.is_zero_approx():
+		return current_rotation
+	var direction := desired_direction.normalized()
+	var target := atan2(direction.x, direction.y)
+	var weight := 1.0 - exp(-maxf(response, 0.0) * maxf(delta, 0.0))
+	return lerp_angle(current_rotation, target, weight)
+
+
+static func facing_from_rotation(rotation_y: float) -> Vector3:
+	return Vector3(sin(rotation_y), 0.0, cos(rotation_y)).normalized()

@@ -30,8 +30,8 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	_constrain_to_goal_area()
 	if not movement.is_zero_approx():
-		_facing_direction = Vector3(movement.x, 0.0, movement.y).normalized()
-		rotation.y = lerp_angle(rotation.y, atan2(_facing_direction.x, _facing_direction.z), minf(1.0, delta * 10.0))
+		rotation.y = PlayerMotorScript.step_facing_rotation(rotation.y, movement, delta)
+		_facing_direction = PlayerMotorScript.facing_from_rotation(rotation.y)
 
 
 func _human_movement() -> Vector2:
@@ -61,6 +61,11 @@ func _constrain_to_goal_area() -> void:
 
 func get_facing_direction() -> Vector3:
 	return _facing_direction
+
+
+func apply_network_rotation(rotation_y: float) -> void:
+	rotation.y = rotation_y
+	_facing_direction = PlayerMotorScript.facing_from_rotation(rotation_y)
 
 
 func set_shot_aim_locked(value: bool) -> void:

@@ -7,6 +7,7 @@ const MAX_REPLICA_PREDICTION_STEP := 0.05
 const MAX_SNAPSHOT_AGE_SECONDS := 0.15
 const MAX_BALL_CORRECTION_PER_SNAPSHOT := 0.28
 const MAX_REMOTE_CORRECTION_PER_SNAPSHOT := 0.28
+const REMOTE_ROTATION_RESPONSE := 12.0
 
 
 static func compose_movement_input(keyboard_or_controller: Vector2, mobile_joystick: Vector2) -> Vector2:
@@ -100,6 +101,11 @@ static func reconcile_rotation(current: float, authoritative: float, locally_pre
 	if locally_predicted and actively_steering:
 		return current
 	return lerp_angle(current, authoritative, 0.55)
+
+
+static func interpolate_remote_rotation(current: float, target: float, delta: float) -> float:
+	var weight := 1.0 - exp(-REMOTE_ROTATION_RESPONSE * maxf(delta, 0.0))
+	return lerp_angle(current, target, weight)
 
 
 static func next_action_sequence(current: int, just_pressed: bool) -> int:

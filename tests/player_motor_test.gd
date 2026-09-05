@@ -74,6 +74,19 @@ func _init() -> void:
 	if not fallback.started or fallback.velocity.x >= 0.0:
 		fail("A stationary dash must use the player's facing direction")
 		return
+	var first_turn: float = script.step_facing_rotation(0.0, Vector2.RIGHT, 1.0 / 60.0)
+	if first_turn <= 0.0 or first_turn >= PI * 0.5:
+		fail("A player's first turning frame must respond immediately without snapping to the target; got %s" % first_turn)
+		return
+	var at_30 := 0.0
+	for frame in 30:
+		at_30 = script.step_facing_rotation(at_30, Vector2.RIGHT, 1.0 / 30.0)
+	var at_60 := 0.0
+	for frame in 60:
+		at_60 = script.step_facing_rotation(at_60, Vector2.RIGHT, 1.0 / 60.0)
+	if absf(angle_difference(at_30, at_60)) > 0.001:
+		fail("Turning response must be render-rate independent; 30fps=%s 60fps=%s" % [at_30, at_60])
+		return
 
 	print("Player motor is valid.")
 	quit(0)

@@ -11,6 +11,7 @@ const PredictedBallActionScript = preload("res://scripts/network/predicted_ball_
 const StickSlapScript = preload("res://scripts/simulation/stick_slap.gd")
 const SquadLogicScript = preload("res://scripts/simulation/squad_logic.gd")
 const BallInteractionScript = preload("res://scripts/simulation/ball_interaction.gd")
+const PlayerMotorScript = preload("res://scripts/gameplay/player_motor.gd")
 const SNAPSHOT_SECONDS := OnlineInputScript.DEFAULT_SNAPSHOT_SECONDS
 const RINK_HALF_LENGTH := 19.1
 const RINK_HALF_WIDTH := 9.1
@@ -56,6 +57,7 @@ var _local_shoot_was_pressed := false
 var _local_shoot_charge := 0.0
 var _predicted_possession_actor_id: StringName = &""
 var _predicted_possession_remaining := 0.0
+var _remote_rotation_targets: Dictionary = {}
 
 
 func _ready() -> void:
@@ -222,7 +224,12 @@ func _apply_snapshot(snapshot: Dictionary) -> void:
 				authoritative_position = OnlineInputScript.project_snapshot_position(authoritative_position, authoritative_velocity, _snapshot_age_seconds)
 			actor.global_position = authoritative_position if is_new_faceoff else OnlineInputScript.reconcile_position(actor.global_position, authoritative_position, is_local_actor)
 			actor.velocity = authoritative_velocity
-			actor.rotation.y = float(state.get("r", actor.rotation.y)) if is_new_faceoff else OnlineInputScript.reconcile_rotation(actor.rotation.y, float(state.get("r", actor.rotation.y)), is_local_actor, actively_steering)
+			var authoritative_rotation := float(state.get("r", actor.rotation.y))
+			if is_new_faceoff or is_local_actor:
+				var replicated_rotation := authoritative_rotation if is_new_faceoff else OnlineInputScript.reconcile_rotation(actor.rotation.y, authoritative_rotation, true, actively_steering)
+				_apply_actor_rotation(actor, replicated_rotation)
+			else:
+				_remote_rotation_targets[String(actor.call("get_actor_id"))] = authoritative_rotation
 	_last_authoritative_action_sequence = maxi(_last_authoritative_action_sequence, int(snapshot.get("action_seq", 0)))
 	var ignore_ball_snapshot := false
 	if _predicted_ball_action != null and bool(_predicted_ball_action.get("active")):
@@ -303,7 +310,9 @@ func _update_predicted_ball_action(shoot_pressed: bool, pass_pressed: bool, delt
 	_ball.ball_velocity = predicted.velocity
 	_ball_attached_to_owner = bool(predicted.attached)
 	if not _ball_attached_to_owner and _ball.has_method("apply_network_control_state"):
-		_ball.call("apply_network_control_state", &"", actor.call("get_actor_id") if actor.call("get_team") == &"red" else &"red_1", actor.call("get_actor_id") if actor.call("get_team") == &"blue" else &"blue_1")
+		var red_human := StringName(_ball.call("get_human_control_actor_id_for_team", &"red"))
+		var blue_human := StringName(_ball.call("get_human_control_actor_id_for_team", &"blue"))
+		_ball.call("apply_network_control_state", &"", red_human, blue_human)
 
 
 func _begin_predicted_ball_action(actor: CharacterBody3D, action_type: StringName, charge: float, begin_forward_swing: bool) -> void:
@@ -438,7 +447,11 @@ func _predict_local_player(movement: Vector2, delta: float) -> void:
 	actor.global_position = predicted.position
 	actor.velocity = predicted.velocity
 	if not movement.is_zero_approx():
-		actor.rotation.y = atan2(movement.x, movement.y)
+		var predicted_rotation := PlayerMotorScript.step_facing_rotation(actor.rotation.y, movement, delta)
+		if actor.has_method("apply_network_rotation"):
+			actor.call("apply_network_rotation", predicted_rotation)
+		else:
+			actor.rotation.y = predicted_rotation
 
 
 func _record_pending_input(sequence: int, movement: Vector2, delta: float) -> void:
@@ -458,6 +471,9 @@ func _predict_replicas(delta: float) -> void:
 		predicted.x = clampf(predicted.x, -RINK_HALF_LENGTH, RINK_HALF_LENGTH)
 		predicted.z = clampf(predicted.z, -RINK_HALF_WIDTH, RINK_HALF_WIDTH)
 		actor.global_position = predicted
+		var actor_id := String(actor.call("get_actor_id"))
+		if _remote_rotation_targets.has(actor_id):
+			_apply_actor_rotation(actor, OnlineInputScript.interpolate_remote_rotation(actor.rotation.y, float(_remote_rotation_targets[actor_id]), delta))
 	var owner_id := StringName(_ball.call("get_control_owner_actor_id")) if _ball.has_method("get_control_owner_actor_id") else &""
 	var possession := _network_possession(owner_id) if _ball_attached_to_owner else {}
 	if not possession.is_empty():
@@ -498,3 +514,10 @@ func _array_to_vector(value: Variant) -> Vector2:
 
 func _array_to_vector3(value: Variant) -> Vector3:
 	return Vector3(float(value[0]), float(value[1]), float(value[2])) if value is Array and value.size() >= 3 else Vector3.ZERO
+
+
+func _apply_actor_rotation(actor: CharacterBody3D, rotation_y: float) -> void:
+	if actor.has_method("apply_network_rotation"):
+		actor.call("apply_network_rotation", rotation_y)
+	else:
+		actor.rotation.y = rotation_y

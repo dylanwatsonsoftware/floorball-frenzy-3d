@@ -66,8 +66,8 @@ func _physics_process(delta: float) -> void:
 		var owner_team: StringName = _ball.call("get_control_owner_team") if _ball.has_method("get_control_owner_team") else &""
 		facing_planar = SquadLogicScript.tactical_facing(Vector2(global_position.x, global_position.z), movement, _ball.global_position, owner_team == get_team())
 	if (is_human_controlled() or not _shot_aim_locked) and not facing_planar.is_zero_approx():
-		_facing_direction = Vector3(facing_planar.x, 0.0, facing_planar.y)
-		rotation.y = lerp_angle(rotation.y, atan2(_facing_direction.x, _facing_direction.z), minf(1.0, delta * 10.0))
+		rotation.y = PlayerMotorScript.step_facing_rotation(rotation.y, facing_planar, delta)
+		_facing_direction = PlayerMotorScript.facing_from_rotation(rotation.y)
 	if is_human_controlled() and _mobile_controls != null and _mobile_controls.has_method("set_dash_cooldown_ratio"):
 		_mobile_controls.call("set_dash_cooldown_ratio", get_dash_cooldown_ratio())
 
@@ -107,6 +107,11 @@ func _ai_movement() -> Vector2:
 
 func get_facing_direction() -> Vector3:
 	return _facing_direction
+
+
+func apply_network_rotation(rotation_y: float) -> void:
+	rotation.y = rotation_y
+	_facing_direction = PlayerMotorScript.facing_from_rotation(rotation_y)
 
 
 func set_shot_aim_locked(value: bool) -> void:

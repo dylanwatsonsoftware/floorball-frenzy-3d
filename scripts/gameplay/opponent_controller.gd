@@ -118,8 +118,8 @@ func _physics_process(delta: float) -> void:
 		owner_team == &"blue"
 	)
 	if not _shot_aim_locked and not facing_planar.is_zero_approx():
-		_facing_direction = Vector3(facing_planar.x, 0.0, facing_planar.y).normalized()
-		rotation.y = lerp_angle(rotation.y, atan2(_facing_direction.x, _facing_direction.z), minf(1.0, delta * 10.0))
+		rotation.y = PlayerMotorScript.step_facing_rotation(rotation.y, facing_planar, delta)
+		_facing_direction = PlayerMotorScript.facing_from_rotation(rotation.y)
 
 
 
@@ -138,6 +138,11 @@ func _resolve_player_contact() -> void:
 
 func get_facing_direction() -> Vector3:
 	return _facing_direction
+
+
+func apply_network_rotation(rotation_y: float) -> void:
+	rotation.y = rotation_y
+	_facing_direction = PlayerMotorScript.facing_from_rotation(rotation_y)
 
 
 func set_stick_slap_angle(angle_degrees: float) -> void:

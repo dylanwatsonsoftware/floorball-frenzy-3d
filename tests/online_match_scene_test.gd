@@ -68,6 +68,11 @@ func run_test() -> void:
 	if remote_actor == null or not remote_actor.get_node("PlayerMarker").visible:
 		fail("Guests must see which Lambs player their opponent currently controls")
 		return
+	remote_actor.call("apply_network_rotation", PI * 0.5)
+	var replicated_facing: Vector3 = remote_actor.call("get_facing_direction")
+	if replicated_facing.dot(Vector3.RIGHT) < 0.99:
+		fail("Applying a replicated rotation must update the remote actor's gameplay and visual facing together; got %s" % replicated_facing)
+		return
 	if remote_actor.get_node("ControlRing").visible:
 		fail("Only the local player should receive the ground control ring")
 		return
@@ -126,6 +131,12 @@ func run_test() -> void:
 	var local_possession_snapshot: Dictionary = possessed_snapshot.duplicate(true)
 	local_possession_snapshot.owner = String(local_actor.call("get_actor_id"))
 	local_possession_snapshot.blue_human = String(local_actor.call("get_actor_id"))
+	var alternate_red_human: CharacterBody3D
+	for candidate in client_arena.call("get_field_players"):
+		if candidate.call("get_team") == &"red" and candidate != remote_actor:
+			alternate_red_human = candidate
+			break
+	local_possession_snapshot.red_human = String(alternate_red_human.call("get_actor_id"))
 	client_controller.call("_apply_snapshot", local_possession_snapshot)
 	var local_blade_pocket := local_actor.get_node("StickRig/BladePocket") as Marker3D
 	var local_ball_start: Vector3 = client_ball.global_position
@@ -140,6 +151,9 @@ func run_test() -> void:
 		client_controller.call("_update_predicted_ball_action", false, false, 0.11)
 	if client_ball.ball_velocity.length() < 7.5 or client_ball.call("get_control_owner_actor_id") != &"":
 		fail("A guest pass must release from the blade locally before its host round trip")
+		return
+	if client_ball.call("get_human_control_actor_id_for_team", &"red") != alternate_red_human.call("get_actor_id"):
+		fail("A guest's predicted pass must preserve the authoritative opponent selection instead of temporarily jumping to red_1")
 		return
 	var predicted_pass_position: Vector3 = client_ball.global_position
 	var stale_possession_snapshot: Dictionary = local_possession_snapshot.duplicate(true)
