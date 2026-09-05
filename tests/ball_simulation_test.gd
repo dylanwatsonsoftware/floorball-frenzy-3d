@@ -42,6 +42,12 @@ func _init() -> void:
 	if short_pass_strength < 0.35 or long_pass_strength < 0.95 or long_pass_velocity.length() <= script.pass_velocity(Vector2.RIGHT, Vector3.ZERO, short_pass_strength).length() + 2.0:
 		fail("Automatic passes must kick significantly harder for a distant receiver; short=%s long=%s velocity=%s" % [short_pass_strength, long_pass_strength, long_pass_velocity])
 		return
+	var tapped_strength: float = script.charged_pass_strength(8.0, 0.0)
+	var charged_strength: float = script.charged_pass_strength(8.0, 1.0)
+	var charged_pass_velocity: Vector3 = script.pass_velocity(Vector2.RIGHT, Vector3.ZERO, charged_strength)
+	if charged_strength <= tapped_strength + 0.45 or charged_pass_velocity.length() <= script.pass_velocity(Vector2.RIGHT, Vector3.ZERO, tapped_strength).length() + 3.0:
+		fail("Holding Pass must add substantial range and speed beyond a tap; tap=%s charged=%s velocity=%s" % [tapped_strength, charged_strength, charged_pass_velocity])
+		return
 	if not script.has_method("soft_touch_velocity"):
 		fail("A pass attempt with no forward receiver needs a short push velocity")
 		return
@@ -76,6 +82,10 @@ func _init() -> void:
 	var post_hit: Dictionary = script.step(Vector3(16.25, 0.5, 0.8), Vector3(10.0, 0.0, 0.0), 0.05)
 	if post_hit.velocity.x >= 0.0:
 		fail("Ball simulation must apply goal-frame collisions before scoring")
+		return
+	var net_hit_same_frame: Dictionary = script.step(Vector3(16.3, 0.5, 0.0), Vector3(60.0, 0.0, 0.0), 0.05)
+	if StringName(net_hit_same_frame.get("goal", "")) != &"red":
+		fail("A shot crossing the line and reaching the back net in one physics frame must still register as a goal; got %s" % net_hit_same_frame)
 		return
 
 	print("Ball simulation is valid.")

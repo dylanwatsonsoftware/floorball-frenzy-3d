@@ -25,7 +25,7 @@ func begin(sequence: int, type: StringName, initial_position: Vector3, aim: Vect
 	velocity = actor_velocity
 	direction = aim.normalized() if not aim.is_zero_approx() else Vector2.RIGHT
 	inherited_velocity = actor_velocity
-	charge = clampf(action_charge, 0.0, 1.0)
+	charge = clampf(action_charge, 0.0, BallSimulationScript.MAX_CHARGED_PASS_STRENGTH if type == &"pass" else 1.0)
 	attached = true
 	active = true
 

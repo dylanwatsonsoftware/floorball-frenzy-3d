@@ -1,7 +1,6 @@
 extends MeshInstance3D
 
 const BallSimulationScript = preload("res://scripts/simulation/ball_simulation.gd")
-const MatchSimulationScript = preload("res://scripts/simulation/match_simulation.gd")
 const BallInteractionScript = preload("res://scripts/simulation/ball_interaction.gd")
 const StickSlapScript = preload("res://scripts/simulation/stick_slap.gd")
 const OneTouchScript = preload("res://scripts/simulation/one_touch.gd")
@@ -39,6 +38,8 @@ const NETWORK_BLADE_PREDICTION_SECONDS := 0.12
 
 var ball_velocity := Vector3.ZERO
 var _charge_seconds := 0.0
+var _pass_charge_seconds := 0.0
+var _pass_charge_actor: CharacterBody3D
 var _player: CharacterBody3D
 var _opponent: CharacterBody3D
 var _field_players: Array[CharacterBody3D] = []
@@ -69,6 +70,8 @@ var _human_control_actor_id: StringName = &"red_1"
 var _blue_human_control_actor_id: StringName = &"blue_1"
 var _network_blue_charge := 0.0
 var _network_blue_was_shooting := false
+var _network_blue_was_passing := false
+var _network_blue_pass_charge := 0.0
 var _pickup_lock_actor_id: StringName = &""
 var _pickup_lock_seconds := 0.0
 var _network_blue_possession_grace := 0.0
@@ -95,14 +98,24 @@ func _physics_process(delta: float) -> void:
 		_pickup_lock_actor_id = &""
 	if Input.is_action_just_pressed("switch_player"):
 		switch_human_player()
-	if Input.is_action_just_pressed("pass"):
-		pass_to_closest_teammate()
 	_last_touch_age += delta
 	_update_scoop_feedback(delta)
 	_update_steal_feedback(delta)
 	_advance_slap(delta)
 	var previous_position := position
 	var next_state := BallSimulationScript.step(position, ball_velocity, delta)
+	var scorer := StringName(next_state.get("goal", &""))
+	if scorer != &"":
+		position = next_state.position
+		ball_velocity = Vector3.ZERO
+		_charge_seconds = 0.0
+		_pass_charge_seconds = 0.0
+		_cancel_slap()
+		_clear_charge_feedback()
+		_set_trail_visible(false)
+		set_physics_process(false)
+		goal_scored.emit(scorer)
+		return
 	var previous_control_owner := _control_owner
 	var interaction_state := BallInteractionScript.step(next_state.position, next_state.velocity, _interaction_participants(), delta, _control_owner)
 	position = interaction_state.position
@@ -113,19 +126,10 @@ func _physics_process(delta: float) -> void:
 	_update_dash_steal_latches()
 	if not _apply_parry(interaction_state.body_controller):
 		_apply_dash_steal(interaction_state.body_controller)
-	var scorer := MatchSimulationScript.detect_goal(previous_position, position, ball_velocity)
-	if scorer != &"":
-		ball_velocity = Vector3.ZERO
-		_charge_seconds = 0.0
-		_cancel_slap()
-		_clear_charge_feedback()
-		_set_trail_visible(false)
-		set_physics_process(false)
-		goal_scored.emit(scorer)
-		return
 	_update_spin(delta)
 	_update_shot_trail()
 	_update_shot_charge(delta)
+	_update_pass_charge(delta)
 	_record_body_touch(interaction_state.body_controller)
 
 
@@ -168,6 +172,10 @@ func reset_for_faceoff() -> void:
 	reset_physics_interpolation()
 	ball_velocity = Vector3.ZERO
 	_charge_seconds = 0.0
+	_pass_charge_seconds = 0.0
+	_pass_charge_actor = null
+	_network_blue_pass_charge = 0.0
+	_network_blue_was_passing = false
 	_cancel_slap()
 	_last_touch_actor = &""
 	_last_touch_age = INF
@@ -224,6 +232,27 @@ func _update_shot_charge(delta: float) -> void:
 		if _steal_feedback_remaining <= 0.0 and _scoop_remaining <= 0.0:
 			_clear_charge_feedback()
 		input_actor.call("set_stick_slap_angle", 0.0)
+
+
+func _update_pass_charge(delta: float) -> void:
+	if _slap_elapsed >= 0.0 or Input.is_action_pressed("shoot"):
+		return
+	var input_actor := _red_input_actor()
+	if Input.is_action_pressed("pass"):
+		if _pass_charge_seconds <= 0.0:
+			_pass_charge_actor = input_actor
+		elif input_actor != _pass_charge_actor:
+			_pass_charge_seconds = 0.0
+			_pass_charge_actor = input_actor
+		_pass_charge_seconds = minf(MAX_CHARGE_SECONDS, _pass_charge_seconds + delta)
+		var ratio := _pass_charge_seconds / MAX_CHARGE_SECONDS
+		_pass_charge_actor.call("set_stick_slap_angle", lerpf(-2.0, StickSlapScript.BACKSWING_ANGLE * 0.72, ratio * ratio))
+		_apply_charge_feedback(ratio)
+	elif _pass_charge_seconds > 0.0:
+		var ratio := _pass_charge_seconds / MAX_CHARGE_SECONDS
+		pass_to_closest_teammate(ratio)
+		_pass_charge_seconds = 0.0
+		_pass_charge_actor = null
 
 
 func _red_input_actor() -> CharacterBody3D:
@@ -329,7 +358,7 @@ func begin_slap(direction: Vector2, charge: float) -> void:
 	_slap_actor.call("set_stick_slap_angle", StickSlapScript.angle_at(0.0))
 
 
-func pass_to_closest_teammate() -> bool:
+func pass_to_closest_teammate(charge_ratio: float = 0.0) -> bool:
 	if _slap_elapsed >= 0.0:
 		return false
 	var carrier := _actor_for_controller(_control_owner)
@@ -345,9 +374,9 @@ func pass_to_closest_teammate() -> bool:
 	_cancel_active_charge(false)
 	_slap_actor = carrier
 	var offset := Vector2(facing.x, facing.z) if target.is_empty() else Vector2(target.position.x - carrier.global_position.x, target.position.z - carrier.global_position.z)
-	var pass_strength := BallSimulationScript.MIN_PASS_STRENGTH if target.is_empty() else BallSimulationScript.pass_strength_for_distance(offset.length())
+	var pass_strength := BallSimulationScript.charged_pass_strength(offset.length(), charge_ratio)
 	_configure_slap(offset, pass_strength, 0.0, true)
-	_pending_soft_pass = target.is_empty()
+	_pending_soft_pass = target.is_empty() and charge_ratio < 0.15
 	_slap_actor.call("set_stick_slap_angle", StickSlapScript.angle_at(0.0))
 	return true
 
@@ -557,9 +586,17 @@ func _update_network_blue_actions(delta: float) -> void:
 	if actor == null or _slap_elapsed >= 0.0:
 		_network_blue_was_shooting = OnlineMatch.remote_shoot
 		return
-	if OnlineMatch.remote_pass:
-		_start_network_pass(actor)
-		OnlineMatch.remote_pass = false
+	if OnlineMatch.remote_pass_held:
+		_network_blue_pass_charge = minf(MAX_CHARGE_SECONDS, _network_blue_pass_charge + delta)
+		actor.call("set_stick_slap_angle", lerpf(-2.0, StickSlapScript.BACKSWING_ANGLE * 0.72, pow(_network_blue_pass_charge / MAX_CHARGE_SECONDS, 2.0)))
+	elif _network_blue_was_passing and _network_blue_pass_charge > 0.0:
+		_start_network_pass(actor, _network_blue_pass_charge / MAX_CHARGE_SECONDS)
+		_network_blue_pass_charge = 0.0
+	elif OnlineMatch.remote_pass:
+		# Compatibility for clients predating the held-pass field.
+		_start_network_pass(actor, 0.0)
+	OnlineMatch.remote_pass = false
+	_network_blue_was_passing = OnlineMatch.remote_pass_held
 	if OnlineMatch.remote_shoot:
 		_network_blue_charge = minf(MAX_CHARGE_SECONDS * 2.0, _network_blue_charge + delta)
 		_turn_actor_toward_attacking_goal(actor, delta)
@@ -583,7 +620,7 @@ func _turn_actor_toward_attacking_goal(actor: CharacterBody3D, delta: float) -> 
 		actor.rotation.y = next_rotation
 
 
-func _start_network_pass(actor: CharacterBody3D) -> void:
+func _start_network_pass(actor: CharacterBody3D, charge_ratio: float = 0.0) -> void:
 	if _control_owner < 0 or _actor_for_controller(_control_owner) != actor:
 		return
 	var teammates := []
@@ -595,9 +632,9 @@ func _start_network_pass(actor: CharacterBody3D) -> void:
 	var direction := Vector2(facing.x, facing.z) if target.is_empty() else Vector2(target.position.x - actor.global_position.x, target.position.z - actor.global_position.z)
 	_slap_actor = actor
 	_pending_lag_compensated_contact = _lag_compensated_network_hit(actor, OnlineMatch.remote_rtt_ms)
-	var pass_strength := BallSimulationScript.MIN_PASS_STRENGTH if target.is_empty() else BallSimulationScript.pass_strength_for_distance(direction.length())
+	var pass_strength := BallSimulationScript.charged_pass_strength(direction.length(), charge_ratio)
 	_configure_slap(direction, pass_strength, StickSlapScript.network_start_elapsed(&"pass", OnlineMatch.remote_rtt_ms / 2000.0), true)
-	_pending_soft_pass = target.is_empty()
+	_pending_soft_pass = target.is_empty() and charge_ratio < 0.15
 
 
 func _record_network_hit_history(host_time_ms: int = -1) -> void:

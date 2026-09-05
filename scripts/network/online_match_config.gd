@@ -9,6 +9,7 @@ var remote_input := Vector2.ZERO
 var remote_dash := false
 var remote_shoot := false
 var remote_pass := false
+var remote_pass_held := false
 var remote_rtt_ms := 0.0
 var remote_input_sequence := -1
 var remote_input_sent_ms := -1
@@ -45,6 +46,7 @@ func clear_remote_input() -> void:
 	remote_dash = false
 	remote_shoot = false
 	remote_pass = false
+	remote_pass_held = false
 	remote_rtt_ms = 0.0
 	remote_input_sequence = -1
 	remote_input_sent_ms = -1

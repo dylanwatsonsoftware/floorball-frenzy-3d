@@ -3,6 +3,7 @@ extends RefCounted
 
 const GoalCollisionScript = preload("res://scripts/simulation/goal_collision.gd")
 const RinkCollisionScript = preload("res://scripts/simulation/rink_collision.gd")
+const MatchSimulationScript = preload("res://scripts/simulation/match_simulation.gd")
 
 const SHOT_BASE_SPEED := 13.0
 const SHOT_SPEED_SCALE := 12.0
@@ -26,6 +27,7 @@ const ROLLING_DECELERATION := 1.8
 const MIN_VERTICAL_BOUNCE := 0.6
 const MIN_PASS_STRENGTH := 0.38
 const MAX_PASS_STRENGTH := 1.0
+const MAX_CHARGED_PASS_STRENGTH := 1.65
 const MIN_FULL_PASS_DISTANCE := 4.0
 const MAX_FULL_PASS_DISTANCE := 14.0
 
@@ -38,11 +40,15 @@ static func pass_strength_for_distance(distance: float) -> float:
 	return remap(clampf(distance, MIN_FULL_PASS_DISTANCE, MAX_FULL_PASS_DISTANCE), MIN_FULL_PASS_DISTANCE, MAX_FULL_PASS_DISTANCE, MIN_PASS_STRENGTH, MAX_PASS_STRENGTH)
 
 
+static func charged_pass_strength(distance: float, charge: float) -> float:
+	return clampf(pass_strength_for_distance(distance) + clampf(charge, 0.0, 1.0) * 0.65, MIN_PASS_STRENGTH, MAX_CHARGED_PASS_STRENGTH)
+
+
 static func pass_velocity(aim: Vector2, inherited_velocity: Vector3 = Vector3.ZERO, strength: float = MIN_PASS_STRENGTH) -> Vector3:
 	var direction := aim.normalized() if not aim.is_zero_approx() else Vector2.RIGHT
-	var pass_speed := lerpf(8.5, 12.0, inverse_lerp(MIN_PASS_STRENGTH, MAX_PASS_STRENGTH, clampf(strength, MIN_PASS_STRENGTH, MAX_PASS_STRENGTH)))
+	var pass_speed := lerpf(8.5, 16.5, inverse_lerp(MIN_PASS_STRENGTH, MAX_CHARGED_PASS_STRENGTH, clampf(strength, MIN_PASS_STRENGTH, MAX_CHARGED_PASS_STRENGTH)))
 	var planar := direction * pass_speed + Vector2(inherited_velocity.x, inherited_velocity.z) * 0.2
-	planar = planar.limit_length(12.8)
+	planar = planar.limit_length(17.2)
 	return Vector3(planar.x, 0.18, planar.y)
 
 
@@ -95,9 +101,14 @@ static func step(position: Vector3, velocity: Vector3, delta: float) -> Dictiona
 		next_velocity.x = planar.x
 		next_velocity.z = planar.y
 
+	var crossed_goal: StringName = MatchSimulationScript.detect_goal(position, next_position, next_velocity)
 	var goal_collision := GoalCollisionScript.resolve(position, next_position, next_velocity)
 	next_position = goal_collision.position
 	next_velocity = goal_collision.velocity
+	if bool(goal_collision.collided):
+		var remained_inside_net := (crossed_goal == &"red" and next_position.x > MatchSimulationScript.GOAL_LINE_X) or (crossed_goal == &"blue" and next_position.x < -MatchSimulationScript.GOAL_LINE_X)
+		if not remained_inside_net:
+			crossed_goal = &""
 
 	var rink_collision := RinkCollisionScript.resolve(next_position, next_velocity)
 	next_position = rink_collision.position
@@ -106,4 +117,5 @@ static func step(position: Vector3, velocity: Vector3, delta: float) -> Dictiona
 	return {
 		"position": next_position,
 		"velocity": next_velocity,
+		"goal": crossed_goal,
 	}

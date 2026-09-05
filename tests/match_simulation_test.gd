@@ -27,6 +27,14 @@ func _init() -> void:
 	if blue_goal != &"blue":
 		fail("Crossing the left goal line through the mouth must score for blue")
 		return
+	var fast_diagonal_goal: StringName = match_sim.detect_goal(
+		Vector3(16.3, 0.5, 0.6),
+		Vector3(17.3, 0.45, 1.1),
+		Vector3(30.0, -1.0, 15.0)
+	)
+	if fast_diagonal_goal != &"red":
+		fail("A fast diagonal shot crossing inside the goal mouth must score even if its frame endpoint is outside the post")
+		return
 
 	if match_sim.detect_goal(Vector3(16.3, 1.3, 0.0), Vector3(16.7, 1.25, 0.0), Vector3.RIGHT) != &"":
 		fail("A ball above the crossbar must not score")

@@ -22,6 +22,12 @@ func _init() -> void:
 	if long_contact.velocity.x <= at_contact.velocity.x + 2.0:
 		fail("Guest prediction must preserve the extra power of a long automatic pass; short=%s long=%s" % [at_contact.velocity, long_contact.velocity])
 		return
+	var charged_action = action_script.new()
+	charged_action.begin(10, &"pass", Vector3.ZERO, Vector2.RIGHT, Vector3.ZERO, 1.65)
+	var charged_contact: Dictionary = charged_action.step(0.32, Vector3.ZERO)
+	if charged_contact.velocity.x <= long_contact.velocity.x + 2.0:
+		fail("A fully charged guest pass must retain power above an ordinary maximum-distance pass; long=%s charged=%s" % [long_contact.velocity, charged_contact.velocity])
+		return
 	var moving: Dictionary = action.step(1.0 / 60.0, Vector3.ZERO)
 	if moving.position.x <= at_contact.position.x:
 		fail("A released predicted pass must simulate locally between snapshots; got %s" % moving)

@@ -8,18 +8,18 @@ const GOAL_HEIGHT := 1.15
 
 
 static func detect_goal(previous_position: Vector3, current_position: Vector3, current_velocity: Vector3) -> StringName:
-	var inside_mouth := absf(current_position.z) <= GOAL_HALF_WIDTH
-	var below_crossbar := current_position.y < GOAL_HEIGHT
-	if not inside_mouth or not below_crossbar:
-		return &""
-
-	var crossed_right := previous_position.x <= GOAL_LINE_X and current_position.x > GOAL_LINE_X
-	if crossed_right and current_velocity.x > 0.0:
-		return &"red"
-
-	var crossed_left := previous_position.x >= -GOAL_LINE_X and current_position.x < -GOAL_LINE_X
-	if crossed_left and current_velocity.x < 0.0:
-		return &"blue"
+	for goal_data in [[GOAL_LINE_X, &"red", 1.0], [-GOAL_LINE_X, &"blue", -1.0]]:
+		var goal_x: float = goal_data[0]
+		var direction: float = goal_data[2]
+		var travel_x := current_position.x - previous_position.x
+		if absf(travel_x) <= 0.00001 or current_velocity.x * direction <= 0.0:
+			continue
+		var crossing_t := (goal_x - previous_position.x) / travel_x
+		if crossing_t < 0.0 or crossing_t > 1.0:
+			continue
+		var crossing := previous_position.lerp(current_position, crossing_t)
+		if absf(crossing.z) <= GOAL_HALF_WIDTH and crossing.y < GOAL_HEIGHT:
+			return goal_data[1]
 
 	return &""
 

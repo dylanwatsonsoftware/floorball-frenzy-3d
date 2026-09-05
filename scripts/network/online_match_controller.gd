@@ -63,6 +63,8 @@ var _predicted_ball_action: RefCounted
 var _last_authoritative_action_sequence := 0
 var _local_shoot_was_pressed := false
 var _local_shoot_charge := 0.0
+var _local_pass_was_pressed := false
+var _local_pass_charge := 0.0
 var _predicted_possession_actor_id: StringName = &""
 var _predicted_possession_remaining := 0.0
 var _pickup_request_sequence := 0
@@ -150,6 +152,7 @@ func _physics_process(delta: float) -> void:
 		_sequence += 1
 		var movement := _movement_input()
 		var pass_pressed := Input.is_action_just_pressed("pass")
+		var pass_held := Input.is_action_pressed("pass")
 		var shoot_pressed := Input.is_action_pressed("shoot")
 		var switch_pressed := Input.is_action_just_pressed("switch_player")
 		var local_actor := _arena.call("get_local_human_actor") as CharacterBody3D
@@ -160,7 +163,7 @@ func _physics_process(delta: float) -> void:
 		_dash_sequence = OnlineInputScript.next_action_sequence(_dash_sequence, dash_pressed)
 		if switch_pressed:
 			_predict_local_switch(_sequence)
-		var player_command = PlayerCommandScript.create(_sequence, _simulation_tick, movement, movement, shoot_pressed, _pass_sequence, _switch_sequence, _dash_sequence, dash_pressed)
+		var player_command = PlayerCommandScript.create(_sequence, _simulation_tick, movement, movement, shoot_pressed, _pass_sequence, _switch_sequence, _dash_sequence, dash_pressed, pass_held)
 		var packet: Dictionary = player_command.to_network_packet(Time.get_ticks_msec(), _estimated_rtt_ms)
 		# Keep the held flag during the rolling deployment for older hosts; new
 		# hosts use dash_seq as a loss-tolerant one-shot action edge.
@@ -175,7 +178,7 @@ func _physics_process(delta: float) -> void:
 		_predict_local_command(simulation_command)
 		_predict_replicas(delta)
 		_predict_local_pickup(delta)
-		_update_predicted_ball_action(shoot_pressed, pass_pressed, delta)
+		_update_predicted_ball_action(shoot_pressed, pass_held, delta)
 		return
 	_snapshot_elapsed += delta
 	if _snapshot_elapsed >= SNAPSHOT_SECONDS:
@@ -199,6 +202,7 @@ func _on_message(message: Dictionary) -> void:
 			_last_remote_dash_sequence = dash_sequence
 			OnlineMatch.remote_dash = true
 		OnlineMatch.remote_shoot = bool(message.get("shoot", false))
+		OnlineMatch.remote_pass_held = bool(message.get("pass", false))
 		OnlineMatch.remote_rtt_ms = clampf(float(message.get("rtt_ms", 0.0)), 0.0, 500.0)
 		var pass_sequence := int(message.get("pass_seq", 0))
 		if pass_sequence > _last_remote_pass_sequence:
@@ -394,13 +398,21 @@ func _apply_network_score(snapshot: Dictionary) -> void:
 		_match_flow.call("apply_network_score", int(score.get("red", 0)), int(score.get("blue", 0)))
 
 
-func _update_predicted_ball_action(shoot_pressed: bool, pass_pressed: bool, delta: float) -> void:
+func _update_predicted_ball_action(shoot_pressed: bool, pass_held: bool, delta: float) -> void:
 	var actor := _arena.call("get_local_human_actor") as CharacterBody3D
 	if actor == null:
 		return
 	var owns_ball := _ball.has_method("is_controlled_by_actor") and bool(_ball.call("is_controlled_by_actor", actor.call("get_actor_id")))
-	if pass_pressed and owns_ball and (_predicted_ball_action == null or not bool(_predicted_ball_action.get("active"))):
-		_begin_predicted_ball_action(actor, &"pass", 0.38, false)
+	if pass_held and owns_ball and (_predicted_ball_action == null or not bool(_predicted_ball_action.get("active"))):
+		_local_pass_charge = minf(0.8, _local_pass_charge + delta)
+		var pass_charge_ratio := _local_pass_charge / 0.8
+		actor.call("set_stick_slap_angle", lerpf(-2.0, StickSlapScript.BACKSWING_ANGLE * 0.72, pass_charge_ratio * pass_charge_ratio))
+	elif _local_pass_was_pressed and _local_pass_charge > 0.0 and owns_ball:
+		_begin_predicted_ball_action(actor, &"pass", _local_pass_charge / 0.8, false)
+		_local_pass_charge = 0.0
+	elif not pass_held:
+		_local_pass_charge = 0.0
+	_local_pass_was_pressed = pass_held
 	if shoot_pressed and owns_ball and (_predicted_ball_action == null or not bool(_predicted_ball_action.get("active"))):
 		_local_shoot_charge = minf(1.6, _local_shoot_charge + delta)
 		_turn_actor_toward_attacking_goal(actor, delta)
@@ -443,6 +455,7 @@ func _begin_predicted_ball_action(actor: CharacterBody3D, action_type: StringNam
 	_predicted_ball_action = PredictedBallActionScript.new()
 	var direction := Vector2(actor.call("get_facing_direction").x, actor.call("get_facing_direction").z)
 	if action_type == &"pass":
+		var pass_charge_ratio := charge
 		var teammates: Array = []
 		for candidate in _arena.call("get_team_players", actor.call("get_team")):
 			if StringName(candidate.get_meta("role", &"field")) == &"goalkeeper":
@@ -451,7 +464,7 @@ func _begin_predicted_ball_action(actor: CharacterBody3D, action_type: StringNam
 		var target: Dictionary = SquadLogicScript.forward_teammate(actor.call("get_actor_id"), actor.global_position, actor.call("get_facing_direction"), teammates)
 		if not target.is_empty():
 			direction = Vector2(target.position.x - actor.global_position.x, target.position.z - actor.global_position.z)
-			charge = BallSimulationScript.pass_strength_for_distance(direction.length())
+		charge = BallSimulationScript.charged_pass_strength(direction.length(), pass_charge_ratio)
 	var blade := actor.get_node_or_null("StickRig/BladePocket") as Marker3D
 	var origin := _ball.global_position
 	if blade != null:

@@ -8,6 +8,7 @@ var movement: Vector2
 var facing: Vector2
 var shoot_held: bool
 var pass_sequence: int
+var pass_held: bool
 var switch_sequence: int
 var dash_sequence: int
 var dash_pressed: bool
@@ -22,7 +23,8 @@ static func create(
 	pass_seq: int,
 	switch_seq: int,
 	dash_seq: int,
-	is_dash_pressed: bool
+	is_dash_pressed: bool,
+	is_pass_held: bool = false
 ) -> RefCounted:
 	var command = new()
 	command.sequence = command_sequence
@@ -31,6 +33,7 @@ static func create(
 	command.facing = facing_input.limit_length(1.0)
 	command.shoot_held = is_shoot_held
 	command.pass_sequence = pass_seq
+	command.pass_held = is_pass_held
 	command.switch_sequence = switch_seq
 	command.dash_sequence = dash_seq
 	command.dash_pressed = is_dash_pressed
@@ -49,6 +52,7 @@ func to_network_packet(sent_at_ms: int, round_trip_ms: float) -> Dictionary:
 		"dash": dash_pressed,
 		"dash_seq": dash_sequence,
 		"shoot": shoot_held,
+		"pass": pass_held,
 		"pass_seq": pass_sequence,
 		"switch_seq": switch_sequence,
 	}

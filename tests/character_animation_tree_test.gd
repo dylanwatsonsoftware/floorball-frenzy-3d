@@ -29,6 +29,14 @@ func run_test() -> void:
 			if ik_count != 2 or not bool(rig.get_meta("hand_ik_ready", false)):
 				fail("%s must expose two running stick-hand IK chains; count=%d" % [actor.name, ik_count])
 				return
+			var top_hand := actor.get_node("StickRig/LeftHandIKTarget") as Marker3D
+			var lower_hand := actor.get_node("StickRig/RightHandIKTarget") as Marker3D
+			var pocket := actor.get_node("StickRig/BladePocket") as Marker3D
+			var top_distance := top_hand.global_position.distance_to(pocket.global_position)
+			var lower_distance := lower_hand.global_position.distance_to(pocket.global_position)
+			if top_distance <= 0.0 or lower_distance / top_distance < 0.32 or lower_distance / top_distance > 0.48:
+				fail("Stick hands must be separated with one at the top and the lower hand about 40%% down the shaft; top=%s lower=%s" % [top_distance, lower_distance])
+				return
 	print("Every player uses locomotion blending, layered slap actions, and the hand-IK contract.")
 	quit(0)
 

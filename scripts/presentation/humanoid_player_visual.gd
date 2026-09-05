@@ -103,7 +103,7 @@ func _setup_hand_targets() -> void:
 	var endpoint_a := shaft.to_global(top_local)
 	var endpoint_b := shaft.to_global(bottom_local)
 	var shaft_top := endpoint_a if endpoint_a.distance_to(shaft_bottom) > endpoint_b.distance_to(shaft_bottom) else endpoint_b
-	for target_data in [["LeftHandIKTarget", 0.58, "UpperArm.L", "Hand.L"], ["RightHandIKTarget", 0.72, "UpperArm.R", "Hand.R"]]:
+	for target_data in [["LeftHandIKTarget", 0.94, "UpperArm.L", "Hand.L"], ["RightHandIKTarget", 0.40, "UpperArm.R", "Hand.R"]]:
 		var target := Marker3D.new()
 		target.name = target_data[0]
 		stick_rig.add_child(target)
@@ -122,7 +122,7 @@ func _setup_hand_targets() -> void:
 func set_swing_pose(stick_angle_degrees: float) -> void:
 	var was_resting := absf(_swing_angle) < 2.0
 	_swing_angle = stick_angle_degrees
-	rotation.y = deg_to_rad(clampf(_swing_angle * 0.34, -28.0, 28.0))
+	rotation.y = deg_to_rad(clampf(_swing_angle * 0.46, -38.0, 38.0))
 	if _animation_tree != null and was_resting and absf(_swing_angle) >= 2.0 and not _slap_requested:
 		_animation_tree.set("parameters/SlapShot/request", AnimationNodeOneShot.ONE_SHOT_REQUEST_FIRE)
 		_slap_requested = true
