@@ -13,7 +13,7 @@ func _ready() -> void:
 	_animation_player = find_child("AnimationPlayer", true, false) as AnimationPlayer
 	_skeleton = find_child("Skeleton3D", true, false) as Skeleton3D
 	_setup_animation_tree()
-	_setup_hand_targets()
+	call_deferred("_setup_hand_targets")
 
 
 func _process(_delta: float) -> void:
@@ -81,11 +81,41 @@ func _filter_upper_body(layer: AnimationNodeOneShot) -> void:
 
 
 func _setup_hand_targets() -> void:
-	for target_data in [["LeftHandIKTarget", Vector3(-0.34, -0.16, -0.10)], ["RightHandIKTarget", Vector3(0.34, -0.16, -0.10)]]:
+	var actor := get_parent() as CharacterBody3D
+	var stick_rig: Node3D = actor.get_node_or_null("StickRig") as Node3D if actor != null else null
+	if stick_rig == null or _skeleton == null:
+		return
+	var pocket := stick_rig.get_node_or_null("BladePocket") as Marker3D
+	var shaft := stick_rig.get_node_or_null("Shaft") as MeshInstance3D
+	if pocket == null or shaft == null:
+		return
+	var shaft_bottom := pocket.global_position
+	var shaft_box := shaft.mesh.get_aabb()
+	var long_axis := 0
+	if shaft_box.size.y > shaft_box.size.x and shaft_box.size.y > shaft_box.size.z:
+		long_axis = 1
+	elif shaft_box.size.z > shaft_box.size.x:
+		long_axis = 2
+	var top_local := shaft_box.get_center()
+	top_local[long_axis] += shaft_box.size[long_axis] * 0.5
+	var bottom_local := shaft_box.get_center()
+	bottom_local[long_axis] -= shaft_box.size[long_axis] * 0.5
+	var endpoint_a := shaft.to_global(top_local)
+	var endpoint_b := shaft.to_global(bottom_local)
+	var shaft_top := endpoint_a if endpoint_a.distance_to(shaft_bottom) > endpoint_b.distance_to(shaft_bottom) else endpoint_b
+	for target_data in [["LeftHandIKTarget", 0.58, "UpperArm.L", "Hand.L"], ["RightHandIKTarget", 0.72, "UpperArm.R", "Hand.R"]]:
 		var target := Marker3D.new()
 		target.name = target_data[0]
-		target.position = target_data[1]
-		add_child(target)
+		stick_rig.add_child(target)
+		target.position = stick_rig.to_local(shaft_bottom.lerp(shaft_top, float(target_data[1])))
+		var ik := SkeletonIK3D.new()
+		ik.name = "%sIK" % String(target_data[0]).trim_suffix("Target")
+		ik.root_bone = StringName(target_data[2])
+		ik.tip_bone = StringName(target_data[3])
+		_skeleton.add_child(ik)
+		ik.target_node = ik.get_path_to(target)
+		ik.interpolation = 0.82
+		ik.start()
 	set_meta("hand_ik_ready", true)
 
 
