@@ -14,7 +14,9 @@ const BallInteractionScript = preload("res://scripts/simulation/ball_interaction
 const PlayerMotorScript = preload("res://scripts/gameplay/player_motor.gd")
 const PlayerCommandScript = preload("res://scripts/simulation/player_command.gd")
 const NetworkTraceScript = preload("res://scripts/network/network_trace.gd")
+const RemoteSnapshotBufferScript = preload("res://scripts/network/remote_snapshot_buffer.gd")
 const SNAPSHOT_SECONDS := OnlineInputScript.DEFAULT_SNAPSHOT_SECONDS
+const REMOTE_INTERPOLATION_DELAY_MS := 110
 const RINK_HALF_LENGTH := 19.1
 const RINK_HALF_WIDTH := 9.1
 
@@ -63,6 +65,7 @@ var _local_shoot_charge := 0.0
 var _predicted_possession_actor_id: StringName = &""
 var _predicted_possession_remaining := 0.0
 var _remote_rotation_targets: Dictionary = {}
+var _remote_snapshot_buffers: Dictionary = {}
 var _predicted_local_switch_actor_id: StringName = &""
 var _predicted_local_switch_input_sequence := -1
 var _local_prediction_state: Dictionary = {}
@@ -241,6 +244,7 @@ func _apply_snapshot(snapshot: Dictionary) -> void:
 	_pending_inputs = [] if is_new_faceoff else OnlineInputScript.discard_acknowledged_inputs(_pending_inputs, int(snapshot.get("input_ack", -1)))
 	if is_new_faceoff:
 		_local_prediction_state = {}
+		_remote_snapshot_buffers.clear()
 	for actor in _arena.call("get_field_players"):
 		actor_by_id[String(actor.call("get_actor_id"))] = actor
 	var stick_angles: Array = snapshot.get("stick_angles", [])
@@ -248,6 +252,7 @@ func _apply_snapshot(snapshot: Dictionary) -> void:
 	for state: Dictionary in snapshot.get("actors", []):
 		var actor: CharacterBody3D = actor_by_id.get(String(state.get("id", "")))
 		if actor != null:
+			var actor_id := String(actor.call("get_actor_id"))
 			var is_local_actor := actor == local_actor
 			var actively_steering := is_local_actor and Vector2(actor.velocity.x, actor.velocity.z).length_squared() > 0.01
 			var authoritative_position := _array_to_vector3(state.get("p", []))
@@ -263,8 +268,9 @@ func _apply_snapshot(snapshot: Dictionary) -> void:
 				_local_prediction_state = replayed_state
 				_latest_player_prediction_error = actor.global_position.distance_to(authoritative_position)
 			elif not is_new_faceoff:
-				authoritative_position = OnlineInputScript.project_snapshot_position(authoritative_position, authoritative_velocity, _snapshot_age_seconds)
-			actor.global_position = authoritative_position if is_new_faceoff else OnlineInputScript.reconcile_position(actor.global_position, authoritative_position, is_local_actor)
+				_remote_snapshot_buffer(actor_id).call("push", int(snapshot.get("host_time_ms", Time.get_ticks_msec())), authoritative_position, authoritative_velocity, float(state.get("r", actor.rotation.y)))
+			if is_new_faceoff or is_local_actor:
+				actor.global_position = authoritative_position if is_new_faceoff else OnlineInputScript.reconcile_position(actor.global_position, authoritative_position, true)
 			actor.velocity = authoritative_velocity
 			if is_local_actor and not _local_prediction_state.is_empty():
 				_local_prediction_state.position = actor.global_position
@@ -276,7 +282,7 @@ func _apply_snapshot(snapshot: Dictionary) -> void:
 				var replicated_rotation := authoritative_rotation if is_new_faceoff else OnlineInputScript.reconcile_rotation(actor.rotation.y, authoritative_rotation, true, actively_steering)
 				_apply_actor_rotation(actor, replicated_rotation)
 			else:
-				_remote_rotation_targets[String(actor.call("get_actor_id"))] = authoritative_rotation
+				_remote_rotation_targets[actor_id] = authoritative_rotation
 			var has_local_action_prediction := is_local_actor and (_local_shoot_was_pressed or (_predicted_ball_action != null and bool(_predicted_ball_action.get("active"))))
 			if state_index < stick_angles.size() and not has_local_action_prediction:
 				actor.call("set_stick_slap_angle", float(stick_angles[state_index]))
@@ -593,15 +599,25 @@ func _local_human_speed_multiplier() -> float:
 
 func _predict_replicas(delta: float) -> void:
 	var local_actor := _arena.call("get_local_human_actor") as CharacterBody3D
+	var estimated_host_time_ms := roundi(float(Time.get_ticks_msec()) - _host_clock_offset_ms) - REMOTE_INTERPOLATION_DELAY_MS
 	for actor in _arena.call("get_field_players"):
 		if actor == local_actor:
 			continue
-		var predicted: Vector3 = OnlineInputScript.predict_replica_position(actor.global_position, actor.velocity, delta)
+		var actor_id := String(actor.call("get_actor_id"))
+		var sampled_state: Dictionary = {}
+		if _remote_snapshot_buffers.has(actor_id):
+			sampled_state = _remote_snapshot_buffers[actor_id].call("sample", estimated_host_time_ms)
+		var predicted: Vector3
+		if sampled_state.is_empty():
+			predicted = OnlineInputScript.predict_replica_position(actor.global_position, actor.velocity, delta)
+		else:
+			predicted = OnlineInputScript.reconcile_position(actor.global_position, sampled_state.position, false)
+			actor.velocity = sampled_state.velocity
+			_apply_actor_rotation(actor, OnlineInputScript.interpolate_remote_rotation(actor.rotation.y, float(sampled_state.rotation), delta))
 		predicted.x = clampf(predicted.x, -RINK_HALF_LENGTH, RINK_HALF_LENGTH)
 		predicted.z = clampf(predicted.z, -RINK_HALF_WIDTH, RINK_HALF_WIDTH)
 		actor.global_position = predicted
-		var actor_id := String(actor.call("get_actor_id"))
-		if _remote_rotation_targets.has(actor_id):
+		if sampled_state.is_empty() and _remote_rotation_targets.has(actor_id):
 			_apply_actor_rotation(actor, OnlineInputScript.interpolate_remote_rotation(actor.rotation.y, float(_remote_rotation_targets[actor_id]), delta))
 	var owner_id := StringName(_ball.call("get_control_owner_actor_id")) if _ball.has_method("get_control_owner_actor_id") else &""
 	var possession := _network_possession(owner_id) if _ball_attached_to_owner else {}
@@ -613,6 +629,12 @@ func _predict_replicas(delta: float) -> void:
 		var predicted_ball: Dictionary = BallSimulationScript.step(_ball.global_position, _ball.ball_velocity, prediction_delta)
 		_ball.global_position = predicted_ball.position
 		_ball.ball_velocity = predicted_ball.velocity
+
+
+func _remote_snapshot_buffer(actor_id: String):
+	if not _remote_snapshot_buffers.has(actor_id):
+		_remote_snapshot_buffers[actor_id] = RemoteSnapshotBufferScript.new()
+	return _remote_snapshot_buffers[actor_id]
 
 
 func _network_possession(owner_id: StringName) -> Dictionary:

@@ -45,7 +45,7 @@ func run_test() -> void:
 	var blade_world_center := blade_pocket.global_position
 	var carried_gap := Vector2(ball.global_position.x, ball.global_position.z).distance_to(Vector2(blade_world_center.x, blade_world_center.z))
 	if carried_gap > 0.36:
-		fail("A possessed ball must settle visibly onto the actual blade instead of an obsolete physics offset; gap=%s ball=%s blade=%s" % [carried_gap, ball.global_position, blade_world_center])
+		fail("A possessed ball must settle visibly onto the actual blade instead of an obsolete physics offset; gap=%s ball=%s blade=%s owner=%s" % [carried_gap, ball.global_position, blade_world_center, ball.call("get_control_owner_actor_id")])
 		return
 	ball.call("begin_slap", Vector2.RIGHT, 0.7)
 	opponent.call("try_dash", Vector2.LEFT)

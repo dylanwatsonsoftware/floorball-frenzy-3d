@@ -103,6 +103,21 @@ func _init() -> void:
 	if bumped.controller != 0:
 		fail("Ordinary opponent overlap must not strip settled possession; a deliberate dash or stick challenge should be required; got %s" % bumped)
 		return
+	var distant_challenger := challenger.duplicate()
+	distant_challenger.position = Vector3(3.0, 0.75, 0.0)
+	distant_challenger.team = &"blue"
+	var network_owner := player.duplicate()
+	network_owner.network_pickup_assist = true
+	var displaced_snapshot: Dictionary = interaction.step(
+		Vector3(3.9, 0.22, -0.75),
+		Vector3.ZERO,
+		[network_owner, distant_challenger],
+		0.1,
+		0
+	)
+	if displaced_snapshot.controller != 0:
+		fail("A temporarily displaced possessed ball must stay with its recorded owner instead of being sucked to an overlapping opponent; got %s" % displaced_snapshot)
+		return
 	var team_owner := player.duplicate()
 	team_owner.team = &"red"
 	var teammate := challenger.duplicate()

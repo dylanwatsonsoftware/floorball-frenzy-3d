@@ -4,8 +4,10 @@ extends RefCounted
 
 const OnlineInputScript = preload("res://scripts/network/online_input.gd")
 const ConditionsScript = preload("res://scripts/network/network_condition_simulator.gd")
+const RemoteSnapshotBufferScript = preload("res://scripts/network/remote_snapshot_buffer.gd")
 const FIXED_DELTA := 1.0 / 60.0
 const SNAPSHOT_INTERVAL_TICKS := 2
+const REMOTE_INTERPOLATION_DELAY_MS := 110
 
 
 static func run_profile(profile_name: StringName, duration_seconds: float, seed: int = 1) -> Dictionary:
@@ -192,6 +194,7 @@ static func run_remote_profile(profile_name: StringName, duration_seconds: float
 	var replica_position := Vector3.ZERO
 	var replica_velocity := Vector3.ZERO
 	var packets: Array = []
+	var snapshot_buffer = RemoteSnapshotBufferScript.new()
 	var corrections: Array[float] = []
 	var snapshot_sequence := 0
 	var last_snapshot := -1
@@ -203,7 +206,6 @@ static func run_remote_profile(profile_name: StringName, duration_seconds: float
 		var host_step: Dictionary = OnlineInputScript.predict_player_state(host_position, host_velocity, movement, FIXED_DELTA, 1.0)
 		host_position = host_step.position
 		host_velocity = host_step.velocity
-		replica_position = OnlineInputScript.predict_replica_position(replica_position, replica_velocity, FIXED_DELTA)
 		if tick % SNAPSHOT_INTERVAL_TICKS == 0:
 			snapshot_sequence += 1
 			var schedule: Dictionary = conditions.schedule(snapshot_sequence, now_ms)
@@ -215,15 +217,18 @@ static func run_remote_profile(profile_name: StringName, duration_seconds: float
 				if int(packet.seq) <= last_snapshot:
 					continue
 				last_snapshot = int(packet.seq)
-				var age := float(now_ms - int(packet.sent_ms)) / 1000.0
-				var target: Vector3 = OnlineInputScript.project_snapshot_position(packet.position, packet.velocity, age)
-				var reconciled: Vector3 = OnlineInputScript.reconcile_position(replica_position, target, false)
-				corrections.append(replica_position.distance_to(reconciled))
-				replica_position = reconciled
-				replica_velocity = packet.velocity
+				snapshot_buffer.push(int(packet.sent_ms), packet.position, packet.velocity, 0.0)
 			else:
 				remaining.append(packet)
 		packets = remaining
+		var buffered: Dictionary = snapshot_buffer.sample(now_ms - REMOTE_INTERPOLATION_DELAY_MS)
+		if buffered.is_empty():
+			replica_position = OnlineInputScript.predict_replica_position(replica_position, replica_velocity, FIXED_DELTA)
+		else:
+			var reconciled: Vector3 = OnlineInputScript.reconcile_position(replica_position, buffered.position, false)
+			corrections.append(replica_position.distance_to(reconciled))
+			replica_position = reconciled
+			replica_velocity = buffered.velocity
 	corrections.sort()
 	return {
 		"maximum_correction_m": corrections.back() if not corrections.is_empty() else INF,

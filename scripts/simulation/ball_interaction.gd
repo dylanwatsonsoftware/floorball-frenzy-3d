@@ -7,14 +7,13 @@ const BLADE_RIGHT_OFFSET := 0.75
 const STICK_CONTROL_RADIUS := 1.25
 const NETWORK_STICK_CONTROL_RADIUS := 1.5
 const RETENTION_RADIUS := 1.9
-const NETWORK_RETENTION_RADIUS := 2.15
+const NETWORK_HARD_POSSESSION_BREAK_DISTANCE := 3.6
 const CONTROL_HEIGHT := 0.68
 const BODY_CONTACT_HEIGHT := 1.5
 const DRIBBLE_LEAD_SPEED := 2.2
 const VELOCITY_TRANSFER := 0.72
 const ASSIST_RATE := 8.0
 const MAX_CONTROL_SPEED := 10.0
-const MAX_RETENTION_RELATIVE_SPEED := 7.5
 const POSITION_ASSIST_RATE := 7.0
 const PASSIVE_KEEPER_PICKUP_MAX_SPEED := 3.0
 
@@ -80,11 +79,14 @@ static func step(ball_position: Vector3, ball_velocity: Vector3, participants: A
 	if previous_controller >= 0 and previous_controller < participants.size() and previous_controller != blocked_controller:
 		var previous_owner: Dictionary = participants[previous_controller]
 		var previous_pocket := blade_pocket(previous_owner)
-		if not previous_pocket.is_empty():
+		# Possession is an explicit state. Passes, shots, faceoffs, and deliberate
+		# dash steals release it elsewhere; transient physics or network offsets
+		# must not let a nearby stick silently claim the carried ball. The generous
+		# hard bound still lets teleports and match resets invalidate stale owners.
+		if not previous_pocket.is_empty() and not bool(previous_owner.get("pickup_blocked", false)):
 			var retained_distance: float = Vector2(next_position.x, next_position.z).distance_to(previous_pocket.target)
-			var relative_speed: float = Vector2(next_velocity.x - previous_owner.velocity.x, next_velocity.z - previous_owner.velocity.z).length()
-			var retention_radius := NETWORK_RETENTION_RADIUS if bool(previous_owner.get("network_pickup_assist", false)) else RETENTION_RADIUS
-			if retained_distance <= retention_radius and relative_speed <= MAX_RETENTION_RELATIVE_SPEED:
+			var break_distance := NETWORK_HARD_POSSESSION_BREAK_DISTANCE if bool(previous_owner.get("network_pickup_assist", false)) else RETENTION_RADIUS
+			if retained_distance <= break_distance:
 				controller = previous_controller
 	if controller < 0 and Vector2(next_velocity.x, next_velocity.z).length() > MAX_CONTROL_SPEED:
 		return _result(next_position, next_velocity, controller, body_controller)

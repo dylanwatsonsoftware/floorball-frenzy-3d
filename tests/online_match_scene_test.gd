@@ -111,6 +111,12 @@ func run_test() -> void:
 	for actor_state: Dictionary in remote_pose_snapshot.actors:
 		remote_pose_snapshot.stick_angles.append(38.0 if actor_state.id == String(remote_actor.call("get_actor_id")) else 0.0)
 	client_controller.call("_apply_snapshot", remote_pose_snapshot)
+	remote_pose_snapshot.host_time_ms = int(remote_pose_snapshot.host_time_ms) + 33
+	client_controller.call("_apply_snapshot", remote_pose_snapshot)
+	var remote_buffers: Dictionary = client_controller.get("_remote_snapshot_buffers")
+	if not remote_buffers.has(String(remote_actor.call("get_actor_id"))):
+		fail("Remote actor snapshots must enter the timestamped interpolation buffer")
+		return
 	if not is_equal_approx(float(remote_actor.get_meta("stick_slap_angle", 0.0)), 38.0) or absf((remote_actor.get_node("BodyRig") as Node3D).rotation.y) < 0.1:
 		fail("A guest must render the replicated opponent stick swing and torso twist")
 		return
@@ -177,7 +183,9 @@ func run_test() -> void:
 		fail("A possessed guest replica ball must settle onto its authoritative owner's blade")
 		return
 	var previous_possessed_ball_position: Vector3 = client_ball.global_position
-	remote_actor.velocity = Vector3(4.0, 0.0, 0.0)
+	var movement_buffer = client_controller.call("_remote_snapshot_buffer", String(remote_actor.call("get_actor_id")))
+	movement_buffer.call("clear")
+	movement_buffer.call("push", Time.get_ticks_msec() - 110, remote_actor.global_position, Vector3(4.0, 0.0, 0.0), remote_actor.rotation.y)
 	client_controller.call("_predict_replicas", 1.0 / 60.0)
 	remote_blade_pocket.force_update_transform()
 	if client_ball.global_position.distance_to(remote_blade_pocket.global_position) > 0.05 or client_ball.global_position.x <= previous_possessed_ball_position.x:
