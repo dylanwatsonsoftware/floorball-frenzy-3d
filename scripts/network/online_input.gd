@@ -8,6 +8,8 @@ const MAX_SNAPSHOT_AGE_SECONDS := 0.15
 const MAX_BALL_CORRECTION_PER_SNAPSHOT := 0.28
 const MAX_REMOTE_CORRECTION_PER_SNAPSHOT := 0.28
 const REMOTE_ROTATION_RESPONSE := 12.0
+const POSSESSED_BALL_RESPONSE := 18.0
+const MAX_POSSESSED_BALL_CORRECTION_PER_FRAME := 0.20
 
 
 static func compose_movement_input(keyboard_or_controller: Vector2, mobile_joystick: Vector2) -> Vector2:
@@ -45,6 +47,14 @@ static func reconcile_ball_position(current: Vector3, authoritative: Vector3) ->
 	var weight := 0.18 if error < 1.2 else 0.72
 	var correction := (authoritative - current) * weight
 	return current + correction.limit_length(MAX_BALL_CORRECTION_PER_SNAPSHOT)
+
+
+static func follow_possessed_ball(current: Vector3, blade_target: Vector3, delta: float) -> Vector3:
+	var correction := blade_target - current
+	if correction.length_squared() <= 0.000225:
+		return blade_target
+	var weight := 1.0 - exp(-POSSESSED_BALL_RESPONSE * maxf(delta, 0.0))
+	return current + (correction * weight).limit_length(MAX_POSSESSED_BALL_CORRECTION_PER_FRAME)
 
 
 static func discard_acknowledged_inputs(inputs: Array, acknowledged_sequence: int) -> Array:

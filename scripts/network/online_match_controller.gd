@@ -267,7 +267,6 @@ func _apply_snapshot(snapshot: Dictionary) -> void:
 			_predicted_local_switch_input_sequence = -1
 	if _ball.has_method("apply_network_control_state"):
 		_ball.call("apply_network_control_state", snapshot_owner, StringName(snapshot.get("red_human", "red_1")), authoritative_blue_human)
-	_set_ball_replica_parent(snapshot_owner if _ball_attached_to_owner else &"")
 	var possession := _network_possession(snapshot_owner) if _ball_attached_to_owner else {}
 	var authoritative_ball := _array_to_vector3(snapshot.get("ball", []))
 	var authoritative_ball_velocity := _array_to_vector3(snapshot.get("ball_velocity", []))
@@ -281,7 +280,10 @@ func _apply_snapshot(snapshot: Dictionary) -> void:
 		authoritative_ball_velocity = aged_ball.velocity
 	_latest_ball_prediction_error = _ball.global_position.distance_to(authoritative_ball)
 	_diagnostics.record_prediction_error(_latest_player_prediction_error, _latest_ball_prediction_error)
-	_ball.global_position = authoritative_ball if is_new_faceoff or not possession.is_empty() else OnlineInputScript.reconcile_ball_position(_ball.global_position, authoritative_ball)
+	if is_new_faceoff:
+		_ball.global_position = authoritative_ball
+	elif possession.is_empty():
+		_ball.global_position = OnlineInputScript.reconcile_ball_position(_ball.global_position, authoritative_ball)
 	_ball.ball_velocity = authoritative_ball_velocity
 	_apply_network_score(snapshot)
 
@@ -324,10 +326,9 @@ func _update_predicted_ball_action(shoot_pressed: bool, pass_pressed: bool, delt
 	blade.force_update_transform()
 	var predicted: Dictionary = _predicted_ball_action.call("step", delta, blade.global_position)
 	actor.call("set_stick_slap_angle", StickSlapScript.angle_at(float(predicted.elapsed)))
-	_ball.global_position = predicted.position
-	_ball.ball_velocity = predicted.velocity
 	_ball_attached_to_owner = bool(predicted.attached)
-	_set_ball_replica_parent(actor.call("get_actor_id") if _ball_attached_to_owner else &"")
+	_ball.global_position = OnlineInputScript.follow_possessed_ball(_ball.global_position, predicted.position, delta) if _ball_attached_to_owner else predicted.position
+	_ball.ball_velocity = predicted.velocity
 	if not _ball_attached_to_owner and _ball.has_method("apply_network_control_state"):
 		var red_human := StringName(_ball.call("get_human_control_actor_id_for_team", &"red"))
 		var blue_human := StringName(_ball.call("get_human_control_actor_id_for_team", &"blue"))
@@ -354,7 +355,7 @@ func _begin_predicted_ball_action(actor: CharacterBody3D, action_type: StringNam
 	_predicted_ball_action.call("begin", _last_authoritative_action_sequence + 1, action_type, origin, direction, actor.velocity, charge, begin_forward_swing)
 
 
-func _predict_local_pickup(_delta: float) -> void:
+func _predict_local_pickup(delta: float) -> void:
 	if _ball_attached_to_owner or (_predicted_ball_action != null and bool(_predicted_ball_action.get("active"))):
 		return
 	if _ball.global_position.y > BallInteractionScript.CONTROL_HEIGHT or Vector2(_ball.ball_velocity.x, _ball.ball_velocity.z).length() > BallInteractionScript.MAX_CONTROL_SPEED:
@@ -372,8 +373,7 @@ func _predict_local_pickup(_delta: float) -> void:
 	_predicted_possession_actor_id = actor.call("get_actor_id")
 	_predicted_possession_remaining = 0.40
 	_ball_attached_to_owner = true
-	_set_ball_replica_parent(_predicted_possession_actor_id)
-	_ball.global_position = blade.global_position
+	_ball.global_position = OnlineInputScript.follow_possessed_ball(_ball.global_position, blade.global_position, delta)
 	_ball.ball_velocity = actor.velocity
 	if _ball.has_method("apply_network_control_state"):
 		var red_human := StringName(_ball.call("get_human_control_actor_id_for_team", &"red"))
@@ -504,7 +504,7 @@ func _predict_replicas(delta: float) -> void:
 	var owner_id := StringName(_ball.call("get_control_owner_actor_id")) if _ball.has_method("get_control_owner_actor_id") else &""
 	var possession := _network_possession(owner_id) if _ball_attached_to_owner else {}
 	if not possession.is_empty():
-		_ball.global_position = possession.position
+		_ball.global_position = OnlineInputScript.follow_possessed_ball(_ball.global_position, possession.position, delta)
 		_ball.ball_velocity = possession.velocity
 	else:
 		var prediction_delta := clampf(delta, 0.0, OnlineInputScript.MAX_REPLICA_PREDICTION_STEP)
@@ -525,23 +525,6 @@ func _network_possession(owner_id: StringName) -> Dictionary:
 		blade_pocket.force_update_transform()
 		return {"position": blade_pocket.global_position, "velocity": actor.velocity}
 	return {}
-
-
-func _set_ball_replica_parent(owner_id: StringName) -> void:
-	var target_parent: Node = _arena
-	if not owner_id.is_empty():
-		for actor in _arena.call("get_field_players"):
-			if actor.call("get_actor_id") == owner_id:
-				target_parent = actor
-				break
-	if _ball.get_parent() == target_parent:
-		return
-	# A possessed ball and its carrier must share a render transform. Otherwise a
-	# packet-time carrier correction can be displayed one frame apart from the
-	# independently positioned ball, which looks like the ball is skating around
-	# the blade even though both physics coordinates agree.
-	_ball.reparent(target_parent, true)
-	_ball.reset_physics_interpolation()
 
 
 func _vector_to_array(value: Vector2) -> Array:

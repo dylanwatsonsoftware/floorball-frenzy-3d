@@ -118,11 +118,21 @@ func run_test() -> void:
 	client_controller.call("_apply_snapshot", possessed_snapshot)
 	var remote_blade_pocket := remote_actor.get_node("StickRig/BladePocket") as Marker3D
 	remote_blade_pocket.force_update_transform()
-	if client_ball.get_parent() != remote_actor:
-		fail("A possessed replica ball must share its carrier transform so packet corrections cannot make it skate around the stick")
+	if client_ball.get_parent() != client_arena:
+		fail("A possessed replica ball must remain in rink space so owner rotation cannot orbit it around the player")
 		return
+	remote_actor.velocity = Vector3.ZERO
+	client_ball.global_position = remote_blade_pocket.global_position + Vector3(1.0, 0.0, 0.0)
+	var pre_follow_position: Vector3 = client_ball.global_position
+	client_controller.call("_predict_replicas", 1.0 / 60.0)
+	if client_ball.global_position.distance_to(pre_follow_position) > 0.21:
+		fail("A possessed replica must approach its owner's blade without a one-frame teleport")
+		return
+	for follow_frame in 29:
+		client_controller.call("_predict_replicas", 1.0 / 60.0)
+	remote_blade_pocket.force_update_transform()
 	if client_ball.global_position.distance_to(remote_blade_pocket.global_position) > 0.05:
-		fail("A possessed guest replica ball must attach to its authoritative owner's blade instead of reconciling stale ball coordinates")
+		fail("A possessed guest replica ball must settle onto its authoritative owner's blade")
 		return
 	var previous_possessed_ball_position: Vector3 = client_ball.global_position
 	remote_actor.velocity = Vector3(4.0, 0.0, 0.0)
@@ -141,6 +151,8 @@ func run_test() -> void:
 			break
 	local_possession_snapshot.red_human = String(alternate_red_human.call("get_actor_id"))
 	client_controller.call("_apply_snapshot", local_possession_snapshot)
+	for local_follow_frame in 60:
+		client_controller.call("_predict_replicas", 1.0 / 60.0)
 	await process_frame
 	if not bool(local_actor.call("is_human_controlled")) or not local_actor.get_node("PlayerMarker").visible or not local_actor.get_node("ControlRing").visible:
 		fail("Guest possession attachment must not make the selected player lose its human-control markers")
@@ -158,8 +170,14 @@ func run_test() -> void:
 	client_controller.call("_predict_local_player", Vector2.RIGHT, 0.1)
 	client_controller.call("_predict_replicas", 0.1)
 	local_blade_pocket.force_update_transform()
-	if client_ball.global_position.distance_to(local_blade_pocket.global_position) > 0.05 or client_ball.global_position.x <= local_ball_start.x:
-		fail("The guest-owned ball must follow the guest's locally predicted blade immediately")
+	if client_ball.global_position.x <= local_ball_start.x:
+		fail("The guest-owned ball must begin following the guest's locally predicted blade immediately")
+		return
+	for local_movement_follow_frame in 20:
+		client_controller.call("_predict_replicas", 1.0 / 60.0)
+	local_blade_pocket.force_update_transform()
+	if client_ball.global_position.distance_to(local_blade_pocket.global_position) > 0.05:
+		fail("The guest-owned ball must settle onto the locally predicted blade without snapping")
 		return
 	client_controller.call("_begin_predicted_ball_action", local_actor, &"pass", 0.38, false)
 	for action_step in 3:

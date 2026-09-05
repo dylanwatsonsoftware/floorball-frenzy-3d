@@ -70,6 +70,16 @@ func _init() -> void:
 	if moderate_ball_error.x <= 0.0 or moderate_ball_error.x >= 0.4:
 		fail("Moderate ball errors should correct gently; got %s" % moderate_ball_error)
 		return
+	var possessed_follow_step: Vector3 = controller.follow_possessed_ball(Vector3.ZERO, Vector3(1.0, 0.0, 0.0), 1.0 / 60.0)
+	if possessed_follow_step.x <= 0.0 or possessed_follow_step.x > 0.21:
+		fail("A newly possessed guest ball must approach the blade without teleporting there; got %s" % possessed_follow_step)
+		return
+	var possessed_follow_position := Vector3.ZERO
+	for frame in 30:
+		possessed_follow_position = controller.follow_possessed_ball(possessed_follow_position, Vector3(1.0, 0.0, 0.0), 1.0 / 60.0)
+	if possessed_follow_position.distance_to(Vector3(1.0, 0.0, 0.0)) > 0.03:
+		fail("A possessed guest ball must settle accurately onto the blade after its bounded handoff; got %s" % possessed_follow_position)
+		return
 	var pending_inputs: Array = [
 		{"seq": 7, "move": Vector2.RIGHT, "delta": 0.1, "speed": 9.0},
 		{"seq": 8, "move": Vector2.DOWN, "delta": 0.1, "speed": 9.0},
