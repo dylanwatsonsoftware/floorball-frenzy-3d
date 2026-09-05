@@ -11,6 +11,7 @@ const ShotChargeFeedbackScript = preload("res://scripts/presentation/shot_charge
 const ShotImpactFeedbackScript = preload("res://scripts/presentation/shot_impact_feedback.gd")
 const SquadLogicScript = preload("res://scripts/simulation/squad_logic.gd")
 const ShotAimIndicatorScript = preload("res://scripts/presentation/shot_aim_indicator.gd")
+const LagCompensatedHitHistoryScript = preload("res://scripts/network/lag_compensated_hit_history.gd")
 const MAX_CHARGE_SECONDS := 0.8
 const SHOOT_RANGE := 2.35
 const TRAIL_SPEED_THRESHOLD := 10.0
@@ -70,6 +71,8 @@ var _network_blue_was_shooting := false
 var _pickup_lock_actor_id: StringName = &""
 var _pickup_lock_seconds := 0.0
 var _network_blue_possession_grace := 0.0
+var _network_hit_history: RefCounted = LagCompensatedHitHistoryScript.new()
+var _pending_lag_compensated_contact := false
 
 signal goal_scored(scorer: StringName)
 
@@ -83,6 +86,7 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	if OnlineMatch.enabled and OnlineMatch.is_authority():
+		_record_network_hit_history()
 		_update_network_blue_actions(delta)
 	_pickup_lock_seconds = maxf(0.0, _pickup_lock_seconds - delta)
 	_network_blue_possession_grace = maxf(0.0, _network_blue_possession_grace - delta)
@@ -157,6 +161,8 @@ func _launch_pass(planar_direction: Vector2, inherited_velocity: Vector3, passer
 
 func reset_for_faceoff() -> void:
 	_network_blue_possession_grace = 0.0
+	_network_hit_history.call("clear")
+	_pending_lag_compensated_contact = false
 	position = Vector3(0.0, BallSimulationScript.BALL_RADIUS, 0.0)
 	reset_physics_interpolation()
 	ball_velocity = Vector3.ZERO
@@ -392,13 +398,14 @@ func _advance_slap(delta: float) -> void:
 		var step_direction := Vector3(_pending_slap_direction.x, 0.0, _pending_slap_direction.y)
 		if not step_direction.is_zero_approx():
 			_slap_actor.global_position += step_direction.normalized() * step_distance
-	if StickSlapScript.crossed_contact(previous_elapsed, _slap_elapsed) and _ball_in_slap_actor_blade():
+	if StickSlapScript.crossed_contact(previous_elapsed, _slap_elapsed) and (_ball_in_slap_actor_blade() or _pending_lag_compensated_contact):
 		var slap_team: StringName = _slap_actor.call("get_team")
 		if _pending_pass:
 			_launch_pass(_pending_slap_direction, _slap_actor.velocity, slap_team, _pending_soft_pass)
 		else:
 			launch(_pending_slap_direction, _pending_slap_charge, _slap_actor.velocity, _pending_one_touch, slap_team, _pending_bolt)
 		_play_contact_feedback(_pending_slap_charge, _pending_bolt)
+		_pending_lag_compensated_contact = false
 	if _slap_elapsed >= StickSlapScript.TOTAL_SECONDS:
 		_cancel_slap()
 
@@ -411,6 +418,7 @@ func _cancel_slap() -> void:
 	_pending_bolt = false
 	_pending_pass = false
 	_pending_soft_pass = false
+	_pending_lag_compensated_contact = false
 	if _slap_actor != null:
 		_slap_actor.call("set_stick_slap_angle", 0.0)
 		_slap_actor.call("set_shot_aim_locked", false)
@@ -555,6 +563,7 @@ func _update_network_blue_actions(delta: float) -> void:
 		actor.call("set_stick_slap_angle", lerpf(-2.0, StickSlapScript.BACKSWING_ANGLE, pow(minf(1.0, _network_blue_charge / MAX_CHARGE_SECONDS), 2.0)))
 	elif _network_blue_was_shooting and _network_blue_charge > 0.0:
 		_slap_actor = actor
+		_pending_lag_compensated_contact = _lag_compensated_network_hit(actor, OnlineMatch.remote_rtt_ms)
 		var facing: Vector3 = actor.call("get_facing_direction")
 		_configure_slap(Vector2(facing.x, facing.z), _network_blue_charge / MAX_CHARGE_SECONDS, StickSlapScript.network_start_elapsed(&"shot", OnlineMatch.remote_rtt_ms / 2000.0))
 		_network_blue_charge = 0.0
@@ -572,8 +581,27 @@ func _start_network_pass(actor: CharacterBody3D) -> void:
 	var target: Dictionary = SquadLogicScript.forward_teammate(actor.call("get_actor_id"), actor.global_position, facing, teammates)
 	var direction := Vector2(facing.x, facing.z) if target.is_empty() else Vector2(target.position.x - actor.global_position.x, target.position.z - actor.global_position.z)
 	_slap_actor = actor
+	_pending_lag_compensated_contact = _lag_compensated_network_hit(actor, OnlineMatch.remote_rtt_ms)
 	_configure_slap(direction, 0.38, StickSlapScript.network_start_elapsed(&"pass", OnlineMatch.remote_rtt_ms / 2000.0), true)
 	_pending_soft_pass = target.is_empty()
+
+
+func _record_network_hit_history(host_time_ms: int = -1) -> void:
+	var actor := _actor_by_id(_blue_human_control_actor_id)
+	if actor == null:
+		return
+	var blade := actor.get_node_or_null("StickRig/BladePocket") as Marker3D
+	if blade == null:
+		return
+	blade.force_update_transform()
+	var recorded_time := Time.get_ticks_msec() if host_time_ms < 0 else host_time_ms
+	_network_hit_history.call("record", recorded_time, actor.call("get_actor_id"), actor.global_position, actor.call("get_facing_direction"), blade.global_position, global_position, get_control_owner_actor_id())
+
+
+func _lag_compensated_network_hit(actor: CharacterBody3D, round_trip_ms: float, host_time_ms: int = -1) -> bool:
+	var current_time := Time.get_ticks_msec() if host_time_ms < 0 else host_time_ms
+	var rewind_ms := roundi(clampf(round_trip_ms * 0.5, 0.0, float(LagCompensatedHitHistoryScript.MAX_REWIND_MS)))
+	return bool(_network_hit_history.call("can_hit", actor.call("get_actor_id"), current_time - rewind_ms))
 
 
 func _actor_by_id(actor_id: StringName) -> CharacterBody3D:
