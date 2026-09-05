@@ -8,6 +8,7 @@ const OPPONENT_FACEOFF_POSITION := Vector3(5.0, 0.75, 0.0)
 const RED_GOAL_FLASH := Color(0.10, 0.65, 0.30, 0.34)
 const BLUE_GOAL_FLASH := Color(0.35, 0.78, 0.94, 0.34)
 const GOAL_FLASH_SECONDS := 0.72
+const PREDICTED_GOAL_REJECTION_GRACE_SECONDS := 0.75
 
 var score := {"red": 0, "blue": 0}
 var _pause_remaining := 0.0
@@ -24,6 +25,9 @@ var _goal_sequence := 0
 var _faceoff_sequence := 0
 var _last_scorer: StringName = &""
 var _last_network_goal_sequence := 0
+var _predicted_goal_action_sequence := -1
+var _predicted_goal_scorer: StringName = &""
+var _predicted_goal_age := 0.0
 
 
 func _ready() -> void:
@@ -39,6 +43,8 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	if _predicted_goal_action_sequence >= 0:
+		_predicted_goal_age += delta
 	if _pause_remaining <= 0.0:
 		return
 	_pause_remaining = maxf(0.0, _pause_remaining - delta)
@@ -94,7 +100,9 @@ func _reset_faceoff() -> void:
 
 
 func _update_score_label() -> void:
-	_score_label.text = "%d  —  %d" % [score.red, score.blue]
+	var displayed_red := int(score.red) + (1 if _predicted_goal_scorer == &"red" else 0)
+	var displayed_blue := int(score.blue) + (1 if _predicted_goal_scorer == &"blue" else 0)
+	_score_label.text = "%d  —  %d" % [displayed_red, displayed_blue]
 
 
 func apply_network_score(red_score: int, blue_score: int) -> void:
@@ -118,9 +126,43 @@ func apply_network_state(red_score: int, blue_score: int, goal_sequence: int, sc
 		_last_network_goal_sequence = goal_sequence
 		_message_label.text = "%s %s!" % [_team_name(scorer), "WINS" if phase == &"win" else "GOAL"]
 		_show_goal_flash(scorer)
-	elif phase == &"play":
+	elif phase == &"play" and _predicted_goal_action_sequence < 0:
 		_message_label.text = ""
 		_clear_goal_flash()
+
+
+func show_predicted_goal(scorer: StringName, action_sequence: int) -> void:
+	if scorer not in [&"red", &"blue"] or action_sequence < 0 or _predicted_goal_action_sequence >= 0:
+		return
+	_predicted_goal_action_sequence = action_sequence
+	_predicted_goal_scorer = scorer
+	_predicted_goal_age = 0.0
+	_update_score_label()
+	_message_label.text = "%s GOAL!" % _team_name(scorer)
+	_show_goal_flash(scorer)
+
+
+func reconcile_predicted_goal(authoritative_action_sequence: int, scorer: StringName, phase: StringName) -> void:
+	if _predicted_goal_action_sequence < 0:
+		return
+	if phase in [&"goal", &"win"]:
+		_predicted_goal_action_sequence = -1
+		_predicted_goal_scorer = &""
+		_predicted_goal_age = 0.0
+		return
+	if authoritative_action_sequence >= _predicted_goal_action_sequence and _predicted_goal_age >= PREDICTED_GOAL_REJECTION_GRACE_SECONDS:
+		cancel_predicted_goal()
+
+
+func cancel_predicted_goal() -> void:
+	if _predicted_goal_action_sequence < 0:
+		return
+	_predicted_goal_action_sequence = -1
+	_predicted_goal_scorer = &""
+	_predicted_goal_age = 0.0
+	_message_label.text = ""
+	_clear_goal_flash()
+	_update_score_label()
 
 
 func _team_name(team: StringName) -> String:

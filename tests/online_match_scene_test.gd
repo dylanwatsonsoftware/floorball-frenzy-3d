@@ -300,6 +300,27 @@ func run_test() -> void:
 	if client_ball.global_position.x <= 0.0 or client_ball.global_position.y >= 1.0:
 		fail("A guest must locally simulate loose-ball velocity and gravity between snapshots")
 		return
+	client_controller.set("_predicted_goal_action_sequence", 2)
+	client_controller.set("_predicted_goal_candidate_remaining", 2.0)
+	client_ball.call("apply_network_control_state", &"", &"red_1", local_actor.call("get_actor_id"))
+	client_controller.set("_ball_attached_to_owner", false)
+	client_ball.global_position = Vector3(-16.45, 0.3, 0.0)
+	client_ball.ball_velocity = Vector3(-8.0, 0.0, 0.0)
+	client_controller.call("_predict_replicas", 0.03)
+	var predicted_goal_label := client_match.get_node("HUD/MessageLabel") as Label
+	var predicted_score_label := client_match.get_node("HUD/ScoreLabel") as Label
+	if predicted_goal_label.text != "PIRATES GOAL!" or predicted_score_label.text != "0  —  1":
+		fail("A locally predicted guest shot crossing the goal line must show an immediate provisional goal; message=%s score=%s" % [predicted_goal_label.text, predicted_score_label.text])
+		return
+	var rejected_goal_snapshot: Dictionary = client_controller.call("_capture_snapshot")
+	rejected_goal_snapshot.score = {"red": 0, "blue": 0}
+	rejected_goal_snapshot.action_seq = 2
+	rejected_goal_snapshot.phase = "play"
+	client_match.get_node("MatchFlow").set("_predicted_goal_age", 1.0)
+	client_controller.call("_apply_snapshot", rejected_goal_snapshot)
+	if not predicted_goal_label.text.is_empty() or predicted_score_label.text != "0  —  0":
+		fail("A rejected predicted goal must roll its provisional celebration and score back cleanly")
+		return
 	var goal_snapshot: Dictionary = client_controller.call("_capture_snapshot")
 	goal_snapshot.score = {"red": 0, "blue": 1}
 	goal_snapshot.goal_seq = 1

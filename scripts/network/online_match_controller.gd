@@ -15,6 +15,7 @@ const PlayerMotorScript = preload("res://scripts/gameplay/player_motor.gd")
 const PlayerCommandScript = preload("res://scripts/simulation/player_command.gd")
 const NetworkTraceScript = preload("res://scripts/network/network_trace.gd")
 const RemoteSnapshotBufferScript = preload("res://scripts/network/remote_snapshot_buffer.gd")
+const MatchSimulationScript = preload("res://scripts/simulation/match_simulation.gd")
 const SNAPSHOT_SECONDS := OnlineInputScript.DEFAULT_SNAPSHOT_SECONDS
 const REMOTE_INTERPOLATION_DELAY_MS := 110
 const RINK_HALF_LENGTH := 19.1
@@ -76,6 +77,8 @@ var _predicted_local_switch_actor_id: StringName = &""
 var _predicted_local_switch_input_sequence := -1
 var _local_prediction_state: Dictionary = {}
 var _network_trace: RefCounted
+var _predicted_goal_action_sequence := -1
+var _predicted_goal_candidate_remaining := 0.0
 
 
 func _ready() -> void:
@@ -140,6 +143,7 @@ func _physics_process(delta: float) -> void:
 		_diagnostics_refresh_elapsed = 0.0
 		_refresh_diagnostics()
 	if OnlineMatch.role == &"client":
+		_predicted_goal_candidate_remaining = maxf(0.0, _predicted_goal_candidate_remaining - delta)
 		_predicted_possession_remaining = maxf(0.0, _predicted_possession_remaining - delta)
 		if _predicted_possession_remaining <= 0.0:
 			_predicted_possession_actor_id = &""
@@ -269,6 +273,10 @@ func _apply_snapshot(snapshot: Dictionary) -> void:
 		_remote_snapshot_buffers.clear()
 		_pending_pickup_sequence = -1
 		_pending_pickup_actor_id = &""
+		_predicted_goal_action_sequence = -1
+		_predicted_goal_candidate_remaining = 0.0
+		if _match_flow.has_method("cancel_predicted_goal"):
+			_match_flow.call("cancel_predicted_goal")
 	for actor in _arena.call("get_field_players"):
 		actor_by_id[String(actor.call("get_actor_id"))] = actor
 	var stick_angles: Array = snapshot.get("stick_angles", [])
@@ -376,6 +384,8 @@ func _apply_snapshot(snapshot: Dictionary) -> void:
 
 func _apply_network_score(snapshot: Dictionary) -> void:
 	var score: Dictionary = snapshot.get("score", {})
+	if _match_flow.has_method("reconcile_predicted_goal"):
+		_match_flow.call("reconcile_predicted_goal", int(snapshot.get("action_seq", 0)), StringName(snapshot.get("scorer", "")), StringName(snapshot.get("phase", "play")))
 	if not score.is_empty() and _match_flow.has_method("apply_network_state"):
 		_match_flow.call("apply_network_state", int(score.get("red", 0)), int(score.get("blue", 0)), int(snapshot.get("goal_seq", 0)), StringName(snapshot.get("scorer", "")), StringName(snapshot.get("phase", "play")))
 	elif not score.is_empty() and _match_flow.has_method("apply_network_score"):
@@ -439,6 +449,9 @@ func _begin_predicted_ball_action(actor: CharacterBody3D, action_type: StringNam
 		blade.force_update_transform()
 		origin = blade.global_position
 	_predicted_ball_action.call("begin", _last_authoritative_action_sequence + 1, action_type, origin, direction, actor.velocity, charge, begin_forward_swing)
+	if action_type == &"shot":
+		_predicted_goal_action_sequence = int(_predicted_ball_action.get("action_sequence"))
+		_predicted_goal_candidate_remaining = 2.5
 
 
 func _predict_local_pickup(delta: float) -> void:
@@ -667,9 +680,15 @@ func _predict_replicas(delta: float) -> void:
 		_ball.ball_velocity = possession.velocity
 	else:
 		var prediction_delta := clampf(delta, 0.0, OnlineInputScript.MAX_REPLICA_PREDICTION_STEP)
+		var previous_ball_position := _ball.global_position
 		var predicted_ball: Dictionary = BallSimulationScript.step(_ball.global_position, _ball.ball_velocity, prediction_delta)
 		_ball.global_position = predicted_ball.position
 		_ball.ball_velocity = predicted_ball.velocity
+		if _predicted_goal_candidate_remaining > 0.0 and _predicted_goal_action_sequence >= 0:
+			var predicted_scorer := MatchSimulationScript.detect_goal(previous_ball_position, _ball.global_position, _ball.ball_velocity)
+			if predicted_scorer == OnlineMatch.local_team() and _match_flow.has_method("show_predicted_goal"):
+				_match_flow.call("show_predicted_goal", predicted_scorer, _predicted_goal_action_sequence)
+				_predicted_goal_candidate_remaining = 0.0
 
 
 func _remote_snapshot_buffer(actor_id: String):
