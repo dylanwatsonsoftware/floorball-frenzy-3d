@@ -16,6 +16,7 @@ const ASSIST_RATE := 8.0
 const MAX_CONTROL_SPEED := 10.0
 const MAX_RETENTION_RELATIVE_SPEED := 7.5
 const POSITION_ASSIST_RATE := 7.0
+const PASSIVE_KEEPER_PICKUP_MAX_SPEED := 3.0
 
 
 static func compensate_network_blade(participant: Dictionary, prediction_seconds: float) -> Dictionary:
@@ -39,6 +40,8 @@ static func step(ball_position: Vector3, ball_velocity: Vector3, participants: A
 		previous_shot_protected = bool(participants[previous_controller].get("shot_protected", false))
 	for body_index in participants.size():
 		var participant: Dictionary = participants[body_index]
+		if _is_fast_ball_for_passive_keeper(participant, next_velocity):
+			continue
 		if bool(participant.get("pickup_blocked", false)) or (previous_shot_protected and body_index != previous_controller):
 			continue
 		var participant_team := StringName(participant.get("team", &""))
@@ -85,6 +88,8 @@ static func step(ball_position: Vector3, ball_velocity: Vector3, participants: A
 		if controller >= 0 or index == blocked_controller:
 			continue
 		var participant: Dictionary = participants[index]
+		if _is_fast_ball_for_passive_keeper(participant, next_velocity):
+			continue
 		if bool(participant.get("pickup_blocked", false)) or (previous_shot_protected and index != previous_controller):
 			continue
 		var participant_team := StringName(participant.get("team", &""))
@@ -153,6 +158,10 @@ static func is_in_blade_pocket(ball_position: Vector3, participant: Dictionary) 
 		return false
 	var control_radius := NETWORK_STICK_CONTROL_RADIUS if bool(participant.get("network_pickup_assist", false)) else STICK_CONTROL_RADIUS
 	return ball_planar.distance_to(pocket.target) <= control_radius
+
+
+static func _is_fast_ball_for_passive_keeper(participant: Dictionary, ball_velocity: Vector3) -> bool:
+	return bool(participant.get("goalkeeper", false)) and Vector2(ball_velocity.x, ball_velocity.z).length() > PASSIVE_KEEPER_PICKUP_MAX_SPEED
 
 
 static func _result(position: Vector3, velocity: Vector3, controller: int, body_controller: int) -> Dictionary:

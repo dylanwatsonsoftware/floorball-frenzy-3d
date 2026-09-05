@@ -183,6 +183,31 @@ func _init() -> void:
 		fail("Fast shots must not be captured by dribble assistance")
 		return
 
+	var passive_keeper := {
+		"position": Vector3(0.0, 0.75, 0.0),
+		"velocity": Vector3.ZERO,
+		"facing": Vector3.RIGHT,
+		"goalkeeper": true,
+	}
+	var shot_through_keeper: Dictionary = interaction.step(
+		Vector3(0.3, 0.22, 0.0),
+		Vector3(-12.0, 0.0, 0.0),
+		[passive_keeper],
+		0.1
+	)
+	if shot_through_keeper.body_controller != -1 or shot_through_keeper.controller != -1 or not shot_through_keeper.position.is_equal_approx(Vector3(0.3, 0.22, 0.0)) or not shot_through_keeper.velocity.is_equal_approx(Vector3(-12.0, 0.0, 0.0)):
+		fail("Struck balls must pass through passive goalkeepers without being blocked or captured; got %s" % shot_through_keeper)
+		return
+	var keeper_pickup: Dictionary = interaction.step(
+		Vector3(0.9, 0.22, 0.75),
+		Vector3(1.0, 0.0, 0.0),
+		[passive_keeper],
+		0.1
+	)
+	if keeper_pickup.controller != 0:
+		fail("Passive goalkeepers must still collect a slow ball brought into reach; got %s" % keeper_pickup)
+		return
+
 	var body_contact: Dictionary = interaction.step(
 		Vector3(0.3, 0.22, 0.0),
 		Vector3.ZERO,

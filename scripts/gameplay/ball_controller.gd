@@ -291,6 +291,7 @@ func _interaction_participants() -> Array:
 			"slap_phase": _current_slap_phase() if actor == _slap_actor else &"idle",
 			"actor_id": actor.call("get_actor_id"),
 			"team": actor.call("get_team"),
+			"goalkeeper": actor.has_method("is_goalkeeper") and bool(actor.call("is_goalkeeper")),
 			"pickup_blocked": actor.call("get_actor_id") == _pickup_lock_actor_id and _pickup_lock_seconds > 0.0,
 			"shot_protected": (actor == _slap_actor and _current_slap_phase() in [&"backswing", &"forward"]) or (is_network_human and actor.call("get_actor_id") == get_control_owner_actor_id() and _network_blue_possession_grace > 0.0),
 			"network_pickup_assist": is_network_human,
