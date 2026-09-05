@@ -59,6 +59,8 @@ func state() -> Dictionary:
 
 
 func should_accept_snapshot(snapshot: Dictionary) -> bool:
+	if StringName(snapshot.get("phase", "play")) != &"play" or StringName(snapshot.get("ball_state", "loose")) in [&"dead", &"faceoff"]:
+		return true
 	var authoritative_sequence := int(snapshot.get("action_seq", 0))
 	if authoritative_sequence < action_sequence:
 		return false

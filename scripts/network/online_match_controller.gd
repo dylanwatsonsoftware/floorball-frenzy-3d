@@ -286,6 +286,8 @@ func _update_predicted_ball_action(shoot_pressed: bool, pass_pressed: bool, delt
 	elif _local_shoot_was_pressed and _local_shoot_charge > 0.0 and owns_ball:
 		_begin_predicted_ball_action(actor, &"shot", _local_shoot_charge / 0.8, true)
 		_local_shoot_charge = 0.0
+	elif not shoot_pressed:
+		_local_shoot_charge = 0.0
 	_local_shoot_was_pressed = shoot_pressed
 	if _predicted_ball_action == null or not bool(_predicted_ball_action.get("active")):
 		return
@@ -308,6 +310,8 @@ func _begin_predicted_ball_action(actor: CharacterBody3D, action_type: StringNam
 	if action_type == &"pass":
 		var teammates: Array = []
 		for candidate in _arena.call("get_team_players", actor.call("get_team")):
+			if StringName(candidate.get_meta("role", &"field")) == &"goalkeeper":
+				continue
 			teammates.append({"actor_id": candidate.call("get_actor_id"), "position": candidate.global_position})
 		var target: Dictionary = SquadLogicScript.forward_teammate(actor.call("get_actor_id"), actor.global_position, actor.call("get_facing_direction"), teammates)
 		if not target.is_empty():

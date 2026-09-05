@@ -26,6 +26,9 @@ func _init() -> void:
 	if not action.should_accept_snapshot({"action_seq": 8, "ball_state": "passing", "owner": ""}):
 		fail("The matching authoritative action generation must confirm local prediction")
 		return
+	if not action.should_accept_snapshot({"action_seq": 7, "ball_state": "dead", "phase": "goal", "owner": ""}):
+		fail("Authoritative goal and faceoff phases must cancel an outstanding local ball prediction")
+		return
 	print("Guest ball actions predict contact and reject stale possession snapshots.")
 	quit(0)
 
