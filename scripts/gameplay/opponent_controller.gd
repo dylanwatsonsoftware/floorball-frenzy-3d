@@ -173,8 +173,9 @@ func get_squad_slot() -> int:
 func is_human_controlled() -> bool:
 	if not OnlineMatch.enabled:
 		return false
-	var ball := get_parent().get_node_or_null("Ball")
-	return ball != null and ball.has_method("get_human_control_actor_id_for_team") and ball.call("get_human_control_actor_id_for_team", &"blue") == get_actor_id()
+	if _ball == null:
+		_ball = get_parent().find_child("Ball", true, false) as MeshInstance3D
+	return _ball != null and _ball.has_method("get_human_control_actor_id_for_team") and _ball.call("get_human_control_actor_id_for_team", &"blue") == get_actor_id()
 
 
 func is_ai_controlled() -> bool:

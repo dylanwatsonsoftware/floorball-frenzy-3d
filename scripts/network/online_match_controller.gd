@@ -58,6 +58,8 @@ var _local_shoot_charge := 0.0
 var _predicted_possession_actor_id: StringName = &""
 var _predicted_possession_remaining := 0.0
 var _remote_rotation_targets: Dictionary = {}
+var _predicted_local_switch_actor_id: StringName = &""
+var _predicted_local_switch_input_sequence := -1
 
 
 func _ready() -> void:
@@ -126,8 +128,11 @@ func _physics_process(delta: float) -> void:
 		var movement := _movement_input()
 		var pass_pressed := Input.is_action_just_pressed("pass")
 		var shoot_pressed := Input.is_action_pressed("shoot")
+		var switch_pressed := Input.is_action_just_pressed("switch_player")
 		_pass_sequence = OnlineInputScript.next_action_sequence(_pass_sequence, pass_pressed)
-		_switch_sequence = OnlineInputScript.next_action_sequence(_switch_sequence, Input.is_action_just_pressed("switch_player"))
+		_switch_sequence = OnlineInputScript.next_action_sequence(_switch_sequence, switch_pressed)
+		if switch_pressed:
+			_predict_local_switch(_sequence)
 		_transport.send({"type": "input", "seq": _sequence, "tick": _simulation_tick, "sent_ms": Time.get_ticks_msec(), "rtt_ms": _estimated_rtt_ms, "move": _vector_to_array(movement), "dash": Input.is_action_pressed("dash"), "shoot": shoot_pressed, "pass_seq": _pass_sequence, "switch_seq": _switch_sequence})
 		_record_pending_input(_sequence, movement, delta)
 		_predict_local_player(movement, delta)
@@ -253,8 +258,15 @@ func _apply_snapshot(snapshot: Dictionary) -> void:
 		_apply_network_score(snapshot)
 		return
 	_ball_attached_to_owner = bool(snapshot.get("ball_attached", not snapshot_owner.is_empty()))
+	var authoritative_blue_human := StringName(snapshot.get("blue_human", "blue_1"))
+	if not _predicted_local_switch_actor_id.is_empty():
+		if int(snapshot.get("input_ack", -1)) < _predicted_local_switch_input_sequence:
+			authoritative_blue_human = _predicted_local_switch_actor_id
+		else:
+			_predicted_local_switch_actor_id = &""
+			_predicted_local_switch_input_sequence = -1
 	if _ball.has_method("apply_network_control_state"):
-		_ball.call("apply_network_control_state", snapshot_owner, StringName(snapshot.get("red_human", "red_1")), StringName(snapshot.get("blue_human", "blue_1")))
+		_ball.call("apply_network_control_state", snapshot_owner, StringName(snapshot.get("red_human", "red_1")), authoritative_blue_human)
 	_set_ball_replica_parent(snapshot_owner if _ball_attached_to_owner else &"")
 	var possession := _network_possession(snapshot_owner) if _ball_attached_to_owner else {}
 	var authoritative_ball := _array_to_vector3(snapshot.get("ball", []))
@@ -292,11 +304,16 @@ func _update_predicted_ball_action(shoot_pressed: bool, pass_pressed: bool, delt
 	if shoot_pressed and owns_ball and (_predicted_ball_action == null or not bool(_predicted_ball_action.get("active"))):
 		_local_shoot_charge = minf(1.6, _local_shoot_charge + delta)
 		actor.call("set_shot_aim_locked", true)
-		actor.call("set_stick_slap_angle", lerpf(-2.0, StickSlapScript.BACKSWING_ANGLE, pow(minf(1.0, _local_shoot_charge / 0.8), 2.0)))
+		var charge_ratio := _local_shoot_charge / 0.8
+		actor.call("set_stick_slap_angle", lerpf(-2.0, StickSlapScript.BACKSWING_ANGLE, pow(minf(1.0, charge_ratio), 2.0)))
+		_ball.call("_show_aim_arrow", actor, charge_ratio)
 	elif _local_shoot_was_pressed and _local_shoot_charge > 0.0 and owns_ball:
+		_ball.call("_hide_aim_arrow")
 		_begin_predicted_ball_action(actor, &"shot", _local_shoot_charge / 0.8, true)
 		_local_shoot_charge = 0.0
 	elif not shoot_pressed:
+		_ball.call("_hide_aim_arrow")
+		actor.call("set_shot_aim_locked", false)
 		_local_shoot_charge = 0.0
 	_local_shoot_was_pressed = shoot_pressed
 	if _predicted_ball_action == null or not bool(_predicted_ball_action.get("active")):
@@ -362,6 +379,13 @@ func _predict_local_pickup(_delta: float) -> void:
 		var red_human := StringName(_ball.call("get_human_control_actor_id_for_team", &"red"))
 		var blue_human := StringName(_ball.call("get_human_control_actor_id_for_team", &"blue"))
 		_ball.call("apply_network_control_state", _predicted_possession_actor_id, red_human, blue_human)
+
+
+func _predict_local_switch(input_sequence: int) -> void:
+	if not _ball.has_method("switch_human_player_for_team"):
+		return
+	_predicted_local_switch_actor_id = _ball.call("switch_human_player_for_team", &"blue")
+	_predicted_local_switch_input_sequence = input_sequence
 
 
 func _set_client_replica_mode() -> void:

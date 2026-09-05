@@ -136,8 +136,9 @@ func get_squad_slot() -> int:
 
 
 func is_human_controlled() -> bool:
-	var ball := get_parent().get_node_or_null("Ball")
-	return ball != null and ball.has_method("get_human_control_actor_id") and ball.call("get_human_control_actor_id") == get_actor_id()
+	if _ball == null:
+		_ball = get_parent().find_child("Ball", true, false) as Node3D
+	return _ball != null and _ball.has_method("get_human_control_actor_id") and _ball.call("get_human_control_actor_id") == get_actor_id()
 
 
 func set_shot_aim_locked(value: bool) -> void:

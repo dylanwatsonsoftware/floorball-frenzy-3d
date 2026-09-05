@@ -141,6 +141,18 @@ func run_test() -> void:
 			break
 	local_possession_snapshot.red_human = String(alternate_red_human.call("get_actor_id"))
 	client_controller.call("_apply_snapshot", local_possession_snapshot)
+	await process_frame
+	if not bool(local_actor.call("is_human_controlled")) or not local_actor.get_node("PlayerMarker").visible or not local_actor.get_node("ControlRing").visible:
+		fail("Guest possession attachment must not make the selected player lose its human-control markers")
+		return
+	client_controller.call("_update_predicted_ball_action", true, false, 0.2)
+	if not local_actor.get_node("AimArrow").visible:
+		fail("Charging a guest shot must immediately show the local aiming arrow without waiting for the host")
+		return
+	client_controller.set("_local_shoot_was_pressed", false)
+	client_controller.set("_local_shoot_charge", 0.0)
+	client_ball.call("_hide_aim_arrow")
+	local_actor.call("set_stick_slap_angle", 0.0)
 	var local_blade_pocket := local_actor.get_node("StickRig/BladePocket") as Marker3D
 	var local_ball_start: Vector3 = client_ball.global_position
 	client_controller.call("_predict_local_player", Vector2.RIGHT, 0.1)
@@ -211,6 +223,28 @@ func run_test() -> void:
 		return
 	if not (client_match.get_node("HUD/MessageLabel") as Label).text.is_empty():
 		fail("The goal message must clear when the authoritative match returns to play")
+		return
+	var selected_before_switch: StringName = client_ball.call("get_human_control_actor_id_for_team", &"blue")
+	client_controller.call("_predict_local_switch", 500)
+	var selected_after_switch: StringName = client_ball.call("get_human_control_actor_id_for_team", &"blue")
+	if selected_after_switch == selected_before_switch:
+		fail("Guest switch input must select the next player locally instead of waiting for a round trip")
+		return
+	var stale_switch_snapshot: Dictionary = faceoff_snapshot.duplicate(true)
+	stale_switch_snapshot.input_ack = 499
+	stale_switch_snapshot.blue_human = String(selected_before_switch)
+	client_controller.call("_apply_snapshot", stale_switch_snapshot)
+	if client_ball.call("get_human_control_actor_id_for_team", &"blue") != selected_after_switch:
+		fail("A snapshot older than the guest switch input must not toggle control back to the previous player")
+		return
+	await process_frame
+	var switched_actor: CharacterBody3D
+	for candidate in client_arena.call("get_team_players", &"blue"):
+		if candidate.call("get_actor_id") == selected_after_switch:
+			switched_actor = candidate
+			break
+	if switched_actor == null or not switched_actor.get_node("PlayerMarker").visible or not switched_actor.get_node("ControlRing").visible:
+		fail("The locally switched guest player must immediately receive its arrow and control ring")
 		return
 	print("Online matches give both host and guest a visible, camera-tracked human player.")
 	client_match.queue_free()
