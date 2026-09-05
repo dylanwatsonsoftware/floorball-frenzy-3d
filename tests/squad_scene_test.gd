@@ -42,6 +42,12 @@ func run_test() -> void:
 		return
 
 	var ball := scene.get_node("Arena/Ball")
+	ball.call("apply_network_control_state", &"", &"red_1", &"blue_gk")
+	var blue_goalkeeper := scene.get_node("Arena/PiratesGoalkeeper") as CharacterBody3D
+	if blue_goalkeeper.call("is_human_controlled"):
+		fail("The Pirates goalkeeper must remain AI-controlled in a solo match")
+		return
+	ball.call("apply_network_control_state", &"", &"red_1", &"blue_1")
 	var red_two := scene.get_node("Arena/RedTeammate2") as CharacterBody3D
 	for actor in players:
 		actor.set_physics_process(false)
@@ -135,6 +141,13 @@ func run_test() -> void:
 	await physics_frame
 	if not ball.call("is_controlled_by_actor", &"blue_2"):
 		fail("AI passing setup must begin with blue_2 possession; ball=%s blade=%s facing=%s owner=%s" % [ball.global_position, blue_two_blade_center, blue_two.call("get_facing_direction"), ball.call("get_control_owner_actor_id")])
+		return
+	var solo_blue_humans := []
+	for actor in arena.call("get_team_players", &"blue"):
+		if actor.has_method("is_human_controlled") and actor.call("is_human_controlled"):
+			solo_blue_humans.append(actor.call("get_actor_id"))
+	if not solo_blue_humans.is_empty():
+		fail("Solo matches must keep every Pirates player AI-controlled, including the current carrier; humans=%s" % solo_blue_humans)
 		return
 	blue_two.set_physics_process(true)
 	var blue_three := scene.get_node("Arena/BlueTeammate3") as CharacterBody3D

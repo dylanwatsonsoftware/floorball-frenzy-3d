@@ -105,6 +105,8 @@ func is_goalkeeper() -> bool:
 
 
 func is_human_controlled() -> bool:
+	if get_team() == &"blue" and not OnlineMatch.enabled:
+		return false
 	return _ball != null and _ball.has_method("get_human_control_actor_id_for_team") and _ball.call("get_human_control_actor_id_for_team", get_team()) == get_actor_id()
 
 
