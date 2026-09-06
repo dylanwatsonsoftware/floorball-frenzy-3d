@@ -8,6 +8,9 @@ const ARRIVAL_STOP_RADIUS := 0.18
 const ARRIVAL_SLOW_RADIUS := 2.4
 const PASS_FIELD_OF_VIEW_DEGREES := 90.0
 const PASS_ANGLE_PENALTY_METRES_PER_RADIAN := 4.0
+const TURN_TO_SPRINT_THRESHOLD := 0.82
+const TURN_TO_SPRINT_ALIGNMENT := -0.45
+const BACKPEDAL_SPEED_MULTIPLIER := 0.72
 
 
 static func human_actor_id(owner_actor_id: StringName, owner_team: StringName, human_team: StringName = HUMAN_TEAM) -> StringName:
@@ -59,12 +62,23 @@ static func pressure_target(team: StringName, ball_position: Vector3, ball_veloc
 	return ball + Vector2(ball_velocity.x, ball_velocity.z) * 0.22
 
 
-static func tactical_facing(position: Vector2, movement: Vector2, ball_position: Vector3, team_has_possession: bool) -> Vector2:
-	if not team_has_possession:
-		var toward_ball := _planar(ball_position) - position
-		if not toward_ball.is_zero_approx():
-			return toward_ball.normalized()
-	return movement.normalized() if not movement.is_zero_approx() else Vector2.ZERO
+static func tactical_facing(position: Vector2, movement: Vector2, ball_position: Vector3, _team_has_possession: bool, has_ball: bool = false) -> Vector2:
+	var movement_direction := movement.normalized()
+	if has_ball:
+		return movement_direction
+	var toward_ball := (_planar(ball_position) - position).normalized()
+	if toward_ball.is_zero_approx():
+		return movement_direction
+	if movement.length() >= TURN_TO_SPRINT_THRESHOLD and movement_direction.dot(toward_ball) < TURN_TO_SPRINT_ALIGNMENT:
+		return movement_direction
+	return toward_ball
+
+
+static func facing_movement_multiplier(movement: Vector2, facing: Vector2) -> float:
+	if movement.is_zero_approx() or facing.is_zero_approx():
+		return 1.0
+	var alignment := movement.normalized().dot(facing.normalized())
+	return lerpf(BACKPEDAL_SPEED_MULTIPLIER, 1.0, inverse_lerp(-1.0, 0.2, clampf(alignment, -1.0, 0.2)))
 
 
 static func arrival_movement(position: Vector2, target: Vector2, stop_radius: float = ARRIVAL_STOP_RADIUS, slow_radius: float = ARRIVAL_SLOW_RADIUS) -> Vector2:

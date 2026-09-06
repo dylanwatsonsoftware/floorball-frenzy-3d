@@ -92,11 +92,14 @@ func _physics_process(delta: float) -> void:
 		Vector2(global_position.x, global_position.z),
 		decision.movement,
 		_ball.global_position,
-		owner_team == &"blue"
+		owner_team == &"blue",
+		has_possession
 	)
 	if _shot_aim_locked and not is_human_controlled():
 		facing_planar = Vector2.ZERO
 	var speed_multiplier := PlayerMotorScript.movement_speed_multiplier(is_human_controlled(), has_possession, HeatSystemScript.speed_multiplier(_fuego_remaining))
+	if not is_human_controlled():
+		speed_multiplier *= SquadLogicScript.facing_movement_multiplier(decision.movement, facing_planar)
 	var command := {"move": decision.movement, "facing": facing_planar, "dash_pressed": bool(decision.wants_dash), "delta": delta, "speed_multiplier": speed_multiplier}
 	var state := {"position": global_position, "velocity": velocity, "rotation": rotation.y, "dash_cooldown": _dash_cooldown, "dash_remaining": _dash_streak_remaining, "dash_direction": _dash_direction}
 	var next_state: Dictionary = PlayerMotorScript.step_command_state(state, command)

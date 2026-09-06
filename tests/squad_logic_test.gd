@@ -85,14 +85,26 @@ func _init() -> void:
 	if block_target.x >= danger_ball.x or absf(block_target.y) >= absf(danger_ball.z):
 		fail("The nearest defender must get goal-side of a dangerous ball to block the shot; target=%s" % block_target)
 		return
-	var retreat := Vector2.LEFT
+	var retreat := Vector2.LEFT * 0.65
 	var watching_ball: Vector2 = squad.tactical_facing(Vector2.ZERO, retreat, Vector3(6.0, 0.0, 0.0), false)
-	if watching_ball.dot(retreat) > -0.9:
+	if watching_ball.dot(retreat.normalized()) > -0.9:
 		fail("A retreating defender must backpedal while watching the ball; facing=%s movement=%s" % [watching_ball, retreat])
 		return
-	var attacking_facing: Vector2 = squad.tactical_facing(Vector2.ZERO, Vector2(0.4, 0.9), Vector3(-6.0, 0.0, 0.0), true)
-	if attacking_facing.dot(Vector2(0.4, 0.9).normalized()) < 0.99:
-		fail("An attacking support player should continue facing the direction of the run")
+	var attacking_support_facing: Vector2 = squad.tactical_facing(Vector2.ZERO, Vector2(0.4, 0.6), Vector3(-6.0, 0.0, 0.0), true, false)
+	if attacking_support_facing.dot(Vector2.LEFT) < 0.99:
+		fail("An off-ball attacking support player must watch the ball instead of copying the carrier's direction")
+		return
+	var carrier_facing: Vector2 = squad.tactical_facing(Vector2.ZERO, Vector2(0.4, 0.9), Vector3(-6.0, 0.0, 0.0), true, true)
+	if carrier_facing.dot(Vector2(0.4, 0.9).normalized()) < 0.99:
+		fail("The actual carrier should face their direction of travel")
+		return
+	var urgent_sprint_facing: Vector2 = squad.tactical_facing(Vector2.ZERO, Vector2.RIGHT, Vector3(-6.0, 0.0, 0.0), false, false)
+	if urgent_sprint_facing.dot(Vector2.RIGHT) < 0.99:
+		fail("AI sprinting directly away from the ball at full speed must turn to run efficiently")
+		return
+	var backward_efficiency: float = squad.facing_movement_multiplier(Vector2.LEFT, Vector2.RIGHT)
+	if backward_efficiency < 0.65 or backward_efficiency > 0.8 or squad.facing_movement_multiplier(Vector2.RIGHT, Vector2.RIGHT) < 0.99:
+		fail("Backpedalling must be useful but slower than forward running; backward=%s" % backward_efficiency)
 		return
 	var arrived: Vector2 = squad.arrival_movement(Vector2(4.0, -2.0), Vector2(4.08, -2.04))
 	if not arrived.is_zero_approx():
