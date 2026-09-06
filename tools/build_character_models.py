@@ -155,9 +155,23 @@ def bind_character_to_rig(armature):
     for obj in list(bpy.context.scene.objects):
         if obj.type != "MESH":
             continue
-        bone_name = bone_for_part.get(obj.name, "Head")
-        group = obj.vertex_groups.new(name=bone_name)
-        group.add(range(len(obj.data.vertices)), 1.0, "REPLACE")
+        if obj.name in ("LeftArm", "RightArm"):
+            side = "L" if obj.name.startswith("Left") else "R"
+            upper_group = obj.vertex_groups.new(name="UpperArm.%s" % side)
+            forearm_group = obj.vertex_groups.new(name="Forearm.%s" % side)
+            for vertex in obj.data.vertices:
+                # The elbow sits about .24 m down this local arm profile. Blend
+                # across a broad sleeve section so IK bends rather than splits it.
+                blend = max(0.0, min(1.0, (-vertex.co.z - .17) / .18))
+                blend = blend * blend * (3.0 - 2.0 * blend)
+                if blend < .999:
+                    upper_group.add([vertex.index], 1.0 - blend, "REPLACE")
+                if blend > .001:
+                    forearm_group.add([vertex.index], blend, "REPLACE")
+        else:
+            bone_name = bone_for_part.get(obj.name, "Head")
+            group = obj.vertex_groups.new(name=bone_name)
+            group.add(range(len(obj.data.vertices)), 1.0, "REPLACE")
         modifier = obj.modifiers.new(name="SharedHumanoidRig", type="ARMATURE")
         modifier.object = armature
         obj.parent = armature
@@ -243,7 +257,7 @@ def add_common(team):
     shorts = lathe("Shorts", [(-.42,.27),(-.29,.31),(-.20,.31),(-.13,.27)], dark)
     shorts.scale.y = .72
     for side, x in [("Left", -.32), ("Right", .32)]:
-        arm = lathe(side + "Arm", [(0,.105),(-.10,.13),(-.42,.115),(-.59,.085)], jersey, (x, 0, .36), segments=16)
+        arm = lathe(side + "Arm", [(0,.105),(-.10,.13),(-.18,.125),(-.24,.115),(-.30,.11),(-.38,.115),(-.48,.10),(-.59,.085)], jersey, (x, 0, .36), segments=16)
         arm.rotation_euler[1] = -.08 if side == "Left" else .08
         organic_form(side + "Hand", (.09,.085,.11), accent, (x, -.015, -.28), rings=7, segments=14)
     for side, x in [("Left", -.16), ("Right", .16)]:
