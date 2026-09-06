@@ -32,6 +32,16 @@ func run_test() -> void:
 			return
 		locomotion_paces[snappedf(float(animation_tree.get("parameters/LocomotionPace/scale")), 0.001)] = true
 		var skeleton := rig.find_child("Skeleton3D", true, false) as Skeleton3D
+		if actor.name == "Player":
+			actor.velocity = Vector3(8.0, 0.0, 3.0)
+			rig.call("_process", 1.0 / 60.0)
+			var acceleration_lean := Vector2(rig.rotation.x, rig.rotation.z).length()
+			if acceleration_lean < 0.025 or acceleration_lean > 0.16:
+				fail("Acceleration must produce a subtle readable planted body lean; lean=%s" % acceleration_lean)
+				return
+			if rig.position.y > -0.01:
+				fail("Acceleration must briefly compress the player's stance; body_y=%s" % rig.position.y)
+				return
 		if StringName(actor.get_meta("role", &"field")) != &"goalkeeper":
 			var ik_count := 0
 			for child in skeleton.get_children():
