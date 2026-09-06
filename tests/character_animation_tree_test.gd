@@ -12,8 +12,9 @@ func run_test() -> void:
 	await process_frame
 	await physics_frame
 	await physics_frame
+	var field_players: Array = scene.get_node("Arena").call("get_field_players")
 	var locomotion_paces := {}
-	for actor in scene.get_node("Arena").call("get_field_players"):
+	for actor in field_players:
 		var rig := actor.get_node("BodyRig") as Node3D
 		var animation_tree := rig.get_node_or_null("AnimationTree") as AnimationTree
 		if animation_tree == null or not animation_tree.active or not animation_tree.tree_root is AnimationNodeBlendTree:
@@ -41,6 +42,20 @@ func run_test() -> void:
 				return
 			if rig.position.y > -0.01:
 				fail("Acceleration must briefly compress the player's stance; body_y=%s" % rig.position.y)
+				return
+			var ball := scene.get_node("Arena/Ball")
+			ball.call("apply_network_control_state", actor.call("get_actor_id"), actor.call("get_actor_id"), &"")
+			if not ball.call("is_controlled_by_actor", actor.call("get_actor_id")):
+				fail("Possession test must assign the ball to the player")
+				return
+			actor.velocity = Vector3(4.0, 0.0, 0.0)
+			for frame in 20:
+				rig.call("_process", 1.0 / 60.0)
+			if rig.position.y > -0.035:
+				fail("A ball carrier must settle into a visibly lower protective stance; body_y=%s" % rig.position.y)
+				return
+			if float(animation_tree.get("parameters/LocomotionPace/scale")) < 1.05:
+				fail("Possession locomotion should use shorter, quicker-looking steps")
 				return
 		if StringName(actor.get_meta("role", &"field")) != &"goalkeeper":
 			var ik_count := 0

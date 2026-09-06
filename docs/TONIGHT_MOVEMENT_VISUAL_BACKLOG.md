@@ -98,6 +98,7 @@ The animation target is readable, stylised biomechanics rather than literal real
 - [x] Replace angle-derived presentation state with an explicitly replicated action timeline for host, guest, AI, shots, and charged passes.
 - [x] Replace discrete directional animation switching with continuous 2D blending and subtle per-player locomotion pace variation.
 - [x] Add speed- and acceleration-responsive lean plus brief stance compression for planted starts, braking, and direction changes.
+- [x] Add possession-aware locomotion with an eased lower stance, bent hips/legs, and shorter-looking protective steps while the ball stays anchored to the blade pocket.
 
 ## Acceptance checks
 

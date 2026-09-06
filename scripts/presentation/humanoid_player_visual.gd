@@ -6,6 +6,7 @@ const StickSlapScript = preload("res://scripts/simulation/stick_slap.gd")
 var _animation_tree: AnimationTree
 var _animation_player: AnimationPlayer
 var _skeleton: Skeleton3D
+var _ball: Node3D
 var _swing_angle := 0.0
 var _previous_swing_angle := 0.0
 var _swing_pose_elapsed := StickSlapScript.TOTAL_SECONDS
@@ -13,12 +14,16 @@ var _hand_ik_solvers: Array[SkeletonIK3D] = []
 var _previous_planar_velocity := Vector2.ZERO
 var _locomotion_lean := Vector2.ZERO
 var _locomotion_brace := 0.0
+var _possession_weight := 0.0
+var _base_locomotion_pace := 1.0
 
 
 func _ready() -> void:
 	process_priority = 100
 	_animation_player = find_child("AnimationPlayer", true, false) as AnimationPlayer
 	_skeleton = find_child("Skeleton3D", true, false) as Skeleton3D
+	var actor := get_parent() as CharacterBody3D
+	_ball = actor.get_parent().get_node_or_null("Ball") as Node3D if actor != null else null
 	_setup_animation_tree()
 	call_deferred("_setup_hand_targets")
 
@@ -27,14 +32,19 @@ func _process(delta: float) -> void:
 	var actor := get_parent() as CharacterBody3D
 	if actor == null or _animation_tree == null:
 		return
+	if _ball == null:
+		_ball = actor.get_parent().get_node_or_null("Ball") as Node3D
 	if StringName(actor.get_meta("role", &"field")) == &"goalkeeper":
 		apply_goalkeeper_pose()
 		return
 	var planar_velocity := Vector2(actor.velocity.x, actor.velocity.z)
+	var has_ball := _ball != null and _ball.has_method("is_controlled_by_actor") and bool(_ball.call("is_controlled_by_actor", actor.call("get_actor_id")))
+	_possession_weight = move_toward(_possession_weight, 1.0 if has_ball else 0.0, delta * (8.0 if has_ball else 5.0))
 	var facing := Vector2(sin(actor.rotation.y), cos(actor.rotation.y))
 	var right := Vector2(facing.y, -facing.x)
 	var blend := Vector2(planar_velocity.dot(right), planar_velocity.dot(facing)) / MAX_SPEED
 	_animation_tree.set("parameters/Locomotion/blend_position", blend.limit_length(1.0))
+	_animation_tree.set("parameters/LocomotionPace/scale", _base_locomotion_pace * lerpf(1.0, 1.12, _possession_weight))
 	var acceleration := (planar_velocity - _previous_planar_velocity) / maxf(delta, 1.0 / 120.0)
 	_previous_planar_velocity = planar_velocity
 	var target_pitch := clampf(blend.y * 0.075 + acceleration.dot(facing) * 0.0015, -0.13, 0.13)
@@ -82,7 +92,8 @@ func _setup_animation_tree() -> void:
 	_animation_tree.active = true
 	var actor := get_parent() as CharacterBody3D
 	var squad_slot := int(actor.get_meta("squad_slot", 0)) if actor != null else 0
-	_animation_tree.set("parameters/LocomotionPace/scale", 0.95 + float(posmod(squad_slot, 5)) * 0.025)
+	_base_locomotion_pace = 0.95 + float(posmod(squad_slot, 5)) * 0.025
+	_animation_tree.set("parameters/LocomotionPace/scale", _base_locomotion_pace)
 	set_meta("upper_body_animation_layer", true)
 
 
@@ -199,12 +210,13 @@ func _apply_torso_swing_pose() -> void:
 	rotation.x = backward_lean + _locomotion_lean.x * locomotion_weight
 	rotation.z = _locomotion_lean.y * locomotion_weight
 	position.x = float(pose.weight_shift) * 0.075
-	position.y -= float(pose.crouch) * 0.12
-	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Hips"), Quaternion(Vector3.UP, hip_twist))
+	position.y -= float(pose.crouch) * 0.12 + _possession_weight * 0.075
+	var protective_crouch := deg_to_rad(7.0 * _possession_weight)
+	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Hips"), Quaternion(Vector3.RIGHT, protective_crouch) * Quaternion(Vector3.UP, hip_twist))
 	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Spine"), Quaternion(Vector3.UP, spine_twist))
 	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Chest"), Quaternion(Vector3.UP, chest_twist))
-	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Thigh.L"), Quaternion(Vector3.RIGHT, deg_to_rad(-10.0 * float(pose.plant))))
-	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Thigh.R"), Quaternion(Vector3.RIGHT, deg_to_rad(8.0 * float(pose.crouch))))
+	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Thigh.L"), Quaternion(Vector3.RIGHT, deg_to_rad(-10.0 * float(pose.plant) - 6.0 * _possession_weight)))
+	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Thigh.R"), Quaternion(Vector3.RIGHT, deg_to_rad(8.0 * float(pose.crouch) + 6.0 * _possession_weight)))
 
 
 func _pose_elapsed_for_angle(angle: float, previous_angle: float) -> float:
