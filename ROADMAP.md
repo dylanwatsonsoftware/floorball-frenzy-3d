@@ -6,6 +6,8 @@ Build a polished sports-game vertical slice around one locally controlled player
 
 The target is the responsiveness, readability, movement quality, and presentation discipline of a FIFA-style sports game, while retaining a scope and performance budget appropriate for a Godot web/mobile title.
 
+The reference-driven movement and presentation work is catalogued in [docs/TONIGHT_MOVEMENT_VISUAL_BACKLOG.md](docs/TONIGHT_MOVEMENT_VISUAL_BACKLOG.md). Its P0 movement and slap-shot items are the active delivery track for the later animation milestones below.
+
 ## Principles
 
 - The host remains authoritative for scoring, possession, collisions, and shot results.
