@@ -72,6 +72,15 @@ func run_test() -> void:
 			if float(animation_tree.get("parameters/LocomotionPace/scale")) < 1.05:
 				fail("Possession locomotion should use shorter, quicker-looking steps")
 				return
+			ball.call("apply_network_control_state", &"", actor.call("get_actor_id"), &"")
+			actor.velocity = Vector3.ZERO
+			for frame in 60:
+				rig.call("_process", 1.0 / 60.0)
+			actor.rotation.y += 0.35
+			rig.call("_process", 1.0 / 60.0)
+			if absf(rig.rotation.z) < 0.005 or absf(rig.rotation.z) > 0.10:
+				fail("A low-speed turn must show a subtle planted pivot instead of rotating like a rigid pawn; roll=%s" % rig.rotation.z)
+				return
 		if StringName(actor.get_meta("role", &"field")) != &"goalkeeper":
 			var ik_count := 0
 			for child in skeleton.get_children():

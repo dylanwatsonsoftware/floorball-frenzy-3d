@@ -16,6 +16,8 @@ var _locomotion_lean := Vector2.ZERO
 var _locomotion_brace := 0.0
 var _possession_weight := 0.0
 var _base_locomotion_pace := 1.0
+var _previous_actor_rotation := 0.0
+var _turn_pivot := 0.0
 
 
 func _ready() -> void:
@@ -24,6 +26,7 @@ func _ready() -> void:
 	_skeleton = find_child("Skeleton3D", true, false) as Skeleton3D
 	var actor := get_parent() as CharacterBody3D
 	_ball = actor.get_parent().get_node_or_null("Ball") as Node3D if actor != null else null
+	_previous_actor_rotation = actor.rotation.y if actor != null else 0.0
 	_setup_animation_tree()
 	call_deferred("_setup_hand_targets")
 
@@ -38,6 +41,11 @@ func _process(delta: float) -> void:
 		apply_goalkeeper_pose()
 		return
 	var planar_velocity := Vector2(actor.velocity.x, actor.velocity.z)
+	var angular_speed := angle_difference(_previous_actor_rotation, actor.rotation.y) / maxf(delta, 1.0 / 120.0)
+	_previous_actor_rotation = actor.rotation.y
+	var stationary_weight := 1.0 - clampf(planar_velocity.length() / 4.0, 0.0, 1.0)
+	var target_pivot := clampf(angular_speed / 5.0, -1.0, 1.0) * stationary_weight
+	_turn_pivot = lerpf(_turn_pivot, target_pivot, minf(1.0, delta * 14.0))
 	var has_ball := _ball != null and _ball.has_method("is_controlled_by_actor") and bool(_ball.call("is_controlled_by_actor", actor.call("get_actor_id")))
 	_possession_weight = move_toward(_possession_weight, 1.0 if has_ball else 0.0, delta * (8.0 if has_ball else 5.0))
 	var facing := Vector2(sin(actor.rotation.y), cos(actor.rotation.y))
@@ -208,11 +216,12 @@ func _apply_torso_swing_pose() -> void:
 	var backward_lean := deg_to_rad(-4.0 * maxf(0.0, -float(pose.weight_shift)) + 3.0 * maxf(0.0, float(pose.weight_shift)))
 	var locomotion_weight := 0.25 if _swing_pose_elapsed < StickSlapScript.TOTAL_SECONDS else 1.0
 	rotation.x = backward_lean + _locomotion_lean.x * locomotion_weight
-	rotation.z = _locomotion_lean.y * locomotion_weight
+	rotation.z = _locomotion_lean.y * locomotion_weight + _turn_pivot * 0.055 * locomotion_weight
 	position.x = float(pose.weight_shift) * 0.075
 	position.y -= float(pose.crouch) * 0.12 + _possession_weight * 0.075
 	var protective_crouch := deg_to_rad(7.0 * _possession_weight)
-	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Hips"), Quaternion(Vector3.RIGHT, protective_crouch) * Quaternion(Vector3.UP, hip_twist))
+	var pivot_hip_turn := _turn_pivot * 0.12 * locomotion_weight
+	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Hips"), Quaternion(Vector3.RIGHT, protective_crouch) * Quaternion(Vector3.UP, hip_twist + pivot_hip_turn))
 	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Spine"), Quaternion(Vector3.UP, spine_twist))
 	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Chest"), Quaternion(Vector3.UP, chest_twist))
 	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Thigh.L"), Quaternion(Vector3.RIGHT, deg_to_rad(-10.0 * float(pose.plant) - 6.0 * _possession_weight)))
