@@ -14,10 +14,13 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 
 [application]
 
-config/name="Floorball Frenzy V2"
+config/name="Floorball Frenzy"
 run/main_scene="res://scenes/app/main_menu.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"
+boot_splash/image="res://assets/ui/floorball-frenzy-wide.png"
+boot_splash/bg_color=Color(0.0196078, 0.0431373, 0.0823529, 1)
+boot_splash/fullsize=false
 
 [autoload]
 
