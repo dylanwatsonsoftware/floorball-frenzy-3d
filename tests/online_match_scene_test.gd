@@ -129,6 +129,10 @@ func run_test() -> void:
 	if remote_actor.get_node("ControlRing").visible:
 		fail("Only the local player should receive the ground control ring")
 		return
+	var remote_body_rig := remote_actor.get_node("BodyRig") as Node3D
+	var remote_skeleton := remote_body_rig.find_child("Skeleton3D", true, false) as Skeleton3D
+	var remote_chest_index := remote_skeleton.find_bone("Chest")
+	var neutral_remote_chest := remote_skeleton.get_bone_global_pose(remote_chest_index).basis * Vector3.FORWARD
 	var remote_pose_snapshot: Dictionary = client_controller.call("_capture_snapshot")
 	remote_pose_snapshot.stick_angles = []
 	for actor_state: Dictionary in remote_pose_snapshot.actors:
@@ -140,7 +144,10 @@ func run_test() -> void:
 	if not remote_buffers.has(String(remote_actor.call("get_actor_id"))):
 		fail("Remote actor snapshots must enter the timestamped interpolation buffer")
 		return
-	if not is_equal_approx(float(remote_actor.get_meta("stick_slap_angle", 0.0)), 38.0) or absf((remote_actor.get_node("BodyRig") as Node3D).rotation.y) < 0.1:
+	remote_body_rig.call("_process", 0.0)
+	var wound_remote_chest := remote_skeleton.get_bone_global_pose(remote_chest_index).basis * Vector3.FORWARD
+	var remote_torso_twist := absf(Vector2(neutral_remote_chest.x, neutral_remote_chest.z).angle_to(Vector2(wound_remote_chest.x, wound_remote_chest.z)))
+	if not is_equal_approx(float(remote_actor.get_meta("stick_slap_angle", 0.0)), 38.0) or remote_torso_twist < 0.1:
 		fail("A guest must render the replicated opponent stick swing and torso twist")
 		return
 	var camera_actor: CharacterBody3D = client_arena.call("get_camera_actor", client_arena.get_node("Ball"))

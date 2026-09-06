@@ -6,7 +6,6 @@ var _animation_tree: AnimationTree
 var _animation_player: AnimationPlayer
 var _skeleton: Skeleton3D
 var _swing_angle := 0.0
-var _slap_requested := false
 var _hand_ik_solvers: Array[SkeletonIK3D] = []
 
 
@@ -31,6 +30,7 @@ func _process(_delta: float) -> void:
 	var blend := Vector2(planar_velocity.dot(right), planar_velocity.dot(facing)) / MAX_SPEED
 	_animation_tree.set("parameters/Locomotion/blend_position", blend.limit_length(1.0))
 	position.y = absf(sin(Time.get_ticks_msec() * 0.012)) * 0.018 * minf(1.0, planar_velocity.length() / MAX_SPEED)
+	_apply_torso_swing_pose()
 	for solver in _hand_ik_solvers:
 		solver.start(true)
 
@@ -112,6 +112,7 @@ func _setup_hand_targets() -> void:
 		target.name = target_data[0]
 		stick_rig.add_child(target)
 		target.position = stick_rig.to_local(shaft_bottom.lerp(shaft_top, float(target_data[1])))
+		target.set_meta("rest_position", target.position)
 		var ik := SkeletonIK3D.new()
 		ik.name = "%sIK" % String(target_data[0]).trim_suffix("Target")
 		ik.root_bone = StringName(target_data[2])
@@ -120,18 +121,56 @@ func _setup_hand_targets() -> void:
 		ik.target_node = ik.get_path_to(target)
 		ik.influence = 1.0
 		_hand_ik_solvers.append(ik)
+		_attach_visible_hand(target, "RightHand" if String(target_data[0]).begins_with("Right") else "LeftHand")
 	set_meta("hand_ik_ready", true)
 
 
+func _attach_visible_hand(target: Marker3D, authored_hand_name: String) -> void:
+	var authored_hand := find_child(authored_hand_name, true, false) as MeshInstance3D
+	if authored_hand == null:
+		return
+	authored_hand.visible = false
+	var grip_hand := MeshInstance3D.new()
+	grip_hand.name = "GripHand"
+	var mitt := SphereMesh.new()
+	mitt.radius = 0.095
+	mitt.height = 0.18
+	mitt.radial_segments = 12
+	mitt.rings = 6
+	grip_hand.mesh = mitt
+	grip_hand.material_override = authored_hand.get_active_material(0)
+	grip_hand.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	target.add_child(grip_hand)
+
+
 func set_swing_pose(stick_angle_degrees: float) -> void:
-	var was_resting := absf(_swing_angle) < 2.0
 	_swing_angle = stick_angle_degrees
-	rotation.y = deg_to_rad(clampf(_swing_angle * 0.46, -38.0, 38.0))
-	if _animation_tree != null and was_resting and absf(_swing_angle) >= 2.0 and not _slap_requested:
-		_animation_tree.set("parameters/SlapShot/request", AnimationNodeOneShot.ONE_SHOT_REQUEST_FIRE)
-		_slap_requested = true
-	if absf(_swing_angle) < 2.0:
-		_slap_requested = false
+	rotation.y = 0.0
+	var actor := get_parent() as CharacterBody3D
+	var stick_rig := actor.get_node_or_null("StickRig") as Node3D if actor != null else null
+	if stick_rig != null:
+		var top_hand := stick_rig.get_node_or_null("RightHandIKTarget") as Marker3D
+		var lower_hand := stick_rig.get_node_or_null("LeftHandIKTarget") as Marker3D
+		if top_hand != null and lower_hand != null:
+			var lower_rest: Vector3 = lower_hand.get_meta("rest_position", lower_hand.position)
+			var windup := clampf(-_swing_angle / 82.0, 0.0, 1.0)
+			lower_hand.position = lower_rest.lerp(top_hand.position, windup * 0.30)
+			stick_rig.force_update_transform()
+			top_hand.force_update_transform()
+			lower_hand.force_update_transform()
+
+
+func _apply_torso_swing_pose() -> void:
+	if _skeleton == null:
+		return
+	var swing_ratio := clampf(_swing_angle / 82.0, -1.0, 1.0)
+	var chest_twist := deg_to_rad(-44.0 * swing_ratio)
+	var spine_twist := deg_to_rad(-14.0 * swing_ratio)
+	var backward_lean := deg_to_rad(-4.0 * maxf(0.0, -swing_ratio) + 2.0 * maxf(0.0, swing_ratio))
+	rotation.x = backward_lean
+	rotation.z = 0.0
+	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Spine"), Quaternion(Vector3.UP, spine_twist))
+	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Chest"), Quaternion(Vector3.UP, chest_twist))
 
 
 func apply_goalkeeper_pose() -> void:

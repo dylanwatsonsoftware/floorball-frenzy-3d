@@ -81,15 +81,20 @@ func run_test() -> void:
 			fail("The resting grip must sit in the player's hands instead of floating in front; center=%s" % grip_center)
 			return
 		var body_rig := actor.get_node("BodyRig") as Node3D
-		var resting_grip_world: Vector3 = grip.to_global(grip.get_aabb().get_center())
+		var skeleton := body_rig.find_child("Skeleton3D", true, false) as Skeleton3D
+		var chest_index := skeleton.find_bone("Chest")
+		var neutral_chest_forward := skeleton.get_bone_global_pose(chest_index).basis * Vector3.FORWARD
+		var top_hand_target := rig.get_node("RightHandIKTarget") as Marker3D
+		var resting_top_hand_world := top_hand_target.global_position
 		actor.call("set_stick_slap_angle", slap.BACKSWING_ANGLE)
 		if not is_equal_approx(float(actor.get_meta("stick_slap_angle", 0.0)), slap.BACKSWING_ANGLE):
 			fail("Player controllers must expose their current stick pose for network replication")
 			return
-		grip.force_update_transform()
-		var wound_grip_world: Vector3 = grip.to_global(grip.get_aabb().get_center())
-		if wound_grip_world.distance_to(resting_grip_world) > 0.18:
-			fail("The stick must pivot around the hands instead of sliding the shaft through the torso; rest=%s wound=%s" % [resting_grip_world, wound_grip_world])
+		body_rig.call("_process", 0.0)
+		top_hand_target.force_update_transform()
+		var wound_top_hand_world := top_hand_target.global_position
+		if wound_top_hand_world.distance_to(resting_top_hand_world) > 0.03:
+			fail("The stick must pivot around the upper hand instead of sliding through the torso; rest=%s wound=%s" % [resting_top_hand_world, wound_top_hand_world])
 			return
 		blade.force_update_transform()
 		var backswing_blade_center: Vector3 = blade.to_global(blade.get_aabb().get_center())
@@ -99,11 +104,33 @@ func run_test() -> void:
 		if local_backswing_blade.z >= -0.1:
 			fail("The wound-up blade must travel behind the player's body; blade=%s facing=%s" % [blade_from_player, facing])
 			return
-		if absf(body_rig.rotation.y) < 0.30:
-			fail("A real backswing must visibly twist the player's torso with the stick")
+		if absf(body_rig.rotation.y) > 0.05:
+			fail("The backswing must twist the torso skeleton instead of rotating the player's entire body rig")
 			return
+		var wound_chest_forward := skeleton.get_bone_global_pose(chest_index).basis * Vector3.FORWARD
+		var torso_twist := absf(Vector2(neutral_chest_forward.x, neutral_chest_forward.z).angle_to(Vector2(wound_chest_forward.x, wound_chest_forward.z)))
+		if torso_twist < 0.35:
+			fail("A real backswing must visibly twist the chest around the vertical axis; twist=%s" % torso_twist)
+			return
+		for hand_data in [["Hand.R", "RightHandIKTarget"], ["Hand.L", "LeftHandIKTarget"]]:
+			var visible_hand := rig.get_node_or_null("%s/GripHand" % hand_data[1]) as MeshInstance3D
+			if visible_hand == null or visible_hand.global_position.distance_to((rig.get_node(hand_data[1]) as Marker3D).global_position) > 0.01:
+				fail("The visible %s mitt must be anchored directly to its moving shaft grip" % hand_data[0])
+				return
+			var hand_index := skeleton.find_bone(hand_data[0])
+			var hand_position := skeleton.to_global(skeleton.get_bone_global_pose(hand_index).origin)
+			var hand_target := rig.get_node(hand_data[1]) as Marker3D
+			var hand_error := hand_position.distance_to(hand_target.global_position)
+			if hand_error > 0.45:
+				var upper_name := "UpperArm.R" if hand_data[0] == "Hand.R" else "UpperArm.L"
+				var shoulder := skeleton.to_global(skeleton.get_bone_global_pose(skeleton.find_bone(upper_name)).origin)
+				fail("%s must remain attached to the moving shaft through the backswing; error=%s reach=%s" % [hand_data[0], hand_error, shoulder.distance_to(hand_target.global_position)])
+				return
 		actor.call("set_stick_slap_angle", 0.0)
-		if absf(body_rig.rotation.y) > 0.01:
+		body_rig.call("_process", 0.0)
+		var recovered_chest_forward := skeleton.get_bone_global_pose(chest_index).basis * Vector3.FORWARD
+		var recovery_twist := absf(Vector2(neutral_chest_forward.x, neutral_chest_forward.z).angle_to(Vector2(recovered_chest_forward.x, recovered_chest_forward.z)))
+		if absf(body_rig.rotation.y) > 0.01 or absf(body_rig.rotation.x) > 0.01 or recovery_twist > 0.08:
 			fail("The torso must recover to its neutral pose after the swing")
 			return
 		var blade_distance := Vector2(blade_center.x, blade_center.z).length()
