@@ -12,6 +12,7 @@ func run_test() -> void:
 	await process_frame
 	await physics_frame
 	await physics_frame
+	var locomotion_paces := {}
 	for actor in scene.get_node("Arena").call("get_field_players"):
 		var rig := actor.get_node("BodyRig") as Node3D
 		var animation_tree := rig.get_node_or_null("AnimationTree") as AnimationTree
@@ -22,6 +23,14 @@ func run_test() -> void:
 		if not blend_tree.has_node("Locomotion") or not blend_tree.has_node("SlapShot"):
 			fail("%s needs locomotion blending and a layered slap-shot action" % actor.name)
 			return
+		var locomotion := blend_tree.get_node("Locomotion") as AnimationNodeBlendSpace2D
+		if locomotion.blend_mode != AnimationNodeBlendSpace2D.BLEND_MODE_INTERPOLATED:
+			fail("%s must blend directional locomotion continuously instead of snapping between clips" % actor.name)
+			return
+		if not blend_tree.has_node("LocomotionPace"):
+			fail("%s must vary locomotion timing so the whole team does not move in lockstep" % actor.name)
+			return
+		locomotion_paces[snappedf(float(animation_tree.get("parameters/LocomotionPace/scale")), 0.001)] = true
 		var skeleton := rig.find_child("Skeleton3D", true, false) as Skeleton3D
 		if StringName(actor.get_meta("role", &"field")) != &"goalkeeper":
 			var ik_count := 0
@@ -47,7 +56,10 @@ func run_test() -> void:
 				if alignment_error > 0.06:
 					fail("%s must place %s on its stick grip; alignment error=%.3f" % [actor.name, hand_data[0], alignment_error])
 					return
-	print("Every player uses locomotion blending, layered slap actions, and the hand-IK contract.")
+	if locomotion_paces.size() < 3:
+		fail("The squad needs several subtle locomotion pace variants; got %s" % locomotion_paces.keys())
+		return
+	print("Every player uses locomotion blending, varied timing, layered slap actions, and the hand-IK contract.")
 	quit(0)
 
 

@@ -47,13 +47,16 @@ func _setup_animation_tree() -> void:
 	_animation_tree.anim_player = _animation_tree.get_path_to(_animation_player)
 	var graph := AnimationNodeBlendTree.new()
 	var locomotion := AnimationNodeBlendSpace2D.new()
-	locomotion.blend_mode = AnimationNodeBlendSpace2D.BLEND_MODE_DISCRETE_CARRY
+	locomotion.blend_mode = AnimationNodeBlendSpace2D.BLEND_MODE_INTERPOLATED
 	locomotion.add_blend_point(_clip(&"idle"), Vector2.ZERO, -1, "Idle")
 	locomotion.add_blend_point(_clip(&"run"), Vector2(0.0, 1.0), -1, "Run")
 	locomotion.add_blend_point(_clip(&"backpedal"), Vector2(0.0, -1.0), -1, "Backpedal")
 	locomotion.add_blend_point(_clip(&"strafe_left"), Vector2(-1.0, 0.0), -1, "StrafeLeft")
 	locomotion.add_blend_point(_clip(&"strafe_right"), Vector2(1.0, 0.0), -1, "StrafeRight")
 	graph.add_node("Locomotion", locomotion, Vector2(0.0, 80.0))
+	var locomotion_pace := AnimationNodeTimeScale.new()
+	graph.add_node("LocomotionPace", locomotion_pace, Vector2(220.0, 80.0))
+	graph.connect_node("LocomotionPace", 0, "Locomotion")
 	graph.add_node("SlapAnimation", _clip(&"slap_shot"), Vector2(0.0, 220.0))
 	var slap_layer := AnimationNodeOneShot.new()
 	slap_layer.fadein_time = 0.08
@@ -61,11 +64,14 @@ func _setup_animation_tree() -> void:
 	slap_layer.mix_mode = AnimationNodeOneShot.MIX_MODE_ADD
 	_filter_upper_body(slap_layer)
 	graph.add_node("SlapShot", slap_layer, Vector2(240.0, 100.0))
-	graph.connect_node("SlapShot", 0, "Locomotion")
+	graph.connect_node("SlapShot", 0, "LocomotionPace")
 	graph.connect_node("SlapShot", 1, "SlapAnimation")
 	graph.connect_node("output", 0, "SlapShot")
 	_animation_tree.tree_root = graph
 	_animation_tree.active = true
+	var actor := get_parent() as CharacterBody3D
+	var squad_slot := int(actor.get_meta("squad_slot", 0)) if actor != null else 0
+	_animation_tree.set("parameters/LocomotionPace/scale", 0.95 + float(posmod(squad_slot, 5)) * 0.025)
 	set_meta("upper_body_animation_layer", true)
 
 
