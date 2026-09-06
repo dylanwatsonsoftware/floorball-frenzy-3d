@@ -99,15 +99,9 @@ def lens(name, size, mat, location, rotation=(0, 0, 0)):
 
 
 def boot(name, mat, x):
-    # Compact court shoe: enough toe to read in profile without projecting as
-    # a dark spike beyond the body in the broadcast camera.
-    verts = [
-        (-.10, .08, .08), (.10, .08, .08), (-.13, -.15, .06), (.13, -.15, .06),
-        (-.11, .08, -.06), (.11, .08, -.06), (-.15, -.16, -.05), (.15, -.16, -.05),
-        (-.12, -.22, .00), (.12, -.22, .00),
-    ]
-    faces = [(0,1,3,2),(4,6,7,5),(0,4,5,1),(2,3,7,6),(0,2,6,4),(1,5,7,3),(2,3,9,8),(6,8,9,7)]
-    return mesh_object(name, verts, faces, mat, (x, .015, -.98))
+    # A softly rounded court shoe reads as a planted foot from the broadcast
+    # camera and cannot turn into the old pointed black back silhouette.
+    return organic_form(name, (.13, .15, .075), mat, (x, -.025, -.98), rings=4, segments=8)
 
 
 def create_shared_rig():
@@ -252,7 +246,7 @@ def add_common(team):
     jersey = material("LambsGreen" if team == "lamb" else "PiratesBlack", (0.05, .48, .19) if team == "lamb" else (.035, .045, .065))
     accent = material("White" if team == "lamb" else "IceBlue", (.94, .96, .94) if team == "lamb" else (.30, .76, .90))
     dark = material("Shorts", (.025, .035, .055))
-    shoe = material("CourtShoes", (.015, .02, .028), .48)
+    shoe = material("CourtShoes", (.08, .34, .18) if team == "lamb" else (.12, .30, .42), .48)
     torso = lathe("Torso", [(-.34,.25),(-.24,.31),(.12,.34),(.34,.31),(.43,.23)], jersey)
     torso.scale.y = .72
     stripe = lathe("JerseyStripe", [(-.02,.345),(.04,.35),(.10,.345)], accent, segments=20)

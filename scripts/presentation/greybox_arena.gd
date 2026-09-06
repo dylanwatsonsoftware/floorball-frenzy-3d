@@ -395,13 +395,6 @@ func _add_humanoid(parent: Node3D, team: StringName, slot: int) -> void:
 	rig.set_meta("appearance_variant", "%s_player_%d" % [team_name, slot])
 	rig.set_meta("authored_mesh", true)
 	parent.add_child(rig)
-	# The imported shoe lasts are retained in the reusable Blender source, but
-	# hidden in-game: foot-bone rotation currently projects them behind the
-	# mascot as dark spikes in the broadcast camera.
-	for boot_name in ["LeftBoot", "RightBoot"]:
-		var boot := rig.find_child(boot_name, true, false) as MeshInstance3D
-		if boot != null:
-			boot.visible = false
 	var lamb_jerseys := [Color("168a45"), Color("24a653"), Color("0d6f38"), Color("1d9650"), Color("126f3c")]
 	var pirate_jerseys := [Color("171c25"), Color("242a34"), Color("0e1118"), Color("202c3b"), Color("111a29")]
 	var variant_index := posmod(slot, 5)

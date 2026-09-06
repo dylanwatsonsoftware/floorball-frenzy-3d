@@ -108,7 +108,8 @@ The animation target is readable, stylised biomechanics rather than literal real
 - [x] Replace rigid single-bone sleeves with mobile-friendly upper-arm/forearm blended skinning, then regenerate, save, validate, and visually inspect both character sources and exports.
 - [x] Replace spherical grip placeholders with shaft-aligned capsule palms and curved finger bands, merged into one draw surface per hand for mobile/web.
 - [x] Add clavicle controls to the shared skeleton, parent both arm chains correctly, and drive the shoulders through load, contact, follow-through, and recovery.
-- [x] Lock both hands to stable shaft grips through the swing, deepen the backswing to 90 degrees, and remove the animated shoe silhouettes that appeared as dark spikes behind players.
+- [x] Lock both hands to stable shaft grips through the swing and deepen the backswing to 90 degrees.
+- [x] Replace pointed dark shoe lasts with rounded, team-coloured footwear that remains visible without creating back spikes in the broadcast view.
 - [x] Give all five field players on each team deterministic, restrained differences in jersey shade, body/head proportion, and Lamb wool or Pirate hat treatment.
 
 ## Acceptance checks

@@ -36,8 +36,12 @@ func run_test() -> void:
 			if boot == null or maxf(boot.get_aabb().size.x, maxf(boot.get_aabb().size.y, boot.get_aabb().size.z)) > 0.34:
 				fail("%s/%s must use a compact shoe silhouette that cannot protrude behind the body; size=%s" % [actor.name, boot_name, boot.get_aabb().size if boot != null else Vector3.ZERO])
 				return
-			if boot.visible:
-				fail("%s/%s must stay hidden until planted footwear replaces the animated back spikes" % [actor.name, boot_name])
+			if not boot.visible:
+				fail("%s/%s must use visible planted footwear rather than hiding the previous back-spike artifact" % [actor.name, boot_name])
+				return
+			var boot_size := boot.get_aabb().size
+			if maxf(boot_size.x, maxf(boot_size.y, boot_size.z)) / maxf(0.001, minf(boot_size.x, maxf(boot_size.y, boot_size.z))) > 2.7:
+				fail("%s/%s must have a rounded court-shoe silhouette rather than a long pointed last; size=%s" % [actor.name, boot_name, boot_size])
 				return
 		for clavicle_name in [&"Clavicle.L", &"Clavicle.R"]:
 			if skeleton.find_bone(clavicle_name) < 0:
