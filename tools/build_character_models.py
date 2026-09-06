@@ -123,10 +123,12 @@ def create_shared_rig():
         "Chest": ((0, 0, .18), (0, 0, .48), "Spine"),
         "Neck": ((0, 0, .48), (0, 0, .60), "Chest"),
         "Head": ((0, 0, .60), (0, 0, 1.04), "Neck"),
-        "UpperArm.L": ((-.20, 0, .40), (-.34, 0, .12), "Chest"),
+        "Clavicle.L": ((-.05, 0, .43), (-.20, 0, .40), "Chest"),
+        "Clavicle.R": ((.05, 0, .43), (.20, 0, .40), "Chest"),
+        "UpperArm.L": ((-.20, 0, .40), (-.34, 0, .12), "Clavicle.L"),
         "Forearm.L": ((-.34, 0, .12), (-.34, 0, -.12), "UpperArm.L"),
         "Hand.L": ((-.34, 0, -.12), (-.34, 0, -.28), "Forearm.L"),
-        "UpperArm.R": ((.20, 0, .40), (.34, 0, .12), "Chest"),
+        "UpperArm.R": ((.20, 0, .40), (.34, 0, .12), "Clavicle.R"),
         "Forearm.R": ((.34, 0, .12), (.34, 0, -.12), "UpperArm.R"),
         "Hand.R": ((.34, 0, -.12), (.34, 0, -.28), "Forearm.R"),
         "Thigh.L": ((-.16, 0, -.20), (-.16, 0, -.52), "Hips"),
@@ -217,10 +219,10 @@ def author_animation_set(armature):
     add_pose_animation(armature, "strafe_left", 24, {1: shuffle_left_a, 12: shuffle_left_b, 24: shuffle_left_a})
     add_pose_animation(armature, "strafe_right", 24, {1: shuffle_right_a, 12: shuffle_right_b, 24: shuffle_right_a})
     add_pose_animation(armature, "slap_shot", 24, {
-        1: {"Hips": (0, 0, 0), "Chest": (0, 0, 0), "UpperArm.L": (-.5, 0, -.12), "UpperArm.R": (-.58, 0, .18)},
-        9: {"Hips": (0, 0, -.28), "Chest": (-.10, 0, -.62), "UpperArm.L": (-.30, -.22, -.55), "UpperArm.R": (-.36, .30, -.48)},
-        15: {"Hips": (0, 0, .22), "Chest": (.14, 0, .52), "UpperArm.L": (-.78, .12, .44), "UpperArm.R": (-.82, -.18, .58)},
-        24: {"Hips": (0, 0, 0), "Chest": (0, 0, 0), "UpperArm.L": (-.5, 0, -.12), "UpperArm.R": (-.58, 0, .18)},
+        1: {"Hips": (0, 0, 0), "Chest": (0, 0, 0), "Clavicle.L": (0, 0, -.04), "Clavicle.R": (0, 0, .04), "UpperArm.L": (-.5, 0, -.12), "UpperArm.R": (-.58, 0, .18)},
+        9: {"Hips": (0, 0, -.28), "Chest": (-.10, 0, -.62), "Clavicle.L": (0, -.18, -.22), "Clavicle.R": (0, .22, -.16), "UpperArm.L": (-.30, -.22, -.55), "UpperArm.R": (-.36, .30, -.48)},
+        15: {"Hips": (0, 0, .22), "Chest": (.14, 0, .52), "Clavicle.L": (0, .12, .18), "Clavicle.R": (0, -.16, .22), "UpperArm.L": (-.78, .12, .44), "UpperArm.R": (-.82, -.18, .58)},
+        24: {"Hips": (0, 0, 0), "Chest": (0, 0, 0), "Clavicle.L": (0, 0, -.04), "Clavicle.R": (0, 0, .04), "UpperArm.L": (-.5, 0, -.12), "UpperArm.R": (-.58, 0, .18)},
     }, loop=False)
 
 

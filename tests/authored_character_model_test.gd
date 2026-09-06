@@ -30,6 +30,16 @@ func run_test() -> void:
 			if part_name in ["LeftArm", "RightArm"] and not has_blended_arm_weights(arrays):
 				fail("%s/%s must blend across upper-arm and forearm bones so the elbow deforms with hand IK" % [actor.name, part_name])
 				return
+		var skeleton := rig.find_child("Skeleton3D", true, false) as Skeleton3D
+		for clavicle_name in [&"Clavicle.L", &"Clavicle.R"]:
+			if skeleton.find_bone(clavicle_name) < 0:
+				fail("%s needs %s control for shoulder-led stick movement" % [actor.name, clavicle_name])
+				return
+		var animation_player := rig.find_child("AnimationPlayer", true, false) as AnimationPlayer
+		var slap_animation := animation_player.get_animation(&"slap_shot")
+		if not animation_has_bone_rotation(slap_animation, "Clavicle.L") or not animation_has_bone_rotation(slap_animation, "Clavicle.R"):
+			fail("%s slap shot must animate both clavicles instead of hinging arms directly from the chest" % actor.name)
+			return
 	print("Lambs and Pirates use authored 3D character meshes.")
 	quit(0)
 
@@ -48,6 +58,17 @@ func has_blended_arm_weights(arrays: Array) -> bool:
 				used_bones[bones[index]] = true
 		blended_vertex = blended_vertex or positive_weights >= 2
 	return used_bones.size() >= 2 and blended_vertex
+
+
+func animation_has_bone_rotation(animation: Animation, bone_name: String) -> bool:
+	for track_index in animation.get_track_count():
+		if not String(animation.track_get_path(track_index)).contains(bone_name):
+			continue
+		for key_index in animation.track_get_key_count(track_index):
+			var value: Variant = animation.track_get_key_value(track_index, key_index)
+			if value is Quaternion and (value as Quaternion).get_angle() > 0.04:
+				return true
+	return false
 
 
 func fail(message: String) -> void:

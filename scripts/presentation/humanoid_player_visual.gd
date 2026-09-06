@@ -128,7 +128,7 @@ func _filter_upper_body(layer: AnimationNodeOneShot) -> void:
 	for track_index in animation.get_track_count():
 		var path := animation.track_get_path(track_index)
 		var path_text := String(path)
-		if ["Spine", "Chest", "Neck", "Head", "Arm", "Forearm", "Hand"].any(func(fragment: String) -> bool: return path_text.contains(fragment)):
+		if ["Spine", "Chest", "Clavicle", "Neck", "Head", "Arm", "Forearm", "Hand"].any(func(fragment: String) -> bool: return path_text.contains(fragment)):
 			layer.set_filter_path(path, true)
 
 
@@ -245,6 +245,10 @@ func _apply_torso_swing_pose() -> void:
 	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Hips"), Quaternion(Vector3.RIGHT, protective_crouch) * Quaternion(Vector3.UP, hip_twist + pivot_hip_turn))
 	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Spine"), Quaternion(Vector3.UP, spine_twist))
 	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Chest"), Quaternion(Vector3.UP, chest_twist))
+	var shoulder_yaw := deg_to_rad(12.0 * float(pose.chest_turn))
+	var shoulder_drive := deg_to_rad(7.0 * float(pose.chest_turn) + 5.0 * contact_accent)
+	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Clavicle.L"), Quaternion(Vector3.FORWARD, -shoulder_drive) * Quaternion(Vector3.UP, shoulder_yaw))
+	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Clavicle.R"), Quaternion(Vector3.FORWARD, shoulder_drive) * Quaternion(Vector3.UP, shoulder_yaw))
 	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Thigh.L"), Quaternion(Vector3.RIGHT, deg_to_rad(-10.0 * float(pose.plant) - 6.0 * _possession_weight)))
 	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Thigh.R"), Quaternion(Vector3.RIGHT, deg_to_rad(8.0 * float(pose.crouch) + 6.0 * _possession_weight)))
 

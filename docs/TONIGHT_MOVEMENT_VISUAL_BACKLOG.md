@@ -107,6 +107,7 @@ The animation target is readable, stylised biomechanics rather than literal real
 - [x] Add and run a repeatable 12-player animation CPU benchmark; current headless median is about 0.25 ms and p95 remains under 2.3 ms with all hand IK enabled on the development machine.
 - [x] Replace rigid single-bone sleeves with mobile-friendly upper-arm/forearm blended skinning, then regenerate, save, validate, and visually inspect both character sources and exports.
 - [x] Replace spherical grip placeholders with shaft-aligned capsule palms and curved finger bands, merged into one draw surface per hand for mobile/web.
+- [x] Add clavicle controls to the shared skeleton, parent both arm chains correctly, and drive the shoulders through load, contact, follow-through, and recovery.
 
 ## Acceptance checks
 
