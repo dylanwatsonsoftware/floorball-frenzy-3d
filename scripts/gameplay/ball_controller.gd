@@ -212,7 +212,7 @@ func _update_shot_charge(delta: float) -> void:
 		_turn_actor_toward_attacking_goal(_slap_actor, delta)
 		var charge_ratio := _charge_seconds / MAX_CHARGE_SECONDS
 		var backswing_ratio := minf(1.0, charge_ratio)
-		_slap_actor.call("set_stick_slap_angle", lerpf(-2.0, StickSlapScript.BACKSWING_ANGLE, backswing_ratio * backswing_ratio))
+		_slap_actor.call("set_stick_slap_pose", lerpf(-2.0, StickSlapScript.BACKSWING_ANGLE, backswing_ratio * backswing_ratio), StickSlapScript.BACKSWING_SECONDS * backswing_ratio)
 		_show_aim_arrow(_slap_actor, charge_ratio)
 		_apply_charge_feedback(charge_ratio)
 	elif Input.is_action_just_released("shoot"):
@@ -246,7 +246,7 @@ func _update_pass_charge(delta: float) -> void:
 			_pass_charge_actor = input_actor
 		_pass_charge_seconds = minf(MAX_CHARGE_SECONDS, _pass_charge_seconds + delta)
 		var ratio := _pass_charge_seconds / MAX_CHARGE_SECONDS
-		_pass_charge_actor.call("set_stick_slap_angle", lerpf(-2.0, StickSlapScript.BACKSWING_ANGLE * 0.72, ratio * ratio))
+		_pass_charge_actor.call("set_stick_slap_pose", lerpf(-2.0, StickSlapScript.BACKSWING_ANGLE * 0.72, ratio * ratio), StickSlapScript.BACKSWING_SECONDS * ratio * 0.72)
 		_apply_charge_feedback(ratio)
 	elif _pass_charge_seconds > 0.0:
 		var ratio := _pass_charge_seconds / MAX_CHARGE_SECONDS
@@ -355,7 +355,7 @@ func _refresh_field_players() -> void:
 func begin_slap(direction: Vector2, charge: float) -> void:
 	_slap_actor = _red_input_actor()
 	_configure_slap(direction, charge, 0.0)
-	_slap_actor.call("set_stick_slap_angle", StickSlapScript.angle_at(0.0))
+	_slap_actor.call("set_stick_slap_pose", StickSlapScript.angle_at(0.0), 0.0)
 
 
 func pass_to_closest_teammate(charge_ratio: float = 0.0) -> bool:
@@ -377,7 +377,7 @@ func pass_to_closest_teammate(charge_ratio: float = 0.0) -> bool:
 	var pass_strength := BallSimulationScript.charged_pass_strength(offset.length(), charge_ratio)
 	_configure_slap(offset, pass_strength, 0.0, true)
 	_pending_soft_pass = target.is_empty() and charge_ratio < 0.15
-	_slap_actor.call("set_stick_slap_angle", StickSlapScript.angle_at(0.0))
+	_slap_actor.call("set_stick_slap_pose", StickSlapScript.angle_at(0.0), 0.0)
 	return true
 
 
@@ -422,7 +422,7 @@ func _advance_slap(delta: float) -> void:
 		return
 	var previous_elapsed := _slap_elapsed
 	_slap_elapsed += delta
-	_slap_actor.call("set_stick_slap_angle", StickSlapScript.angle_at(_slap_elapsed))
+	_slap_actor.call("set_stick_slap_pose", StickSlapScript.angle_at(_slap_elapsed), _slap_elapsed)
 	var previous_step: float = StickSlapScript.forward_step_at(previous_elapsed)
 	var current_step: float = StickSlapScript.forward_step_at(_slap_elapsed)
 	var step_distance := current_step - previous_step
@@ -588,7 +588,8 @@ func _update_network_blue_actions(delta: float) -> void:
 		return
 	if OnlineMatch.remote_pass_held:
 		_network_blue_pass_charge = minf(MAX_CHARGE_SECONDS, _network_blue_pass_charge + delta)
-		actor.call("set_stick_slap_angle", lerpf(-2.0, StickSlapScript.BACKSWING_ANGLE * 0.72, pow(_network_blue_pass_charge / MAX_CHARGE_SECONDS, 2.0)))
+		var pass_ratio := clampf(_network_blue_pass_charge / MAX_CHARGE_SECONDS, 0.0, 1.0)
+		actor.call("set_stick_slap_pose", lerpf(-2.0, StickSlapScript.BACKSWING_ANGLE * 0.72, pow(pass_ratio, 2.0)), StickSlapScript.BACKSWING_SECONDS * pass_ratio * 0.72)
 	elif _network_blue_was_passing and _network_blue_pass_charge > 0.0:
 		_start_network_pass(actor, _network_blue_pass_charge / MAX_CHARGE_SECONDS)
 		_network_blue_pass_charge = 0.0
@@ -601,7 +602,8 @@ func _update_network_blue_actions(delta: float) -> void:
 		_network_blue_charge = minf(MAX_CHARGE_SECONDS * 2.0, _network_blue_charge + delta)
 		_turn_actor_toward_attacking_goal(actor, delta)
 		actor.call("set_shot_aim_locked", true)
-		actor.call("set_stick_slap_angle", lerpf(-2.0, StickSlapScript.BACKSWING_ANGLE, pow(minf(1.0, _network_blue_charge / MAX_CHARGE_SECONDS), 2.0)))
+		var shot_ratio := clampf(_network_blue_charge / MAX_CHARGE_SECONDS, 0.0, 1.0)
+		actor.call("set_stick_slap_pose", lerpf(-2.0, StickSlapScript.BACKSWING_ANGLE, pow(shot_ratio, 2.0)), StickSlapScript.BACKSWING_SECONDS * shot_ratio)
 	elif _network_blue_was_shooting and _network_blue_charge > 0.0:
 		_slap_actor = actor
 		_pending_lag_compensated_contact = _lag_compensated_network_hit(actor, OnlineMatch.remote_rtt_ms)
@@ -732,7 +734,7 @@ func _update_ai_shot(carrier: CharacterBody3D, delta: float) -> void:
 	_ai_shot_seconds += delta
 	var charge_ratio := clampf(_ai_shot_seconds / AI_SHOT_CHARGE_SECONDS, 0.0, 1.0)
 	carrier.call("set_shot_aim_locked", true)
-	carrier.call("set_stick_slap_angle", lerpf(-2.0, StickSlapScript.BACKSWING_ANGLE, charge_ratio * charge_ratio))
+	carrier.call("set_stick_slap_pose", lerpf(-2.0, StickSlapScript.BACKSWING_ANGLE, charge_ratio * charge_ratio), StickSlapScript.BACKSWING_SECONDS * charge_ratio)
 	if _ai_shot_seconds < AI_SHOT_CHARGE_SECONDS:
 		return
 	var direction := (AI_GOAL - Vector2(global_position.x, global_position.z)).normalized()

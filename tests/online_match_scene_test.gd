@@ -61,10 +61,13 @@ func run_test() -> void:
 		fail("Authority snapshots must carry host time and echo guest send-time for packet-age estimation")
 		return
 	var authority_action_actor: CharacterBody3D = arena.call("get_field_players")[0]
-	authority_action_actor.call("set_stick_slap_angle", 32.0)
+	authority_action_actor.call("set_stick_slap_pose", 32.0, 0.31)
 	authority_snapshot = match_scene.get_node("OnlineMatchController").call("_capture_snapshot")
 	if authority_snapshot.get("stick_angles", []).size() != authority_snapshot.actors.size() or not is_equal_approx(float(authority_snapshot.stick_angles[0]), 32.0):
 		fail("Authority snapshots must include every player's current stick/torso action pose")
+		return
+	if authority_snapshot.get("stick_phase_elapsed", []).size() != authority_snapshot.actors.size() or not is_equal_approx(float(authority_snapshot.stick_phase_elapsed[0]), 0.31):
+		fail("Authority snapshots must include every player's exact action timeline")
 		return
 	authority_action_actor.call("set_stick_slap_angle", 0.0)
 	match_scene.queue_free()
@@ -135,8 +138,10 @@ func run_test() -> void:
 	var neutral_remote_chest := remote_skeleton.get_bone_global_pose(remote_chest_index).basis * Vector3.FORWARD
 	var remote_pose_snapshot: Dictionary = client_controller.call("_capture_snapshot")
 	remote_pose_snapshot.stick_angles = []
+	remote_pose_snapshot.stick_phase_elapsed = []
 	for actor_state: Dictionary in remote_pose_snapshot.actors:
 		remote_pose_snapshot.stick_angles.append(38.0 if actor_state.id == String(remote_actor.call("get_actor_id")) else 0.0)
+		remote_pose_snapshot.stick_phase_elapsed.append(0.33 if actor_state.id == String(remote_actor.call("get_actor_id")) else -1.0)
 	client_controller.call("_apply_snapshot", remote_pose_snapshot)
 	remote_pose_snapshot.host_time_ms = int(remote_pose_snapshot.host_time_ms) + 33
 	client_controller.call("_apply_snapshot", remote_pose_snapshot)
@@ -147,7 +152,7 @@ func run_test() -> void:
 	remote_body_rig.call("_process", 0.0)
 	var wound_remote_chest := remote_skeleton.get_bone_global_pose(remote_chest_index).basis * Vector3.FORWARD
 	var remote_torso_twist := absf(Vector2(neutral_remote_chest.x, neutral_remote_chest.z).angle_to(Vector2(wound_remote_chest.x, wound_remote_chest.z)))
-	if not is_equal_approx(float(remote_actor.get_meta("stick_slap_angle", 0.0)), 38.0) or remote_torso_twist < 0.1:
+	if not is_equal_approx(float(remote_actor.get_meta("stick_slap_angle", 0.0)), 38.0) or not is_equal_approx(float(remote_actor.get_meta("stick_slap_elapsed", -1.0)), 0.33) or remote_torso_twist < 0.1:
 		fail("A guest must render the replicated opponent stick swing and torso twist")
 		return
 	var camera_actor: CharacterBody3D = client_arena.call("get_camera_actor", client_arena.get_node("Ball"))

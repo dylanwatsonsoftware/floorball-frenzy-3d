@@ -233,10 +233,12 @@ func _on_message(message: Dictionary) -> void:
 func _capture_snapshot() -> Dictionary:
 	var actors: Array = []
 	var stick_angles: Array = []
+	var stick_phase_elapsed: Array = []
 	for actor in _arena.call("get_field_players"):
 		var dash_state: Dictionary = actor.call("get_network_dash_state") if actor.has_method("get_network_dash_state") else {}
 		actors.append({"id": String(actor.call("get_actor_id")), "p": _vector3_to_array(actor.global_position), "v": _vector3_to_array(actor.velocity), "r": actor.rotation.y, "dc": float(dash_state.get("cooldown", 0.0)), "dr": float(dash_state.get("remaining", 0.0)), "dd": _vector3_to_array(dash_state.get("direction", Vector3.ZERO))})
 		stick_angles.append(float(actor.get_meta("stick_slap_angle", 0.0)))
+		stick_phase_elapsed.append(float(actor.get_meta("stick_slap_elapsed", -1.0)))
 	var match_state: Dictionary = _match_flow.call("get_network_state") if _match_flow.has_method("get_network_state") else {}
 	var owner_id := String(_ball.call("get_control_owner_actor_id"))
 	var slap_phase := StringName(_ball.call("get_slap_phase")) if _ball.has_method("get_slap_phase") else &"idle"
@@ -252,7 +254,7 @@ func _capture_snapshot() -> Dictionary:
 		_ball_action_tick = _simulation_tick
 	_last_captured_ball_state = ball_state
 	var pickup_decision := _authoritative_pickup_decision(owner_name)
-	return {"type": "snapshot", "seq": _sequence, "host_time_ms": Time.get_ticks_msec(), "input_ack": int(OnlineMatch.remote_simulated_sequence), "input_echo_ms": int(OnlineMatch.remote_simulated_sent_ms), "actors": actors, "stick_angles": stick_angles, "ball": _vector3_to_array(_ball.global_position), "ball_velocity": _vector3_to_array(_ball.ball_velocity), "owner": owner_id, "ball_attached": not owner_id.is_empty(), "ball_state": String(ball_state), "possession_seq": _possession_sequence, "action_seq": _ball_action_sequence, "action_type": String(_ball_action_type), "action_tick": _ball_action_tick, "pickup_ack_seq": int(pickup_decision.sequence), "pickup_result": String(pickup_decision.result), "pickup_actor": String(pickup_decision.actor), "red_human": String(_ball.call("get_human_control_actor_id_for_team", &"red")), "blue_human": String(_ball.call("get_human_control_actor_id_for_team", &"blue")), "score": _match_flow.score.duplicate(), "goal_seq": int(match_state.get("goal_seq", 0)), "faceoff_seq": int(match_state.get("faceoff_seq", 0)), "scorer": String(match_state.get("scorer", "")), "phase": String(match_state.get("phase", "play")), "slap_phase": String(slap_phase)}
+	return {"type": "snapshot", "seq": _sequence, "host_time_ms": Time.get_ticks_msec(), "input_ack": int(OnlineMatch.remote_simulated_sequence), "input_echo_ms": int(OnlineMatch.remote_simulated_sent_ms), "actors": actors, "stick_angles": stick_angles, "stick_phase_elapsed": stick_phase_elapsed, "ball": _vector3_to_array(_ball.global_position), "ball_velocity": _vector3_to_array(_ball.ball_velocity), "owner": owner_id, "ball_attached": not owner_id.is_empty(), "ball_state": String(ball_state), "possession_seq": _possession_sequence, "action_seq": _ball_action_sequence, "action_type": String(_ball_action_type), "action_tick": _ball_action_tick, "pickup_ack_seq": int(pickup_decision.sequence), "pickup_result": String(pickup_decision.result), "pickup_actor": String(pickup_decision.actor), "red_human": String(_ball.call("get_human_control_actor_id_for_team", &"red")), "blue_human": String(_ball.call("get_human_control_actor_id_for_team", &"blue")), "score": _match_flow.score.duplicate(), "goal_seq": int(match_state.get("goal_seq", 0)), "faceoff_seq": int(match_state.get("faceoff_seq", 0)), "scorer": String(match_state.get("scorer", "")), "phase": String(match_state.get("phase", "play")), "slap_phase": String(slap_phase)}
 
 
 func _authoritative_pickup_decision(owner_id: StringName) -> Dictionary:
@@ -286,6 +288,7 @@ func _apply_snapshot(snapshot: Dictionary) -> void:
 	for actor in _arena.call("get_field_players"):
 		actor_by_id[String(actor.call("get_actor_id"))] = actor
 	var stick_angles: Array = snapshot.get("stick_angles", [])
+	var stick_phase_elapsed: Array = snapshot.get("stick_phase_elapsed", [])
 	var state_index := 0
 	for state: Dictionary in snapshot.get("actors", []):
 		var actor: CharacterBody3D = actor_by_id.get(String(state.get("id", "")))
@@ -323,7 +326,10 @@ func _apply_snapshot(snapshot: Dictionary) -> void:
 				_remote_rotation_targets[actor_id] = authoritative_rotation
 			var has_local_action_prediction := is_local_actor and (_local_shoot_was_pressed or (_predicted_ball_action != null and bool(_predicted_ball_action.get("active"))))
 			if state_index < stick_angles.size() and not has_local_action_prediction:
-				actor.call("set_stick_slap_angle", float(stick_angles[state_index]))
+				if state_index < stick_phase_elapsed.size() and actor.has_method("set_stick_slap_pose"):
+					actor.call("set_stick_slap_pose", float(stick_angles[state_index]), float(stick_phase_elapsed[state_index]))
+				else:
+					actor.call("set_stick_slap_angle", float(stick_angles[state_index]))
 		state_index += 1
 	_last_authoritative_action_sequence = maxi(_last_authoritative_action_sequence, int(snapshot.get("action_seq", 0)))
 	var ignore_ball_snapshot := false
@@ -406,7 +412,7 @@ func _update_predicted_ball_action(shoot_pressed: bool, pass_held: bool, delta: 
 	if pass_held and owns_ball and (_predicted_ball_action == null or not bool(_predicted_ball_action.get("active"))):
 		_local_pass_charge = minf(0.8, _local_pass_charge + delta)
 		var pass_charge_ratio := _local_pass_charge / 0.8
-		actor.call("set_stick_slap_angle", lerpf(-2.0, StickSlapScript.BACKSWING_ANGLE * 0.72, pass_charge_ratio * pass_charge_ratio))
+		actor.call("set_stick_slap_pose", lerpf(-2.0, StickSlapScript.BACKSWING_ANGLE * 0.72, pass_charge_ratio * pass_charge_ratio), StickSlapScript.BACKSWING_SECONDS * pass_charge_ratio * 0.72)
 	elif _local_pass_was_pressed and _local_pass_charge > 0.0 and owns_ball:
 		_begin_predicted_ball_action(actor, &"pass", _local_pass_charge / 0.8, false)
 		_local_pass_charge = 0.0
@@ -418,7 +424,7 @@ func _update_predicted_ball_action(shoot_pressed: bool, pass_held: bool, delta: 
 		_turn_actor_toward_attacking_goal(actor, delta)
 		actor.call("set_shot_aim_locked", true)
 		var charge_ratio := _local_shoot_charge / 0.8
-		actor.call("set_stick_slap_angle", lerpf(-2.0, StickSlapScript.BACKSWING_ANGLE, pow(minf(1.0, charge_ratio), 2.0)))
+		actor.call("set_stick_slap_pose", lerpf(-2.0, StickSlapScript.BACKSWING_ANGLE, pow(minf(1.0, charge_ratio), 2.0)), StickSlapScript.BACKSWING_SECONDS * minf(1.0, charge_ratio))
 		_ball.call("_show_aim_arrow", actor, charge_ratio)
 	elif _local_shoot_was_pressed and _local_shoot_charge > 0.0 and owns_ball:
 		_ball.call("_hide_aim_arrow")
@@ -436,7 +442,7 @@ func _update_predicted_ball_action(shoot_pressed: bool, pass_held: bool, delta: 
 		return
 	blade.force_update_transform()
 	var predicted: Dictionary = _predicted_ball_action.call("step", delta, blade.global_position)
-	actor.call("set_stick_slap_angle", StickSlapScript.angle_at(float(predicted.elapsed)))
+	actor.call("set_stick_slap_pose", StickSlapScript.angle_at(float(predicted.elapsed)), float(predicted.elapsed))
 	_ball_attached_to_owner = bool(predicted.attached)
 	_ball.global_position = OnlineInputScript.follow_possessed_ball(_ball.global_position, predicted.position, delta) if _ball_attached_to_owner else predicted.position
 	_ball.ball_velocity = predicted.velocity

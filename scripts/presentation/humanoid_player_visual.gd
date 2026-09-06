@@ -165,6 +165,11 @@ func set_swing_pose(stick_angle_degrees: float) -> void:
 			lower_hand.force_update_transform()
 
 
+func set_swing_timeline(stick_angle_degrees: float, elapsed: float) -> void:
+	set_swing_pose(stick_angle_degrees)
+	_swing_pose_elapsed = elapsed
+
+
 func _apply_torso_swing_pose() -> void:
 	if _skeleton == null:
 		return

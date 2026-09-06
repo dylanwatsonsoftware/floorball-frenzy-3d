@@ -95,7 +95,7 @@ The animation target is readable, stylised biomechanics rather than literal real
 - [x] Added deterministic load, drive, contact, follow-through, and recovery body-pose curves without changing authoritative contact timing.
 - [x] Added rear-leg load, crouch, hip-before-chest rotation, lead-leg plant, forward weight transfer, and recovery to the runtime skeleton.
 - [ ] Tune the complete pose sequence from close-up real-device captures.
-- [ ] Replace angle-derived presentation state with an explicitly replicated normalized action phase.
+- [x] Replace angle-derived presentation state with an explicitly replicated action timeline for host, guest, AI, shots, and charged passes.
 
 ## Acceptance checks
 

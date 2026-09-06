@@ -57,6 +57,10 @@ static func encode_snapshot(snapshot: Dictionary, include_extended_ball_state: b
 		stream.put_32(int(snapshot.get("pickup_ack_seq", -1)))
 		stream.put_utf8_string(String(snapshot.get("pickup_result", "")))
 		stream.put_utf8_string(String(snapshot.get("pickup_actor", "")))
+		var stick_phase_elapsed: Array = snapshot.get("stick_phase_elapsed", [])
+		stream.put_u8(stick_phase_elapsed.size())
+		for elapsed: Variant in stick_phase_elapsed:
+			stream.put_float(float(elapsed))
 	return stream.data_array
 
 
@@ -112,6 +116,13 @@ static func decode_snapshot(packet: PackedByteArray) -> Dictionary:
 	snapshot.pickup_ack_seq = stream.get_32() if stream.get_available_bytes() >= 4 else -1
 	snapshot.pickup_result = stream.get_utf8_string() if stream.get_available_bytes() > 0 else ""
 	snapshot.pickup_actor = stream.get_utf8_string() if stream.get_available_bytes() > 0 else ""
+	var stick_phase_elapsed: Array = []
+	if stream.get_available_bytes() > 0:
+		for _index in range(stream.get_u8()):
+			if stream.get_available_bytes() < 4:
+				break
+			stick_phase_elapsed.append(stream.get_float())
+	snapshot.stick_phase_elapsed = stick_phase_elapsed
 	return snapshot
 
 

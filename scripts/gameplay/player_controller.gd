@@ -256,9 +256,19 @@ func _update_heat_presentation() -> void:
 
 func set_stick_slap_angle(angle_degrees: float) -> void:
 	set_meta("stick_slap_angle", angle_degrees)
+	if absf(angle_degrees) < 0.01:
+		set_meta("stick_slap_elapsed", -1.0)
 	var stick_rig := get_node_or_null("StickRig") as Node3D
 	if stick_rig != null:
 		StickSwingPoseScript.apply(stick_rig, angle_degrees)
 	var body_rig := get_node_or_null("BodyRig") as Node3D
 	if body_rig != null and body_rig.has_method("set_swing_pose"):
 		body_rig.call("set_swing_pose", angle_degrees)
+
+
+func set_stick_slap_pose(angle_degrees: float, elapsed: float) -> void:
+	set_stick_slap_angle(angle_degrees)
+	set_meta("stick_slap_elapsed", elapsed)
+	var body_rig := get_node_or_null("BodyRig") as Node3D
+	if body_rig != null and body_rig.has_method("set_swing_timeline"):
+		body_rig.call("set_swing_timeline", angle_degrees, elapsed)

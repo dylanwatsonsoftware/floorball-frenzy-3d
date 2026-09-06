@@ -16,6 +16,7 @@ func _init() -> void:
 		"ball_state": "possessed", "possession_seq": 9, "action_seq": 12, "action_type": "pass", "action_tick": 720,
 		"pickup_ack_seq": 6, "pickup_result": "accepted", "pickup_actor": "blue_1",
 		"stick_angles": [0.0, 18.0, 0.0, -42.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+		"stick_phase_elapsed": [-1.0, 0.31, -1.0, 0.16, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0],
 		"score": {"red": 2, "blue": 3}, "goal_seq": 4, "faceoff_seq": 5, "scorer": "blue", "phase": "play",
 	}
 	var encoded: PackedByteArray = codec.encode_snapshot(snapshot)
@@ -51,6 +52,9 @@ func _init() -> void:
 	if decoded.stick_angles.size() != 12 or not is_equal_approx(float(decoded.stick_angles[1]), 18.0) or not is_equal_approx(float(decoded.stick_angles[3]), -42.0):
 		fail("Per-player stick action poses must survive compact snapshot round trips; got %s" % decoded.get("stick_angles", []))
 		return
+	if decoded.stick_phase_elapsed.size() != 12 or not is_equal_approx(float(decoded.stick_phase_elapsed[1]), 0.31):
+		fail("Per-player action timelines must survive compact snapshot round trips; got %s" % decoded.get("stick_phase_elapsed", []))
+		return
 	var legacy_packet: PackedByteArray = codec.encode_snapshot(snapshot, false)
 	var legacy_decoded: Dictionary = codec.decode_snapshot(legacy_packet)
 	if legacy_decoded.owner != "blue_1" or not legacy_decoded.ball_attached:
@@ -58,6 +62,9 @@ func _init() -> void:
 		return
 	if not legacy_decoded.get("stick_angles", []).is_empty():
 		fail("Legacy FFS1 snapshots must decode without per-player action poses")
+		return
+	if not legacy_decoded.get("stick_phase_elapsed", []).is_empty():
+		fail("Legacy FFS1 snapshots must decode without per-player action timelines")
 		return
 	print("Online snapshots use compact binary state packets.")
 	quit(0)
