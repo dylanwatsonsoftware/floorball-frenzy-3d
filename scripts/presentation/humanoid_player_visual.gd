@@ -7,9 +7,11 @@ var _animation_player: AnimationPlayer
 var _skeleton: Skeleton3D
 var _swing_angle := 0.0
 var _slap_requested := false
+var _hand_ik_solvers: Array[SkeletonIK3D] = []
 
 
 func _ready() -> void:
+	process_priority = 100
 	_animation_player = find_child("AnimationPlayer", true, false) as AnimationPlayer
 	_skeleton = find_child("Skeleton3D", true, false) as Skeleton3D
 	_setup_animation_tree()
@@ -29,6 +31,8 @@ func _process(_delta: float) -> void:
 	var blend := Vector2(planar_velocity.dot(right), planar_velocity.dot(facing)) / MAX_SPEED
 	_animation_tree.set("parameters/Locomotion/blend_position", blend.limit_length(1.0))
 	position.y = absf(sin(Time.get_ticks_msec() * 0.012)) * 0.018 * minf(1.0, planar_velocity.length() / MAX_SPEED)
+	for solver in _hand_ik_solvers:
+		solver.start(true)
 
 
 func _setup_animation_tree() -> void:
@@ -115,7 +119,7 @@ func _setup_hand_targets() -> void:
 		_skeleton.add_child(ik)
 		ik.target_node = ik.get_path_to(target)
 		ik.influence = 1.0
-		ik.start()
+		_hand_ik_solvers.append(ik)
 	set_meta("hand_ik_ready", true)
 
 

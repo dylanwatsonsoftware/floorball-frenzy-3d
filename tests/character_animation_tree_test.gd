@@ -26,11 +26,10 @@ func run_test() -> void:
 		if StringName(actor.get_meta("role", &"field")) != &"goalkeeper":
 			var ik_count := 0
 			for child in skeleton.get_children():
-				if child is SkeletonIK3D and (child as SkeletonIK3D).is_running():
+				if child is SkeletonIK3D:
 					ik_count += 1
-					(child as SkeletonIK3D).start(true)
 			if ik_count != 2 or not bool(rig.get_meta("hand_ik_ready", false)):
-				fail("%s must expose two running stick-hand IK chains; count=%d" % [actor.name, ik_count])
+				fail("%s must expose two stick-hand IK chains; count=%d" % [actor.name, ik_count])
 				return
 			var top_hand := actor.get_node("StickRig/RightHandIKTarget") as Marker3D
 			var lower_hand := actor.get_node("StickRig/LeftHandIKTarget") as Marker3D
@@ -45,7 +44,7 @@ func run_test() -> void:
 				var hand_position := skeleton.to_global(skeleton.get_bone_global_pose(bone_index).origin)
 				var target_position := (hand_data[1] as Marker3D).global_position
 				var alignment_error := hand_position.distance_to(target_position)
-				if alignment_error > 0.14:
+				if alignment_error > 0.06:
 					fail("%s must place %s on its stick grip; alignment error=%.3f" % [actor.name, hand_data[0], alignment_error])
 					return
 	print("Every player uses locomotion blending, layered slap actions, and the hand-IK contract.")
