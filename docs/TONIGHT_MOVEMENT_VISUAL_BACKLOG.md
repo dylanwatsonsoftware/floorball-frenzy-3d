@@ -118,6 +118,7 @@ The animation target is readable, stylised biomechanics rather than literal real
 - [x] Review the 2026-09-06 real match capture frame-by-frame: it contained no adjacent duplicate frames, but the 45% charge pullback and 0.16-second forward swing made the shooter and slap read as a distant flick.
 - [x] Tighten charged-shot framing to a 25% pullback and 53-degree FOV while retaining the attacking-goal bias, and lengthen the forward drive to 0.22 seconds so it remains readable for roughly 13 frames at 60 FPS.
 - [x] Re-render loaded, contact, follow-through, and recovery close-ups after the timing change; both hands remain attached to their fixed shaft grips throughout the sequence.
+- [x] Replace the frozen upper-hand swing pivot with a shoulder-led hand orbit around the body, preventing the shaft from cutting through the torso while both hands remain attached; validate at 15-degree intervals across the backswing.
 
 ## Acceptance checks
 

@@ -96,9 +96,21 @@ func run_test() -> void:
 		body_rig.call("_process", 0.0)
 		top_hand_target.force_update_transform()
 		var wound_top_hand_world := top_hand_target.global_position
-		if wound_top_hand_world.distance_to(resting_top_hand_world) > 0.03:
-			fail("The stick must pivot around the upper hand instead of sliding through the torso; rest=%s wound=%s" % [resting_top_hand_world, wound_top_hand_world])
+		if wound_top_hand_world.distance_to(resting_top_hand_world) < 0.14:
+			fail("The upper hand must travel around the body with the stick instead of freezing a torso-cutting pivot; rest=%s wound=%s" % [resting_top_hand_world, wound_top_hand_world])
 			return
+		for sample_angle in [-75.0, -60.0, -45.0, -30.0, -15.0]:
+			actor.call("set_stick_slap_angle", sample_angle)
+			body_rig.call("_process", 0.0)
+			top_hand_target.force_update_transform()
+			blade_pocket.force_update_transform()
+			var torso_center: Vector3 = actor.to_global(Vector3(0.0, 0.72, 0.0))
+			var shaft_clearance: float = _point_segment_distance(torso_center, blade_pocket.global_position, top_hand_target.global_position)
+			if shaft_clearance < 0.30:
+				fail("The shaft must arc outside the torso throughout the backswing; angle=%s clearance=%s" % [sample_angle, shaft_clearance])
+				return
+		actor.call("set_stick_slap_angle", slap.BACKSWING_ANGLE)
+		body_rig.call("_process", 0.0)
 		var wound_grip_spacing := wound_top_hand_world.distance_to(lower_hand_target.global_position)
 		if wound_grip_spacing < shaft_length * 0.27 or wound_grip_spacing > shaft_length * 0.33:
 			fail("Hands must stay one at the shaft top and one 30%% down throughout the backswing; spacing=%s shaft=%s" % [wound_grip_spacing, shaft_length])
@@ -172,6 +184,15 @@ func run_test() -> void:
 
 func _longest_axis(size: Vector3) -> float:
 	return maxf(size.x, maxf(size.y, size.z))
+
+
+func _point_segment_distance(point: Vector3, segment_start: Vector3, segment_end: Vector3) -> float:
+	var segment := segment_end - segment_start
+	var length_squared := segment.length_squared()
+	if length_squared <= 0.000001:
+		return point.distance_to(segment_start)
+	var ratio := clampf((point - segment_start).dot(segment) / length_squared, 0.0, 1.0)
+	return point.distance_to(segment_start + segment * ratio)
 
 
 func _triangle_count(mesh: Mesh) -> int:
