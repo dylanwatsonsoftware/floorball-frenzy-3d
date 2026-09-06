@@ -90,6 +90,13 @@ The animation target is readable, stylised biomechanics rather than literal real
 7. Rig/model deformation improvements in Blender, with saved sources.
 8. Camera, reactions, match presentation, and final mobile profiling.
 
+## Progress
+
+- [x] Added deterministic load, drive, contact, follow-through, and recovery body-pose curves without changing authoritative contact timing.
+- [x] Added rear-leg load, crouch, hip-before-chest rotation, lead-leg plant, forward weight transfer, and recovery to the runtime skeleton.
+- [ ] Tune the complete pose sequence from close-up real-device captures.
+- [ ] Replace angle-derived presentation state with an explicitly replicated normalized action phase.
+
 ## Acceptance checks
 
 - At full charge, the rear leg carries the load, the blade is behind and near the floor, and both hands touch the shaft.

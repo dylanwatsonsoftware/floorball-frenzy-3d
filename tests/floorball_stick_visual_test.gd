@@ -131,7 +131,7 @@ func run_test() -> void:
 		var recovered_chest_forward := skeleton.get_bone_global_pose(chest_index).basis * Vector3.FORWARD
 		var recovery_twist := absf(Vector2(neutral_chest_forward.x, neutral_chest_forward.z).angle_to(Vector2(recovered_chest_forward.x, recovered_chest_forward.z)))
 		if absf(body_rig.rotation.y) > 0.01 or absf(body_rig.rotation.x) > 0.01 or recovery_twist > 0.08:
-			fail("The torso must recover to its neutral pose after the swing")
+			fail("The torso must recover to its neutral pose after the swing; rotation=%s recovery_twist=%s" % [body_rig.rotation, recovery_twist])
 			return
 		var blade_distance := Vector2(blade_center.x, blade_center.z).length()
 		var grip_distance := Vector2(grip_center.x, grip_center.z).length()

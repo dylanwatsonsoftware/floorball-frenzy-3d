@@ -1,11 +1,14 @@
 extends Node3D
 
 const MAX_SPEED := 9.0
+const StickSlapScript = preload("res://scripts/simulation/stick_slap.gd")
 
 var _animation_tree: AnimationTree
 var _animation_player: AnimationPlayer
 var _skeleton: Skeleton3D
 var _swing_angle := 0.0
+var _previous_swing_angle := 0.0
+var _swing_pose_elapsed := 0.0
 var _hand_ik_solvers: Array[SkeletonIK3D] = []
 
 
@@ -144,7 +147,9 @@ func _attach_visible_hand(target: Marker3D, authored_hand_name: String) -> void:
 
 
 func set_swing_pose(stick_angle_degrees: float) -> void:
+	_previous_swing_angle = _swing_angle
 	_swing_angle = stick_angle_degrees
+	_swing_pose_elapsed = _pose_elapsed_for_angle(_swing_angle, _previous_swing_angle)
 	rotation.y = 0.0
 	var actor := get_parent() as CharacterBody3D
 	var stick_rig := actor.get_node_or_null("StickRig") as Node3D if actor != null else null
@@ -163,14 +168,32 @@ func set_swing_pose(stick_angle_degrees: float) -> void:
 func _apply_torso_swing_pose() -> void:
 	if _skeleton == null:
 		return
-	var swing_ratio := clampf(_swing_angle / 82.0, -1.0, 1.0)
-	var chest_twist := deg_to_rad(-44.0 * swing_ratio)
-	var spine_twist := deg_to_rad(-14.0 * swing_ratio)
-	var backward_lean := deg_to_rad(-4.0 * maxf(0.0, -swing_ratio) + 2.0 * maxf(0.0, swing_ratio))
+	var pose: Dictionary = StickSlapScript.body_pose_at(_swing_pose_elapsed)
+	var chest_twist := deg_to_rad(50.0 * float(pose.chest_turn))
+	var spine_twist := deg_to_rad(18.0 * float(pose.chest_turn))
+	var hip_twist := deg_to_rad(30.0 * float(pose.hip_turn))
+	var backward_lean := deg_to_rad(-4.0 * maxf(0.0, -float(pose.weight_shift)) + 3.0 * maxf(0.0, float(pose.weight_shift)))
 	rotation.x = backward_lean
 	rotation.z = 0.0
+	position.x = float(pose.weight_shift) * 0.075
+	position.y -= float(pose.crouch) * 0.12
+	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Hips"), Quaternion(Vector3.UP, hip_twist))
 	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Spine"), Quaternion(Vector3.UP, spine_twist))
 	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Chest"), Quaternion(Vector3.UP, chest_twist))
+	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Thigh.L"), Quaternion(Vector3.RIGHT, deg_to_rad(-10.0 * float(pose.plant))))
+	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Thigh.R"), Quaternion(Vector3.RIGHT, deg_to_rad(8.0 * float(pose.crouch))))
+
+
+func _pose_elapsed_for_angle(angle: float, previous_angle: float) -> float:
+	if absf(angle) < 1.0:
+		return StickSlapScript.CONTACT_SECONDS if previous_angle < -1.0 and previous_angle > -20.0 else StickSlapScript.TOTAL_SECONDS
+	if angle < 0.0:
+		var load := sqrt(clampf((absf(angle) - 2.0) / (absf(StickSlapScript.BACKSWING_ANGLE) - 2.0), 0.0, 1.0))
+		return StickSlapScript.BACKSWING_SECONDS * load
+	var follow := clampf(angle / StickSlapScript.CONTACT_ANGLE, 0.0, 1.0)
+	if angle >= previous_angle:
+		return lerpf(StickSlapScript.CONTACT_SECONDS, StickSlapScript.BACKSWING_SECONDS + StickSlapScript.FORWARD_SECONDS, follow)
+	return lerpf(StickSlapScript.TOTAL_SECONDS, StickSlapScript.BACKSWING_SECONDS + StickSlapScript.FORWARD_SECONDS, follow)
 
 
 func apply_goalkeeper_pose() -> void:

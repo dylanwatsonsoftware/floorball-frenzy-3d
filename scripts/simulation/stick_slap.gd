@@ -50,6 +50,59 @@ static func forward_step_at(elapsed: float) -> float:
 	return FORWARD_STEP_DISTANCE * eased
 
 
+static func body_pose_at(elapsed: float) -> Dictionary:
+	if elapsed < 0.0 or elapsed >= TOTAL_SECONDS:
+		return _body_pose()
+	if elapsed <= BACKSWING_SECONDS:
+		var load := _smoothstep(elapsed / BACKSWING_SECONDS)
+		return _body_pose(0.86 * load, -0.82 * load, -0.48 * load, -0.68 * load)
+	if elapsed <= CONTACT_SECONDS:
+		var drive := _smoothstep((elapsed - BACKSWING_SECONDS) / (CONTACT_SECONDS - BACKSWING_SECONDS))
+		return _body_pose(
+			lerpf(0.86, 0.48, drive),
+			lerpf(-0.82, 0.62, drive),
+			lerpf(-0.48, 0.74, drive),
+			lerpf(-0.68, 0.52, drive),
+			drive,
+			0.0
+		)
+	if elapsed <= BACKSWING_SECONDS + FORWARD_SECONDS:
+		var finish := _smoothstep((elapsed - CONTACT_SECONDS) / (BACKSWING_SECONDS + FORWARD_SECONDS - CONTACT_SECONDS))
+		return _body_pose(
+			lerpf(0.48, 0.28, finish),
+			lerpf(0.62, 0.86, finish),
+			lerpf(0.74, 0.92, finish),
+			lerpf(0.52, 0.88, finish),
+			1.0,
+			finish
+		)
+	var recover := _smoothstep((elapsed - BACKSWING_SECONDS - FORWARD_SECONDS) / RECOVERY_SECONDS)
+	return _body_pose(
+		lerpf(0.28, 0.0, recover),
+		lerpf(0.86, 0.0, recover),
+		lerpf(0.92, 0.0, recover),
+		lerpf(0.88, 0.0, recover),
+		1.0 - recover,
+		1.0 - recover
+	)
+
+
+static func _body_pose(crouch := 0.0, weight_shift := 0.0, hip_turn := 0.0, chest_turn := 0.0, plant := 0.0, follow_through := 0.0) -> Dictionary:
+	return {
+		"crouch": crouch,
+		"weight_shift": weight_shift,
+		"hip_turn": hip_turn,
+		"chest_turn": chest_turn,
+		"plant": plant,
+		"follow_through": follow_through,
+	}
+
+
+static func _smoothstep(value: float) -> float:
+	var t := clampf(value, 0.0, 1.0)
+	return t * t * (3.0 - 2.0 * t)
+
+
 static func network_start_elapsed(action_type: StringName, estimated_one_way_seconds: float) -> float:
 	var transit := clampf(estimated_one_way_seconds, 0.0, 0.12)
 	var base := BACKSWING_SECONDS if action_type == &"shot" else 0.0

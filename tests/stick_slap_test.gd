@@ -33,6 +33,25 @@ func _init() -> void:
 	if before_contact > 0.01 or at_contact < 0.12 or completed < 0.24:
 		fail("The player must stay planted during wind-up, then step through contact; step=%s/%s/%s" % [before_contact, at_contact, completed])
 		return
+	if not slap.has_method("body_pose_at"):
+		fail("The slap simulation must expose a deterministic biomechanical body pose")
+		return
+	var loaded: Dictionary = slap.body_pose_at(slap.BACKSWING_SECONDS)
+	var contact: Dictionary = slap.body_pose_at(slap.CONTACT_SECONDS)
+	var follow: Dictionary = slap.body_pose_at(slap.BACKSWING_SECONDS + slap.FORWARD_SECONDS)
+	var recovered: Dictionary = slap.body_pose_at(slap.TOTAL_SECONDS)
+	if float(loaded.crouch) < 0.75 or float(loaded.weight_shift) > -0.65 or float(loaded.hip_turn) > -0.35:
+		fail("The backswing must crouch, load the rear leg, and close the hips before the drive; pose=%s" % loaded)
+		return
+	if float(contact.weight_shift) < 0.45 or float(contact.hip_turn) < float(contact.chest_turn) or float(contact.plant) < 0.75:
+		fail("At contact the lead leg must plant and the hips must lead the chest; pose=%s" % contact)
+		return
+	if float(follow.follow_through) < 0.9 or float(follow.weight_shift) < 0.7:
+		fail("The shot must finish with committed forward weight and a readable follow-through; pose=%s" % follow)
+		return
+	if absf(float(recovered.weight_shift)) > 0.01 or float(recovered.crouch) > 0.01 or float(recovered.follow_through) > 0.01:
+		fail("The biomechanical pose must settle cleanly back to neutral; pose=%s" % recovered)
+		return
 	var compensated_pass_start: float = slap.network_start_elapsed(&"pass", 0.075)
 	var compensated_shot_start: float = slap.network_start_elapsed(&"shot", 0.075)
 	if slap.CONTACT_SECONDS - compensated_pass_start > 0.25:
