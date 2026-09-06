@@ -18,6 +18,7 @@ var _possession_weight := 0.0
 var _base_locomotion_pace := 1.0
 var _previous_actor_rotation := 0.0
 var _turn_pivot := 0.0
+var _dash_weight := 0.0
 
 
 func _ready() -> void:
@@ -48,11 +49,13 @@ func _process(delta: float) -> void:
 	_turn_pivot = lerpf(_turn_pivot, target_pivot, minf(1.0, delta * 14.0))
 	var has_ball := _ball != null and _ball.has_method("is_controlled_by_actor") and bool(_ball.call("is_controlled_by_actor", actor.call("get_actor_id")))
 	_possession_weight = move_toward(_possession_weight, 1.0 if has_ball else 0.0, delta * (8.0 if has_ball else 5.0))
+	var dash_active := planar_velocity.length() > MAX_SPEED * 1.25
+	_dash_weight = move_toward(_dash_weight, 1.0 if dash_active else 0.0, delta * (14.0 if dash_active else 4.5))
 	var facing := Vector2(sin(actor.rotation.y), cos(actor.rotation.y))
 	var right := Vector2(facing.y, -facing.x)
 	var blend := Vector2(planar_velocity.dot(right), planar_velocity.dot(facing)) / MAX_SPEED
 	_animation_tree.set("parameters/Locomotion/blend_position", blend.limit_length(1.0))
-	_animation_tree.set("parameters/LocomotionPace/scale", _base_locomotion_pace * lerpf(1.0, 1.12, _possession_weight))
+	_animation_tree.set("parameters/LocomotionPace/scale", _base_locomotion_pace * lerpf(1.0, 1.12, _possession_weight) * lerpf(1.0, 1.18, _dash_weight))
 	var acceleration := (planar_velocity - _previous_planar_velocity) / maxf(delta, 1.0 / 120.0)
 	_previous_planar_velocity = planar_velocity
 	var target_pitch := clampf(blend.y * 0.075 + acceleration.dot(facing) * 0.0015, -0.13, 0.13)
@@ -61,7 +64,7 @@ func _process(delta: float) -> void:
 	var target_brace := clampf(acceleration.length() / 70.0, 0.0, 1.0)
 	_locomotion_brace = lerpf(_locomotion_brace, target_brace, minf(1.0, delta * 14.0))
 	var stride_bob := absf(sin(Time.get_ticks_msec() * 0.012)) * 0.018 * minf(1.0, planar_velocity.length() / MAX_SPEED)
-	position.y = stride_bob - _locomotion_brace * 0.13
+	position.y = stride_bob - _locomotion_brace * 0.13 - _dash_weight * 0.055
 	_apply_torso_swing_pose()
 	for solver in _hand_ik_solvers:
 		solver.start(true)
@@ -219,12 +222,14 @@ func _apply_torso_swing_pose() -> void:
 	var chest_twist := deg_to_rad(50.0 * float(pose.chest_turn))
 	var spine_twist := deg_to_rad(18.0 * float(pose.chest_turn))
 	var hip_twist := deg_to_rad(30.0 * float(pose.hip_turn))
-	var backward_lean := deg_to_rad(-4.0 * maxf(0.0, -float(pose.weight_shift)) + 3.0 * maxf(0.0, float(pose.weight_shift)))
+	var contact_accent := float(pose.contact_accent)
+	var backward_lean := deg_to_rad(-4.0 * maxf(0.0, -float(pose.weight_shift)) + 3.0 * maxf(0.0, float(pose.weight_shift)) + 2.5 * contact_accent)
 	var locomotion_weight := 0.25 if _swing_pose_elapsed < StickSlapScript.TOTAL_SECONDS else 1.0
-	rotation.x = backward_lean + _locomotion_lean.x * locomotion_weight
+	rotation.x = backward_lean + (_locomotion_lean.x + _dash_weight * 0.06) * locomotion_weight
 	rotation.z = _locomotion_lean.y * locomotion_weight + _turn_pivot * 0.055 * locomotion_weight
 	position.x = float(pose.weight_shift) * 0.075
 	position.y -= float(pose.crouch) * 0.12 + _possession_weight * 0.075
+	position.z = contact_accent * 0.065 + float(pose.follow_through) * 0.018
 	var protective_crouch := deg_to_rad(7.0 * _possession_weight)
 	var pivot_hip_turn := _turn_pivot * 0.12 * locomotion_weight
 	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Hips"), Quaternion(Vector3.RIGHT, protective_crouch) * Quaternion(Vector3.UP, hip_twist + pivot_hip_turn))

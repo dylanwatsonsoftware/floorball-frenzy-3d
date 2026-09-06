@@ -55,7 +55,7 @@ static func body_pose_at(elapsed: float) -> Dictionary:
 		return _body_pose()
 	if elapsed <= BACKSWING_SECONDS:
 		var load := _smoothstep(elapsed / BACKSWING_SECONDS)
-		return _body_pose(0.86 * load, -0.82 * load, -0.48 * load, -0.68 * load)
+		return _body_pose(0.86 * load, -0.82 * load, -0.48 * load, -0.68 * load, 0.0, 0.0, load, 0.0)
 	if elapsed <= CONTACT_SECONDS:
 		var drive := _smoothstep((elapsed - BACKSWING_SECONDS) / (CONTACT_SECONDS - BACKSWING_SECONDS))
 		return _body_pose(
@@ -64,7 +64,9 @@ static func body_pose_at(elapsed: float) -> Dictionary:
 			lerpf(-0.48, 0.74, drive),
 			lerpf(-0.68, 0.52, drive),
 			drive,
-			0.0
+			0.0,
+			1.0 - drive,
+			_smoothstep(inverse_lerp(0.72, 1.0, drive))
 		)
 	if elapsed <= BACKSWING_SECONDS + FORWARD_SECONDS:
 		var finish := _smoothstep((elapsed - CONTACT_SECONDS) / (BACKSWING_SECONDS + FORWARD_SECONDS - CONTACT_SECONDS))
@@ -74,7 +76,9 @@ static func body_pose_at(elapsed: float) -> Dictionary:
 			lerpf(0.74, 0.92, finish),
 			lerpf(0.52, 0.88, finish),
 			1.0,
-			finish
+			finish,
+			0.0,
+			1.0 - finish
 		)
 	var recover := _smoothstep((elapsed - BACKSWING_SECONDS - FORWARD_SECONDS) / RECOVERY_SECONDS)
 	return _body_pose(
@@ -87,7 +91,7 @@ static func body_pose_at(elapsed: float) -> Dictionary:
 	)
 
 
-static func _body_pose(crouch := 0.0, weight_shift := 0.0, hip_turn := 0.0, chest_turn := 0.0, plant := 0.0, follow_through := 0.0) -> Dictionary:
+static func _body_pose(crouch := 0.0, weight_shift := 0.0, hip_turn := 0.0, chest_turn := 0.0, plant := 0.0, follow_through := 0.0, anticipation := 0.0, contact_accent := 0.0) -> Dictionary:
 	return {
 		"crouch": crouch,
 		"weight_shift": weight_shift,
@@ -95,6 +99,8 @@ static func _body_pose(crouch := 0.0, weight_shift := 0.0, hip_turn := 0.0, ches
 		"chest_turn": chest_turn,
 		"plant": plant,
 		"follow_through": follow_through,
+		"anticipation": anticipation,
+		"contact_accent": contact_accent,
 	}
 
 

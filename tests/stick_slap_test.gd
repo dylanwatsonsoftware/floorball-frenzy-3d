@@ -43,8 +43,14 @@ func _init() -> void:
 	if float(loaded.crouch) < 0.75 or float(loaded.weight_shift) > -0.65 or float(loaded.hip_turn) > -0.35:
 		fail("The backswing must crouch, load the rear leg, and close the hips before the drive; pose=%s" % loaded)
 		return
+	if float(loaded.get("anticipation", 0.0)) < 0.85:
+		fail("The fully loaded backswing needs a readable anticipation hold; pose=%s" % loaded)
+		return
 	if float(contact.weight_shift) < 0.45 or float(contact.hip_turn) < float(contact.chest_turn) or float(contact.plant) < 0.75:
 		fail("At contact the lead leg must plant and the hips must lead the chest; pose=%s" % contact)
+		return
+	if float(contact.get("contact_accent", 0.0)) < 0.9 or float(loaded.get("contact_accent", 0.0)) > 0.05:
+		fail("Contact needs a sharp one-frame visual accent without leaking into the loaded pose; loaded=%s contact=%s" % [loaded, contact])
 		return
 	if float(follow.follow_through) < 0.9 or float(follow.weight_shift) < 0.7:
 		fail("The shot must finish with committed forward weight and a readable follow-through; pose=%s" % follow)

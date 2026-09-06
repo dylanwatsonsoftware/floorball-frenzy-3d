@@ -102,6 +102,7 @@ The animation target is readable, stylised biomechanics rather than literal real
 - [x] Replace reversed running with authored bent-knee backpedal recovery steps and planted hip/knee side-shuffles; regenerate and save both character `.blend` sources and GLB exports.
 - [x] Add a speed-aware planted pivot response so low-speed facing changes shift the hips and body instead of rotating the character like a rigid pawn.
 - [x] Give each squad slot a deterministic locomotion phase offset, in addition to pace variation, so teammates do not start or idle in synchronized lockstep.
+- [x] Add deterministic slap anticipation/contact accents and a speed-triggered dash push-off/recovery pose without delaying authoritative ball contact.
 
 ## Acceptance checks
 

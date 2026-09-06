@@ -86,6 +86,19 @@ func run_test() -> void:
 			if absf(rig.rotation.z) < 0.005 or absf(rig.rotation.z) > 0.10:
 				fail("A low-speed turn must show a subtle planted pivot instead of rotating like a rigid pawn; roll=%s" % rig.rotation.z)
 				return
+			var slap := load("res://scripts/simulation/stick_slap.gd")
+			rig.call("set_swing_timeline", 0.0, slap.CONTACT_SECONDS)
+			rig.call("_process", 1.0 / 60.0)
+			if rig.position.z < 0.04 or rig.position.z > 0.10:
+				fail("Slap contact needs a restrained forward visual punch; body_z=%s" % rig.position.z)
+				return
+			rig.call("set_swing_timeline", 0.0, slap.TOTAL_SECONDS)
+			actor.velocity = Vector3(0.0, 0.0, 15.0)
+			rig.call("_process", 1.0 / 60.0)
+			var dash_weight: Variant = rig.get("_dash_weight")
+			if dash_weight == null or float(dash_weight) < 0.20:
+				fail("A dash must immediately begin a readable push-off pose")
+				return
 		if StringName(actor.get_meta("role", &"field")) != &"goalkeeper":
 			var ik_count := 0
 			for child in skeleton.get_children():
