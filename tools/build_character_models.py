@@ -191,9 +191,17 @@ def author_animation_set(armature):
     run_a = {"Thigh.L": (.72, 0, 0), "Thigh.R": (-.72, 0, 0), "Shin.L": (-.30, 0, 0), "UpperArm.L": (-.62, 0, -.12), "UpperArm.R": (-.36, 0, .18)}
     run_b = {"Thigh.L": (-.72, 0, 0), "Thigh.R": (.72, 0, 0), "Shin.R": (-.30, 0, 0), "UpperArm.L": (-.36, 0, -.12), "UpperArm.R": (-.62, 0, .18)}
     add_pose_animation(armature, "run", 20, {1: run_a, 10: run_b, 20: run_a})
-    add_pose_animation(armature, "backpedal", 24, {1: run_b, 12: run_a, 24: run_b})
-    add_pose_animation(armature, "strafe_left", 24, {1: {"Thigh.L": (0, 0, -.46), "Thigh.R": (0, 0, .22)}, 12: {"Thigh.L": (0, 0, .18), "Thigh.R": (0, 0, -.42)}, 24: {"Thigh.L": (0, 0, -.46), "Thigh.R": (0, 0, .22)}})
-    add_pose_animation(armature, "strafe_right", 24, {1: {"Thigh.L": (0, 0, .22), "Thigh.R": (0, 0, -.46)}, 12: {"Thigh.L": (0, 0, -.42), "Thigh.R": (0, 0, .18)}, 24: {"Thigh.L": (0, 0, .22), "Thigh.R": (0, 0, -.46)}})
+    # Defensive recovery uses short, bent-knee steps and a low pelvis. It is not
+    # the forward run played in reverse: the chest stays available to watch the ball.
+    back_a = {"Hips": (.12, 0, -.035), "Thigh.L": (.36, 0, 0), "Thigh.R": (-.28, 0, 0), "Shin.L": (-.34, 0, 0), "Shin.R": (-.18, 0, 0)}
+    back_b = {"Hips": (.12, 0, .035), "Thigh.L": (-.28, 0, 0), "Thigh.R": (.36, 0, 0), "Shin.L": (-.18, 0, 0), "Shin.R": (-.34, 0, 0)}
+    add_pose_animation(armature, "backpedal", 24, {1: back_a, 12: back_b, 24: back_a})
+    shuffle_left_a = {"Hips": (.08, 0, -.12), "Thigh.L": (0, 0, -.38), "Thigh.R": (0, 0, .18), "Shin.L": (-.24, 0, 0), "Shin.R": (-.16, 0, 0)}
+    shuffle_left_b = {"Hips": (.08, 0, -.07), "Thigh.L": (0, 0, .14), "Thigh.R": (0, 0, -.34), "Shin.L": (-.16, 0, 0), "Shin.R": (-.24, 0, 0)}
+    shuffle_right_a = {"Hips": (.08, 0, .12), "Thigh.L": (0, 0, .18), "Thigh.R": (0, 0, -.38), "Shin.L": (-.16, 0, 0), "Shin.R": (-.24, 0, 0)}
+    shuffle_right_b = {"Hips": (.08, 0, .07), "Thigh.L": (0, 0, -.34), "Thigh.R": (0, 0, .14), "Shin.L": (-.24, 0, 0), "Shin.R": (-.16, 0, 0)}
+    add_pose_animation(armature, "strafe_left", 24, {1: shuffle_left_a, 12: shuffle_left_b, 24: shuffle_left_a})
+    add_pose_animation(armature, "strafe_right", 24, {1: shuffle_right_a, 12: shuffle_right_b, 24: shuffle_right_a})
     add_pose_animation(armature, "slap_shot", 24, {
         1: {"Hips": (0, 0, 0), "Chest": (0, 0, 0), "UpperArm.L": (-.5, 0, -.12), "UpperArm.R": (-.58, 0, .18)},
         9: {"Hips": (0, 0, -.28), "Chest": (-.10, 0, -.62), "UpperArm.L": (-.30, -.22, -.55), "UpperArm.R": (-.36, .30, -.48)},

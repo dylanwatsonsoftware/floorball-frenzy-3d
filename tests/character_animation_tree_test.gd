@@ -17,6 +17,7 @@ func run_test() -> void:
 	for actor in field_players:
 		var rig := actor.get_node("BodyRig") as Node3D
 		var animation_tree := rig.get_node_or_null("AnimationTree") as AnimationTree
+		var animation_player := rig.find_child("AnimationPlayer", true, false) as AnimationPlayer
 		if animation_tree == null or not animation_tree.active or not animation_tree.tree_root is AnimationNodeBlendTree:
 			fail("%s must drive its shared skeleton through an active AnimationTree" % actor.name)
 			return
@@ -31,6 +32,20 @@ func run_test() -> void:
 		if not blend_tree.has_node("LocomotionPace"):
 			fail("%s must vary locomotion timing so the whole team does not move in lockstep" % actor.name)
 			return
+		for animation_name in [&"backpedal", &"strafe_left", &"strafe_right"]:
+			var animation := animation_player.get_animation(animation_name)
+			var track_paths: Array[String] = []
+			for track_index in animation.get_track_count():
+				track_paths.append(String(animation.track_get_path(track_index)))
+			if not track_paths.any(func(path: String) -> bool: return path.contains("Hips")):
+				fail("%s must include a planted hip posture instead of only reversing the run cycle" % animation_name)
+				return
+			if maximum_bone_rotation(animation, "Hips") < 0.05:
+				fail("%s must animate a readable planted hip posture" % animation_name)
+				return
+			if animation_name == &"backpedal" and not track_paths.any(func(path: String) -> bool: return path.contains("Shin")):
+				fail("Backpedalling must bend the knees for short defensive recovery steps")
+				return
 		locomotion_paces[snappedf(float(animation_tree.get("parameters/LocomotionPace/scale")), 0.001)] = true
 		var skeleton := rig.find_child("Skeleton3D", true, false) as Skeleton3D
 		if actor.name == "Player":
@@ -86,6 +101,18 @@ func run_test() -> void:
 		return
 	print("Every player uses locomotion blending, varied timing, layered slap actions, and the hand-IK contract.")
 	quit(0)
+
+
+func maximum_bone_rotation(animation: Animation, bone_name: String) -> float:
+	var maximum := 0.0
+	for track_index in animation.get_track_count():
+		if not String(animation.track_get_path(track_index)).contains(bone_name):
+			continue
+		for key_index in animation.track_get_key_count(track_index):
+			var value: Variant = animation.track_get_key_value(track_index, key_index)
+			if value is Quaternion:
+				maximum = maxf(maximum, (value as Quaternion).get_angle())
+	return maximum
 
 
 func fail(message: String) -> void:
