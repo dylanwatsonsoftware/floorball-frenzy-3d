@@ -115,6 +115,9 @@ The animation target is readable, stylised biomechanics rather than literal real
 - [x] Add a speed-scaled receive/cushion response on new possession: the stick, chest, and shoulders yield briefly with the incoming ball and recover within 0.32 seconds.
 - [x] Add a short successful-steal stick jab plus a possession-loss torso recoil, both presentation-only and recovered within 0.28 seconds so control remains immediate.
 - [x] Replicate successful-steal presentation as a compact sequenced winner/victim event so guests render the same poke and recoil without networked bone transforms.
+- [x] Review the 2026-09-06 real match capture frame-by-frame: it contained no adjacent duplicate frames, but the 45% charge pullback and 0.16-second forward swing made the shooter and slap read as a distant flick.
+- [x] Tighten charged-shot framing to a 25% pullback and 53-degree FOV while retaining the attacking-goal bias, and lengthen the forward drive to 0.22 seconds so it remains readable for roughly 13 frames at 60 FPS.
+- [x] Re-render loaded, contact, follow-through, and recovery close-ups after the timing change; both hands remain attached to their fixed shaft grips throughout the sequence.
 
 ## Acceptance checks
 

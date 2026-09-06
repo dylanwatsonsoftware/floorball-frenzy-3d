@@ -24,6 +24,12 @@ func _init() -> void:
 	if slap.BACKSWING_SECONDS < 0.18 or slap.BACKSWING_ANGLE > -70.0:
 		fail("The backswing must be long and deep enough to read clearly in gameplay")
 		return
+	if slap.FORWARD_SECONDS < 0.20:
+		fail("The forward swing must remain visible for more than a flick at the broadcast camera scale")
+		return
+	if slap.CONTACT_SECONDS - slap.BACKSWING_SECONDS < 0.14:
+		fail("Release-to-contact needs enough visual travel for the blade and torso drive to read")
+		return
 	if not slap.has_method("forward_step_at"):
 		fail("A full slap needs a synchronized forward step profile")
 		return
@@ -60,10 +66,10 @@ func _init() -> void:
 		return
 	var compensated_pass_start: float = slap.network_start_elapsed(&"pass", 0.075)
 	var compensated_shot_start: float = slap.network_start_elapsed(&"shot", 0.075)
-	if slap.CONTACT_SECONDS - compensated_pass_start > 0.25:
+	if slap.CONTACT_SECONDS - compensated_pass_start > 0.30:
 		fail("A remote pass should compensate for measured one-way transit before host contact")
 		return
-	if slap.CONTACT_SECONDS - compensated_shot_start > 0.05:
+	if slap.CONTACT_SECONDS - compensated_shot_start > 0.09:
 		fail("A remote shot release should not repeat network transit as extra forward-swing delay")
 		return
 	if slap.network_start_elapsed(&"pass", 1.0) >= slap.CONTACT_SECONDS:

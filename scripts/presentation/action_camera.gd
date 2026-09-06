@@ -2,9 +2,9 @@ class_name ActionCamera
 extends RefCounted
 
 const NORMAL_OFFSET := Vector3(4.0, 21.0, 20.5)
-const CHARGE_OFFSET := NORMAL_OFFSET * 1.45
+const CHARGE_OFFSET := NORMAL_OFFSET * 1.25
 const NORMAL_FOV := 48.0
-const CHARGE_FOV := 58.0
+const CHARGE_FOV := 53.0
 const FULL_RINK_FRAMING := Vector3(0.0, 0.3, 0.0)
 const FOLLOW_DEAD_ZONE := 0.9
 const FOLLOW_RATE := 2.8
@@ -28,7 +28,7 @@ static func frame(ball_position: Vector3, action_actor_position: Vector3, chargi
 	if not attacking_goal_position.is_zero_approx():
 		# Bias the charged view between the action and its target goal. This keeps
 		# the shooter and ball readable while revealing the scoring lane.
-		full_rink_focus = action_focus.lerp(attacking_goal_position, 0.48)
+		full_rink_focus = action_focus.lerp(attacking_goal_position, 0.40)
 		full_rink_focus.y = FULL_RINK_FRAMING.y
 	var target := action_focus.lerp(full_rink_focus, pullback)
 	var offset := NORMAL_OFFSET.lerp(CHARGE_OFFSET, pullback)

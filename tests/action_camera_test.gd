@@ -19,11 +19,14 @@ func _init() -> void:
 		return
 
 	var charged: Dictionary = camera_logic.frame(Vector3(8.0, 0.2, 3.0), Vector3(7.0, 0.75, 2.0), true, 1.0)
-	if charged.position.y <= neutral.position.y + 4.0 or charged.fov <= neutral.fov + 5.0:
+	if charged.position.y <= neutral.position.y + 2.0 or charged.fov <= neutral.fov + 2.0:
 		fail("Charging must visibly pull the camera wider; neutral=%s/%s charged=%s/%s" % [neutral.position.y, neutral.fov, charged.position.y, charged.fov])
 		return
-	if absf(charged.target.x) > 0.5 or charged.fov < 56.0:
-		fail("A full charge must centre and widen enough to reveal both goals; target=%s fov=%s" % [charged.target, charged.fov])
+	if absf(charged.target.x) > 0.5 or charged.fov < 51.0:
+		fail("A full charge must centre and widen enough to reveal the shot lane; target=%s fov=%s" % [charged.target, charged.fov])
+		return
+	if charged.position.y > neutral.position.y + 6.0 or charged.fov > neutral.fov + 6.0:
+		fail("Charge framing must keep the shooter readable instead of shrinking them into a full-rink miniature; neutral=%s/%s charged=%s/%s" % [neutral.position.y, neutral.fov, charged.position.y, charged.fov])
 		return
 	var neutral_view: Vector3 = (neutral.target - neutral.position).normalized()
 	var charged_view: Vector3 = (charged.target - charged.position).normalized()
@@ -35,6 +38,9 @@ func _init() -> void:
 	var blue_goal_frame: Dictionary = camera_logic.frame(Vector3(-8.0, 0.2, -1.0), Vector3(-7.0, 0.75, -1.0), true, 1.0, Vector3(-16.5, 0.3, 0.0))
 	if red_goal_frame.target.x <= 8.0 or blue_goal_frame.target.x >= -8.0:
 		fail("A charged-shot camera must frame the local player's attacking goal; red=%s blue=%s" % [red_goal_frame.target, blue_goal_frame.target])
+		return
+	if red_goal_frame.target.x > 12.5 or blue_goal_frame.target.x < -12.5:
+		fail("Goal framing must retain enough shooter bias to keep the wind-up readable; red=%s blue=%s" % [red_goal_frame.target, blue_goal_frame.target])
 		return
 	if not is_equal_approx(red_goal_frame.target.x, -blue_goal_frame.target.x):
 		fail("Charged-shot goal framing must be symmetrical for hosts and guests; red=%s blue=%s" % [red_goal_frame.target, blue_goal_frame.target])
