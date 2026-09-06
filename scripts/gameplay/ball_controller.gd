@@ -121,7 +121,7 @@ func _physics_process(delta: float) -> void:
 	position = interaction_state.position
 	ball_velocity = interaction_state.velocity
 	_control_owner = interaction_state.controller
-	_update_human_control_from_possession(previous_control_owner)
+	_update_human_control_from_possession(previous_control_owner, next_state.velocity.length())
 	_update_ai_pass(delta)
 	_update_dash_steal_latches()
 	if not _apply_parry(interaction_state.body_controller):
@@ -531,12 +531,13 @@ func get_human_control_actor_id_for_team(team: StringName) -> StringName:
 	return get_human_control_actor_id() if team == &"red" else _blue_human_control_actor_id
 
 
-func _update_human_control_from_possession(previous_controller: int) -> void:
+func _update_human_control_from_possession(previous_controller: int, incoming_speed: float = 0.0) -> void:
 	if _control_owner == previous_controller:
 		return
 	var new_owner := _actor_for_controller(_control_owner)
 	if new_owner == null:
 		return
+	_notify_receive_pose(new_owner, incoming_speed)
 	var new_actor_id: StringName = new_owner.call("get_actor_id")
 	var team: StringName = new_owner.call("get_team")
 	if team == &"blue":
@@ -574,6 +575,7 @@ func switch_human_player_for_team(team: StringName) -> StringName:
 
 
 func apply_network_control_state(owner_id: StringName, red_human: StringName, blue_human: StringName) -> void:
+	var previous_owner_id := get_control_owner_actor_id()
 	_human_control_actor_id = red_human
 	_blue_human_control_actor_id = blue_human
 	_control_owner = -1
@@ -581,6 +583,16 @@ func apply_network_control_state(owner_id: StringName, red_human: StringName, bl
 		if _field_players[index].call("get_actor_id") == owner_id:
 			_control_owner = index
 			break
+	if not owner_id.is_empty() and owner_id != previous_owner_id:
+		var owner := _actor_for_controller(_control_owner)
+		if owner != null:
+			_notify_receive_pose(owner, ball_velocity.length())
+
+
+func _notify_receive_pose(actor: CharacterBody3D, incoming_speed: float) -> void:
+	var body_rig := actor.get_node_or_null("BodyRig") as Node3D
+	if body_rig != null and body_rig.has_method("play_receive_pose"):
+		body_rig.call("play_receive_pose", incoming_speed)
 
 
 func _update_network_blue_actions(delta: float) -> void:

@@ -2,6 +2,8 @@ extends Node3D
 
 const MAX_SPEED := 9.0
 const StickSlapScript = preload("res://scripts/simulation/stick_slap.gd")
+const StickSwingPoseScript = preload("res://scripts/presentation/stick_swing_pose.gd")
+const RECEIVE_SECONDS := 0.32
 
 var _animation_tree: AnimationTree
 var _animation_player: AnimationPlayer
@@ -19,6 +21,10 @@ var _base_locomotion_pace := 1.0
 var _previous_actor_rotation := 0.0
 var _turn_pivot := 0.0
 var _dash_weight := 0.0
+var _receive_elapsed := -1.0
+var _receive_strength := 0.0
+var _receive_pose_weight := 0.0
+var _receive_was_active := false
 
 
 func _ready() -> void:
@@ -41,6 +47,7 @@ func _process(delta: float) -> void:
 	if StringName(actor.get_meta("role", &"field")) == &"goalkeeper":
 		apply_goalkeeper_pose()
 		return
+	_update_receive_pose(delta, actor)
 	var planar_velocity := Vector2(actor.velocity.x, actor.velocity.z)
 	var angular_speed := angle_difference(_previous_actor_rotation, actor.rotation.y) / maxf(delta, 1.0 / 120.0)
 	_previous_actor_rotation = actor.rotation.y
@@ -68,6 +75,34 @@ func _process(delta: float) -> void:
 	_apply_torso_swing_pose()
 	for solver in _hand_ik_solvers:
 		solver.start(true)
+
+
+func play_receive_pose(incoming_speed: float) -> void:
+	if incoming_speed < 1.5:
+		return
+	_receive_elapsed = 0.0
+	_receive_strength = clampf(inverse_lerp(1.5, 10.0, incoming_speed), 0.3, 1.0)
+	_receive_pose_weight = _receive_strength
+	set_meta("receive_pose_weight", _receive_pose_weight)
+
+
+func _update_receive_pose(delta: float, actor: CharacterBody3D) -> void:
+	if _receive_elapsed >= 0.0:
+		_receive_elapsed += delta
+		var progress := clampf(_receive_elapsed / RECEIVE_SECONDS, 0.0, 1.0)
+		_receive_pose_weight = _receive_strength * pow(1.0 - progress, 2.0)
+		if progress >= 1.0:
+			_receive_elapsed = -1.0
+			_receive_pose_weight = 0.0
+	set_meta("receive_pose_weight", _receive_pose_weight)
+	var stick_rig := actor.get_node_or_null("StickRig") as Node3D
+	if stick_rig != null and _swing_pose_elapsed >= StickSlapScript.TOTAL_SECONDS:
+		if _receive_pose_weight > 0.0:
+			StickSwingPoseScript.apply(stick_rig, -20.0 * _receive_pose_weight)
+			_receive_was_active = true
+		elif _receive_was_active:
+			StickSwingPoseScript.apply(stick_rig, 0.0)
+			_receive_was_active = false
 
 
 func _setup_animation_tree() -> void:
@@ -236,19 +271,22 @@ func _apply_torso_swing_pose() -> void:
 	var backward_lean := deg_to_rad(-4.0 * maxf(0.0, -float(pose.weight_shift)) + 3.0 * maxf(0.0, float(pose.weight_shift)) + 2.5 * contact_accent)
 	var locomotion_weight := 0.25 if _swing_pose_elapsed < StickSlapScript.TOTAL_SECONDS else 1.0
 	rotation.x = backward_lean + (_locomotion_lean.x + _dash_weight * 0.06) * locomotion_weight
+	rotation.x -= deg_to_rad(5.5 * _receive_pose_weight)
 	rotation.z = _locomotion_lean.y * locomotion_weight + _turn_pivot * 0.055 * locomotion_weight
 	position.x = float(pose.weight_shift) * 0.075
 	position.y -= float(pose.crouch) * 0.12 + _possession_weight * 0.075
 	position.z = contact_accent * 0.065 + float(pose.follow_through) * 0.018
+	position.z -= 0.045 * _receive_pose_weight
 	var protective_crouch := deg_to_rad(7.0 * _possession_weight)
 	var pivot_hip_turn := _turn_pivot * 0.12 * locomotion_weight
 	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Hips"), Quaternion(Vector3.RIGHT, protective_crouch) * Quaternion(Vector3.UP, hip_twist + pivot_hip_turn))
 	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Spine"), Quaternion(Vector3.UP, spine_twist))
-	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Chest"), Quaternion(Vector3.UP, chest_twist))
+	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Chest"), Quaternion(Vector3.RIGHT, deg_to_rad(-7.0 * _receive_pose_weight)) * Quaternion(Vector3.UP, chest_twist))
 	var shoulder_yaw := deg_to_rad(12.0 * float(pose.chest_turn))
 	var shoulder_drive := deg_to_rad(7.0 * float(pose.chest_turn) + 5.0 * contact_accent)
-	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Clavicle.L"), Quaternion(Vector3.FORWARD, -shoulder_drive) * Quaternion(Vector3.UP, shoulder_yaw))
-	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Clavicle.R"), Quaternion(Vector3.FORWARD, shoulder_drive) * Quaternion(Vector3.UP, shoulder_yaw))
+	var receive_shoulder := deg_to_rad(9.0 * _receive_pose_weight)
+	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Clavicle.L"), Quaternion(Vector3.FORWARD, -shoulder_drive - receive_shoulder) * Quaternion(Vector3.UP, shoulder_yaw))
+	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Clavicle.R"), Quaternion(Vector3.FORWARD, shoulder_drive + receive_shoulder) * Quaternion(Vector3.UP, shoulder_yaw))
 	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Thigh.L"), Quaternion(Vector3.RIGHT, deg_to_rad(-10.0 * float(pose.plant) - 6.0 * _possession_weight)))
 	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Thigh.R"), Quaternion(Vector3.RIGHT, deg_to_rad(8.0 * float(pose.crouch) + 6.0 * _possession_weight)))
 
