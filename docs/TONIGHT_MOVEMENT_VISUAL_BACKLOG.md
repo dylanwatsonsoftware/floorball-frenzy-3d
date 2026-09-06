@@ -104,6 +104,7 @@ The animation target is readable, stylised biomechanics rather than literal real
 - [x] Give each squad slot a deterministic locomotion phase offset, in addition to pace variation, so teammates do not start or idle in synchronized lockstep.
 - [x] Add deterministic slap anticipation/contact accents and a speed-triggered dash push-off/recovery pose without delaying authoritative ball contact.
 - [x] Add a repeatable fixed-camera renderer capture for loaded, contact, follow-through, and recovered slap-shot visual QA.
+- [x] Add and run a repeatable 12-player animation CPU benchmark; current headless median is about 0.25 ms and p95 remains under 2.3 ms with all hand IK enabled on the development machine.
 
 ## Acceptance checks
 

@@ -133,3 +133,5 @@ The `.blend` files in `blender_source/` are the editable source of truth for all
 Whenever a model is changed, save its `.blend` file **after** exporting the GLB and commit both files together. Character models should be rebuilt with `blender --background --factory-startup --python tools/build_character_models.py`; that script performs a final source save and verifies it. Run `python3 tests/blender_source_contract_test.py` before committing any model work. It fails when a runtime model has no valid reusable source or when an export is newer than its source.
 
 For fixed-camera visual QA of the live rig, run `godot --path . --script tools/capture_slap_sequence.gd`. It writes loaded, contact, follow-through, and recovered frames to `/tmp/floorball-slap-*.png` using the real game models, stick pose, hand IK, lighting, and renderer.
+
+For a repeatable 12-player animation/script benchmark, run `godot --headless --path . --script tools/profile_match_runtime.gd`. The JSON result is also saved to `/tmp/floorball-runtime-profile.json`. This isolates game-side CPU work; it does not replace foreground profiling of the exported web build on physical target phones.
