@@ -19,6 +19,10 @@ func run_test() -> void:
 		return
 	var thief_index: int = arena.call("get_field_players").find(thief)
 	ball.call("_apply_dash_steal", thief_index)
+	var contest_event: Dictionary = ball.call("get_contest_event") if ball.has_method("get_contest_event") else {}
+	if int(contest_event.get("sequence", 0)) != 1 or StringName(contest_event.get("winner", "")) != thief.call("get_actor_id") or StringName(contest_event.get("victim", "")) != carrier.call("get_actor_id"):
+		fail("A successful steal must expose one compact winner/victim event for guest presentation; event=%s" % contest_event)
+		return
 	var thief_rig := thief.get_node("BodyRig") as Node3D
 	var carrier_rig := carrier.get_node("BodyRig") as Node3D
 	thief_rig.call("_process", 0.0)

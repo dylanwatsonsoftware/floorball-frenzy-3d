@@ -15,6 +15,7 @@ func _init() -> void:
 		"owner": "blue_1", "ball_attached": true, "red_human": "red_1", "blue_human": "blue_1",
 		"ball_state": "possessed", "possession_seq": 9, "action_seq": 12, "action_type": "pass", "action_tick": 720,
 		"pickup_ack_seq": 6, "pickup_result": "accepted", "pickup_actor": "blue_1",
+		"contest_seq": 3, "contest_winner": "blue_2", "contest_victim": "red_4",
 		"stick_angles": [0.0, 18.0, 0.0, -42.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
 		"stick_phase_elapsed": [-1.0, 0.31, -1.0, 0.16, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0],
 		"score": {"red": 2, "blue": 3}, "goal_seq": 4, "faceoff_seq": 5, "scorer": "blue", "phase": "play",
@@ -48,6 +49,9 @@ func _init() -> void:
 		return
 	if decoded.get("pickup_ack_seq", -1) != 6 or decoded.get("pickup_result", "") != "accepted" or decoded.get("pickup_actor", "") != "blue_1":
 		fail("Explicit pickup decisions must survive compact snapshot round trips; got %s" % decoded)
+		return
+	if decoded.get("contest_seq", 0) != 3 or decoded.get("contest_winner", "") != "blue_2" or decoded.get("contest_victim", "") != "red_4":
+		fail("Compact contest presentation events must survive snapshot round trips; got %s" % decoded)
 		return
 	if decoded.stick_angles.size() != 12 or not is_equal_approx(float(decoded.stick_angles[1]), 18.0) or not is_equal_approx(float(decoded.stick_angles[3]), -42.0):
 		fail("Per-player stick action poses must survive compact snapshot round trips; got %s" % decoded.get("stick_angles", []))

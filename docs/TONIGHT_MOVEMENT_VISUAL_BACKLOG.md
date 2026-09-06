@@ -114,6 +114,7 @@ The animation target is readable, stylised biomechanics rather than literal real
 - [x] Keep charged passes on one continuous compact load-to-contact curve for solo, host, remote-host, and guest-predicted actions instead of snapping back to neutral on release.
 - [x] Add a speed-scaled receive/cushion response on new possession: the stick, chest, and shoulders yield briefly with the incoming ball and recover within 0.32 seconds.
 - [x] Add a short successful-steal stick jab plus a possession-loss torso recoil, both presentation-only and recovered within 0.28 seconds so control remains immediate.
+- [x] Replicate successful-steal presentation as a compact sequenced winner/victim event so guests render the same poke and recoil without networked bone transforms.
 
 ## Acceptance checks
 

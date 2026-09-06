@@ -77,6 +77,9 @@ var _pickup_lock_seconds := 0.0
 var _network_blue_possession_grace := 0.0
 var _network_hit_history: RefCounted = LagCompensatedHitHistoryScript.new()
 var _pending_lag_compensated_contact := false
+var _contest_sequence := 0
+var _contest_winner_id: StringName = &""
+var _contest_victim_id: StringName = &""
 
 signal goal_scored(scorer: StringName)
 
@@ -417,6 +420,10 @@ func get_pending_action_type() -> StringName:
 	if _slap_elapsed < 0.0:
 		return &""
 	return &"pass" if _pending_pass else &"shot"
+
+
+func get_contest_event() -> Dictionary:
+	return {"sequence": _contest_sequence, "winner": _contest_winner_id, "victim": _contest_victim_id}
 
 
 func _advance_slap(delta: float) -> void:
@@ -793,6 +800,9 @@ func _apply_dash_steal(body_controller: int) -> void:
 	record_touch(team)
 	_award_heat(team, 20.0)
 	_show_steal_feedback(team)
+	_contest_sequence += 1
+	_contest_winner_id = actor.call("get_actor_id")
+	_contest_victim_id = dispossessed_actor.call("get_actor_id") if dispossessed_actor != null else &""
 	_play_body_action(actor, &"play_poke_pose")
 	if dispossessed_actor != null and dispossessed_actor != actor:
 		_play_body_action(dispossessed_actor, &"play_contest_recoil")

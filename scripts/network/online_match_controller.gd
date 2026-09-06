@@ -81,6 +81,7 @@ var _local_prediction_state: Dictionary = {}
 var _network_trace: RefCounted
 var _predicted_goal_action_sequence := -1
 var _predicted_goal_candidate_remaining := 0.0
+var _last_contest_sequence := 0
 
 
 func _ready() -> void:
@@ -254,7 +255,8 @@ func _capture_snapshot() -> Dictionary:
 		_ball_action_tick = _simulation_tick
 	_last_captured_ball_state = ball_state
 	var pickup_decision := _authoritative_pickup_decision(owner_name)
-	return {"type": "snapshot", "seq": _sequence, "host_time_ms": Time.get_ticks_msec(), "input_ack": int(OnlineMatch.remote_simulated_sequence), "input_echo_ms": int(OnlineMatch.remote_simulated_sent_ms), "actors": actors, "stick_angles": stick_angles, "stick_phase_elapsed": stick_phase_elapsed, "ball": _vector3_to_array(_ball.global_position), "ball_velocity": _vector3_to_array(_ball.ball_velocity), "owner": owner_id, "ball_attached": not owner_id.is_empty(), "ball_state": String(ball_state), "possession_seq": _possession_sequence, "action_seq": _ball_action_sequence, "action_type": String(_ball_action_type), "action_tick": _ball_action_tick, "pickup_ack_seq": int(pickup_decision.sequence), "pickup_result": String(pickup_decision.result), "pickup_actor": String(pickup_decision.actor), "red_human": String(_ball.call("get_human_control_actor_id_for_team", &"red")), "blue_human": String(_ball.call("get_human_control_actor_id_for_team", &"blue")), "score": _match_flow.score.duplicate(), "goal_seq": int(match_state.get("goal_seq", 0)), "faceoff_seq": int(match_state.get("faceoff_seq", 0)), "scorer": String(match_state.get("scorer", "")), "phase": String(match_state.get("phase", "play")), "slap_phase": String(slap_phase)}
+	var contest: Dictionary = _ball.call("get_contest_event") if _ball.has_method("get_contest_event") else {}
+	return {"type": "snapshot", "seq": _sequence, "host_time_ms": Time.get_ticks_msec(), "input_ack": int(OnlineMatch.remote_simulated_sequence), "input_echo_ms": int(OnlineMatch.remote_simulated_sent_ms), "actors": actors, "stick_angles": stick_angles, "stick_phase_elapsed": stick_phase_elapsed, "ball": _vector3_to_array(_ball.global_position), "ball_velocity": _vector3_to_array(_ball.ball_velocity), "owner": owner_id, "ball_attached": not owner_id.is_empty(), "ball_state": String(ball_state), "possession_seq": _possession_sequence, "action_seq": _ball_action_sequence, "action_type": String(_ball_action_type), "action_tick": _ball_action_tick, "pickup_ack_seq": int(pickup_decision.sequence), "pickup_result": String(pickup_decision.result), "pickup_actor": String(pickup_decision.actor), "contest_seq": int(contest.get("sequence", 0)), "contest_winner": String(contest.get("winner", "")), "contest_victim": String(contest.get("victim", "")), "red_human": String(_ball.call("get_human_control_actor_id_for_team", &"red")), "blue_human": String(_ball.call("get_human_control_actor_id_for_team", &"blue")), "score": _match_flow.score.duplicate(), "goal_seq": int(match_state.get("goal_seq", 0)), "faceoff_seq": int(match_state.get("faceoff_seq", 0)), "scorer": String(match_state.get("scorer", "")), "phase": String(match_state.get("phase", "play")), "slap_phase": String(slap_phase)}
 
 
 func _authoritative_pickup_decision(owner_id: StringName) -> Dictionary:
@@ -331,6 +333,7 @@ func _apply_snapshot(snapshot: Dictionary) -> void:
 				else:
 					actor.call("set_stick_slap_angle", float(stick_angles[state_index]))
 		state_index += 1
+	_apply_contest_event(snapshot, actor_by_id)
 	_last_authoritative_action_sequence = maxi(_last_authoritative_action_sequence, int(snapshot.get("action_seq", 0)))
 	var ignore_ball_snapshot := false
 	if _predicted_ball_action != null and bool(_predicted_ball_action.get("active")):
@@ -392,6 +395,25 @@ func _apply_snapshot(snapshot: Dictionary) -> void:
 		_ball.global_position = OnlineInputScript.reconcile_ball_position(_ball.global_position, authoritative_ball)
 	_ball.ball_velocity = authoritative_ball_velocity
 	_apply_network_score(snapshot)
+
+
+func _apply_contest_event(snapshot: Dictionary, actor_by_id: Dictionary) -> void:
+	var sequence := int(snapshot.get("contest_seq", 0))
+	if sequence <= _last_contest_sequence:
+		return
+	_last_contest_sequence = sequence
+	var winner := actor_by_id.get(String(snapshot.get("contest_winner", ""))) as CharacterBody3D
+	var victim := actor_by_id.get(String(snapshot.get("contest_victim", ""))) as CharacterBody3D
+	_play_replicated_body_action(winner, &"play_poke_pose")
+	_play_replicated_body_action(victim, &"play_contest_recoil")
+
+
+func _play_replicated_body_action(actor: CharacterBody3D, method: StringName) -> void:
+	if actor == null:
+		return
+	var body_rig := actor.get_node_or_null("BodyRig") as Node3D
+	if body_rig != null and body_rig.has_method(method):
+		body_rig.call(method)
 
 
 func _apply_network_score(snapshot: Dictionary) -> void:

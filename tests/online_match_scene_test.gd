@@ -155,6 +155,14 @@ func run_test() -> void:
 	if not is_equal_approx(float(remote_actor.get_meta("stick_slap_angle", 0.0)), 38.0) or not is_equal_approx(float(remote_actor.get_meta("stick_slap_elapsed", -1.0)), 0.33) or remote_torso_twist < 0.1:
 		fail("A guest must render the replicated opponent stick swing and torso twist")
 		return
+	var contest_snapshot: Dictionary = remote_pose_snapshot.duplicate(true)
+	contest_snapshot.contest_seq = 1
+	contest_snapshot.contest_winner = String(remote_actor.call("get_actor_id"))
+	contest_snapshot.contest_victim = String(local_actor.call("get_actor_id"))
+	client_controller.call("_apply_snapshot", contest_snapshot)
+	if float(remote_body_rig.get_meta("poke_pose_weight", 0.0)) < 0.7 or float(local_actor.get_node("BodyRig").get_meta("contest_recoil_weight", 0.0)) < 0.55:
+		fail("A guest must render the host's successful-steal poke and victim recoil event")
+		return
 	var camera_actor: CharacterBody3D = client_arena.call("get_camera_actor", client_arena.get_node("Ball"))
 	if camera_actor != local_actor:
 		fail("The guest camera must follow the locally controlled Pirates player")
@@ -263,6 +271,14 @@ func run_test() -> void:
 	if not bool(local_actor.call("is_human_controlled")) or not local_actor.get_node("PlayerMarker").visible or not local_actor.get_node("ControlRing").visible:
 		fail("Guest possession attachment must not make the selected player lose its human-control markers")
 		return
+	client_controller.set("_local_pass_charge", 0.0)
+	client_controller.call("_update_predicted_ball_action", false, true, 0.2)
+	if absf(float(client_controller.get("_local_pass_charge")) - 0.2) > 0.01:
+		fail("Guest charged-pass presentation must accumulate at real elapsed time, not double speed; charge=%s" % client_controller.get("_local_pass_charge"))
+		return
+	client_controller.set("_local_pass_charge", 0.0)
+	client_controller.set("_local_pass_was_pressed", false)
+	local_actor.call("set_stick_slap_angle", 0.0)
 	client_controller.call("_update_predicted_ball_action", true, false, 0.2)
 	if not local_actor.get_node("AimArrow").visible:
 		fail("Charging a guest shot must immediately show the local aiming arrow without waiting for the host")

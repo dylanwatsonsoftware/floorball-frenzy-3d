@@ -61,6 +61,9 @@ static func encode_snapshot(snapshot: Dictionary, include_extended_ball_state: b
 		stream.put_u8(stick_phase_elapsed.size())
 		for elapsed: Variant in stick_phase_elapsed:
 			stream.put_float(float(elapsed))
+		stream.put_32(int(snapshot.get("contest_seq", 0)))
+		stream.put_utf8_string(String(snapshot.get("contest_winner", "")))
+		stream.put_utf8_string(String(snapshot.get("contest_victim", "")))
 	return stream.data_array
 
 
@@ -123,6 +126,9 @@ static func decode_snapshot(packet: PackedByteArray) -> Dictionary:
 				break
 			stick_phase_elapsed.append(stream.get_float())
 	snapshot.stick_phase_elapsed = stick_phase_elapsed
+	snapshot.contest_seq = stream.get_32() if stream.get_available_bytes() >= 4 else 0
+	snapshot.contest_winner = stream.get_utf8_string() if stream.get_available_bytes() > 0 else ""
+	snapshot.contest_victim = stream.get_utf8_string() if stream.get_available_bytes() > 0 else ""
 	return snapshot
 
 
