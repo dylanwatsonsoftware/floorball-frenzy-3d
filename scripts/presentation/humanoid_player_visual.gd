@@ -83,9 +83,12 @@ func _setup_animation_tree() -> void:
 	locomotion.add_blend_point(_clip(&"strafe_left"), Vector2(-1.0, 0.0), -1, "StrafeLeft")
 	locomotion.add_blend_point(_clip(&"strafe_right"), Vector2(1.0, 0.0), -1, "StrafeRight")
 	graph.add_node("Locomotion", locomotion, Vector2(0.0, 80.0))
+	var locomotion_phase := AnimationNodeTimeSeek.new()
+	graph.add_node("LocomotionPhase", locomotion_phase, Vector2(175.0, 80.0))
+	graph.connect_node("LocomotionPhase", 0, "Locomotion")
 	var locomotion_pace := AnimationNodeTimeScale.new()
-	graph.add_node("LocomotionPace", locomotion_pace, Vector2(220.0, 80.0))
-	graph.connect_node("LocomotionPace", 0, "Locomotion")
+	graph.add_node("LocomotionPace", locomotion_pace, Vector2(350.0, 80.0))
+	graph.connect_node("LocomotionPace", 0, "LocomotionPhase")
 	graph.add_node("SlapAnimation", _clip(&"slap_shot"), Vector2(0.0, 220.0))
 	var slap_layer := AnimationNodeOneShot.new()
 	slap_layer.fadein_time = 0.08
@@ -102,6 +105,9 @@ func _setup_animation_tree() -> void:
 	var squad_slot := int(actor.get_meta("squad_slot", 0)) if actor != null else 0
 	_base_locomotion_pace = 0.95 + float(posmod(squad_slot, 5)) * 0.025
 	_animation_tree.set("parameters/LocomotionPace/scale", _base_locomotion_pace)
+	var phase_offset := float(posmod(squad_slot * 3, 7)) * 0.11
+	_animation_tree.set("parameters/LocomotionPhase/seek_request", phase_offset)
+	set_meta("locomotion_phase_offset", phase_offset)
 	set_meta("upper_body_animation_layer", true)
 
 

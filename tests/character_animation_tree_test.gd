@@ -14,6 +14,7 @@ func run_test() -> void:
 	await physics_frame
 	var field_players: Array = scene.get_node("Arena").call("get_field_players")
 	var locomotion_paces := {}
+	var locomotion_phases := {}
 	for actor in field_players:
 		var rig := actor.get_node("BodyRig") as Node3D
 		var animation_tree := rig.get_node_or_null("AnimationTree") as AnimationTree
@@ -32,6 +33,10 @@ func run_test() -> void:
 		if not blend_tree.has_node("LocomotionPace"):
 			fail("%s must vary locomotion timing so the whole team does not move in lockstep" % actor.name)
 			return
+		if not blend_tree.has_node("LocomotionPhase"):
+			fail("%s must offset its locomotion phase so teammates do not step in lockstep" % actor.name)
+			return
+		locomotion_phases[snappedf(float(rig.get_meta("locomotion_phase_offset", 0.0)), 0.001)] = true
 		for animation_name in [&"backpedal", &"strafe_left", &"strafe_right"]:
 			var animation := animation_player.get_animation(animation_name)
 			var track_paths: Array[String] = []
@@ -107,6 +112,9 @@ func run_test() -> void:
 					return
 	if locomotion_paces.size() < 3:
 		fail("The squad needs several subtle locomotion pace variants; got %s" % locomotion_paces.keys())
+		return
+	if locomotion_phases.size() < 4:
+		fail("The squad needs deterministic locomotion phase offsets; got %s" % locomotion_phases.keys())
 		return
 	print("Every player uses locomotion blending, varied timing, layered slap actions, and the hand-IK contract.")
 	quit(0)
