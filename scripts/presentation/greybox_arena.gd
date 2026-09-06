@@ -790,7 +790,7 @@ func _add_stick(parent: Node3D, _color: Color) -> void:
 			rig.add_child(spine_toe)
 			child.queue_free()
 	var blade_pocket := rig.get_node("BladePocket") as Marker3D
-	var desired_pocket := Vector3(-0.75, -0.53, 0.90)
+	var desired_pocket := Vector3(-0.75, -0.53, 0.65)
 	rig.position = desired_pocket - rig.basis * blade_pocket.position
 	imported.queue_free()
 func _add_dash_streak(parent: Node3D, color: Color) -> void:

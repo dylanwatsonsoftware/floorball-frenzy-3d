@@ -103,7 +103,7 @@ func _setup_hand_targets() -> void:
 	var endpoint_a := shaft.to_global(top_local)
 	var endpoint_b := shaft.to_global(bottom_local)
 	var shaft_top := endpoint_a if endpoint_a.distance_to(shaft_bottom) > endpoint_b.distance_to(shaft_bottom) else endpoint_b
-	for target_data in [["LeftHandIKTarget", 0.94, "UpperArm.L", "Hand.L"], ["RightHandIKTarget", 0.40, "UpperArm.R", "Hand.R"]]:
+	for target_data in [["RightHandIKTarget", 0.94, "UpperArm.R", "Hand.R"], ["LeftHandIKTarget", 0.64, "UpperArm.L", "Hand.L"]]:
 		var target := Marker3D.new()
 		target.name = target_data[0]
 		stick_rig.add_child(target)
@@ -114,7 +114,7 @@ func _setup_hand_targets() -> void:
 		ik.tip_bone = StringName(target_data[3])
 		_skeleton.add_child(ik)
 		ik.target_node = ik.get_path_to(target)
-		ik.interpolation = 0.82
+		ik.influence = 1.0
 		ik.start()
 	set_meta("hand_ik_ready", true)
 
