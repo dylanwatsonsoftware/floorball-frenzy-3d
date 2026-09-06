@@ -412,7 +412,8 @@ func _update_predicted_ball_action(shoot_pressed: bool, pass_held: bool, delta: 
 	if pass_held and owns_ball and (_predicted_ball_action == null or not bool(_predicted_ball_action.get("active"))):
 		_local_pass_charge = minf(0.8, _local_pass_charge + delta)
 		var pass_charge_ratio := _local_pass_charge / 0.8
-		actor.call("set_stick_slap_pose", lerpf(-2.0, StickSlapScript.BACKSWING_ANGLE * 0.72, pass_charge_ratio * pass_charge_ratio), StickSlapScript.BACKSWING_SECONDS * pass_charge_ratio * 0.72)
+		var pass_elapsed := StickSlapScript.pass_load_elapsed(pass_charge_ratio)
+		actor.call("set_stick_slap_pose", StickSlapScript.angle_at(pass_elapsed), pass_elapsed)
 	elif _local_pass_was_pressed and _local_pass_charge > 0.0 and owns_ball:
 		_begin_predicted_ball_action(actor, &"pass", _local_pass_charge / 0.8, false)
 		_local_pass_charge = 0.0
@@ -460,8 +461,10 @@ func _turn_actor_toward_attacking_goal(actor: CharacterBody3D, delta: float) -> 
 func _begin_predicted_ball_action(actor: CharacterBody3D, action_type: StringName, charge: float, begin_forward_swing: bool) -> void:
 	_predicted_ball_action = PredictedBallActionScript.new()
 	var direction := Vector2(actor.call("get_facing_direction").x, actor.call("get_facing_direction").z)
+	var action_start_elapsed := 0.0
 	if action_type == &"pass":
 		var pass_charge_ratio := charge
+		action_start_elapsed = StickSlapScript.pass_load_elapsed(pass_charge_ratio)
 		var teammates: Array = []
 		for candidate in _arena.call("get_team_players", actor.call("get_team")):
 			if StringName(candidate.get_meta("role", &"field")) == &"goalkeeper":
@@ -476,7 +479,7 @@ func _begin_predicted_ball_action(actor: CharacterBody3D, action_type: StringNam
 	if blade != null:
 		blade.force_update_transform()
 		origin = blade.global_position
-	_predicted_ball_action.call("begin", _last_authoritative_action_sequence + 1, action_type, origin, direction, actor.velocity, charge, begin_forward_swing)
+	_predicted_ball_action.call("begin", _last_authoritative_action_sequence + 1, action_type, origin, direction, actor.velocity, charge, begin_forward_swing, action_start_elapsed)
 	if action_type == &"shot":
 		_predicted_goal_action_sequence = int(_predicted_ball_action.get("action_sequence"))
 		_predicted_goal_candidate_remaining = 2.5

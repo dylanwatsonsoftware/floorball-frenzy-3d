@@ -246,7 +246,8 @@ func _update_pass_charge(delta: float) -> void:
 			_pass_charge_actor = input_actor
 		_pass_charge_seconds = minf(MAX_CHARGE_SECONDS, _pass_charge_seconds + delta)
 		var ratio := _pass_charge_seconds / MAX_CHARGE_SECONDS
-		_pass_charge_actor.call("set_stick_slap_pose", lerpf(-2.0, StickSlapScript.BACKSWING_ANGLE * 0.72, ratio * ratio), StickSlapScript.BACKSWING_SECONDS * ratio * 0.72)
+		var pass_elapsed := StickSlapScript.pass_load_elapsed(ratio)
+		_pass_charge_actor.call("set_stick_slap_pose", StickSlapScript.angle_at(pass_elapsed), pass_elapsed)
 		_apply_charge_feedback(ratio)
 	elif _pass_charge_seconds > 0.0:
 		var ratio := _pass_charge_seconds / MAX_CHARGE_SECONDS
@@ -375,9 +376,10 @@ func pass_to_closest_teammate(charge_ratio: float = 0.0) -> bool:
 	_slap_actor = carrier
 	var offset := Vector2(facing.x, facing.z) if target.is_empty() else Vector2(target.position.x - carrier.global_position.x, target.position.z - carrier.global_position.z)
 	var pass_strength := BallSimulationScript.charged_pass_strength(offset.length(), charge_ratio)
-	_configure_slap(offset, pass_strength, 0.0, true)
+	var pass_start := StickSlapScript.pass_load_elapsed(charge_ratio)
+	_configure_slap(offset, pass_strength, pass_start, true)
 	_pending_soft_pass = target.is_empty() and charge_ratio < 0.15
-	_slap_actor.call("set_stick_slap_pose", StickSlapScript.angle_at(0.0), 0.0)
+	_slap_actor.call("set_stick_slap_pose", StickSlapScript.angle_at(pass_start), pass_start)
 	return true
 
 
@@ -589,7 +591,8 @@ func _update_network_blue_actions(delta: float) -> void:
 	if OnlineMatch.remote_pass_held:
 		_network_blue_pass_charge = minf(MAX_CHARGE_SECONDS, _network_blue_pass_charge + delta)
 		var pass_ratio := clampf(_network_blue_pass_charge / MAX_CHARGE_SECONDS, 0.0, 1.0)
-		actor.call("set_stick_slap_pose", lerpf(-2.0, StickSlapScript.BACKSWING_ANGLE * 0.72, pow(pass_ratio, 2.0)), StickSlapScript.BACKSWING_SECONDS * pass_ratio * 0.72)
+		var pass_elapsed := StickSlapScript.pass_load_elapsed(pass_ratio)
+		actor.call("set_stick_slap_pose", StickSlapScript.angle_at(pass_elapsed), pass_elapsed)
 	elif _network_blue_was_passing and _network_blue_pass_charge > 0.0:
 		_start_network_pass(actor, _network_blue_pass_charge / MAX_CHARGE_SECONDS)
 		_network_blue_pass_charge = 0.0
@@ -635,7 +638,8 @@ func _start_network_pass(actor: CharacterBody3D, charge_ratio: float = 0.0) -> v
 	_slap_actor = actor
 	_pending_lag_compensated_contact = _lag_compensated_network_hit(actor, OnlineMatch.remote_rtt_ms)
 	var pass_strength := BallSimulationScript.charged_pass_strength(direction.length(), charge_ratio)
-	_configure_slap(direction, pass_strength, StickSlapScript.network_start_elapsed(&"pass", OnlineMatch.remote_rtt_ms / 2000.0), true)
+	var pass_start := StickSlapScript.pass_load_elapsed(charge_ratio) + minf(0.12, OnlineMatch.remote_rtt_ms / 2000.0)
+	_configure_slap(direction, pass_strength, minf(StickSlapScript.CONTACT_SECONDS - StickSlapScript.NETWORK_CONTACT_GUARD_SECONDS, pass_start), true)
 	_pending_soft_pass = target.is_empty() and charge_ratio < 0.15
 
 

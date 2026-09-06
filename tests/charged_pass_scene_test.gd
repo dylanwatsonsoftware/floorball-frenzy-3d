@@ -33,8 +33,13 @@ func run_test() -> void:
 		Input.action_release("pass")
 		fail("Holding Pass must build power without releasing the ball early")
 		return
+	var held_angle := float(carrier.get_meta("stick_slap_angle", 0.0))
 	Input.action_release("pass")
 	await physics_frame
+	var released_angle := float(carrier.get_meta("stick_slap_angle", 0.0))
+	if held_angle > -20.0 or absf(released_angle - held_angle) > 18.0:
+		fail("A charged pass must continue from its held load without snapping to neutral; held=%s released=%s elapsed=%s charge=%s" % [held_angle, released_angle, ball.get("_slap_elapsed"), ball.get("_pending_slap_charge")])
+		return
 	if ball.call("get_slap_phase") == &"idle" or float(ball.get("_pending_slap_charge")) < 1.15:
 		fail("Releasing a charged Pass must begin a powerful pass swing; phase=%s power=%s owner=%s" % [ball.call("get_slap_phase"), ball.get("_pending_slap_charge"), ball.call("get_control_owner_actor_id")])
 		return

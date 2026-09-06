@@ -111,6 +111,7 @@ The animation target is readable, stylised biomechanics rather than literal real
 - [x] Lock both hands to stable shaft grips through the swing and deepen the backswing to 90 degrees.
 - [x] Replace pointed dark shoe lasts with rounded, team-coloured footwear that remains visible without creating back spikes in the broadcast view.
 - [x] Give all five field players on each team deterministic, restrained differences in jersey shade, body/head proportion, and Lamb wool or Pirate hat treatment.
+- [x] Keep charged passes on one continuous compact load-to-contact curve for solo, host, remote-host, and guest-predicted actions instead of snapping back to neutral on release.
 
 ## Acceptance checks
 

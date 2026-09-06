@@ -50,6 +50,12 @@ static func forward_step_at(elapsed: float) -> float:
 	return FORWARD_STEP_DISTANCE * eased
 
 
+static func pass_load_elapsed(charge_ratio: float) -> float:
+	# A pass uses a compact 72%-depth load. Mapping through angle_at keeps its
+	# held pose and release timeline on the same curve, preventing a snap.
+	return BACKSWING_SECONDS * sqrt(0.72) * clampf(charge_ratio, 0.0, 1.0)
+
+
 static func body_pose_at(elapsed: float) -> Dictionary:
 	if elapsed < 0.0 or elapsed >= TOTAL_SECONDS:
 		return _body_pose()

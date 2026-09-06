@@ -17,10 +17,10 @@ var attached := false
 var active := false
 
 
-func begin(sequence: int, type: StringName, initial_position: Vector3, aim: Vector2, actor_velocity: Vector3, action_charge: float, begin_forward_swing: bool = false) -> void:
+func begin(sequence: int, type: StringName, initial_position: Vector3, aim: Vector2, actor_velocity: Vector3, action_charge: float, begin_forward_swing: bool = false, start_elapsed: float = 0.0) -> void:
 	action_sequence = sequence
 	action_type = type
-	elapsed = StickSlapScript.BACKSWING_SECONDS if begin_forward_swing else 0.0
+	elapsed = StickSlapScript.BACKSWING_SECONDS if begin_forward_swing else maxf(0.0, start_elapsed)
 	position = initial_position
 	velocity = actor_velocity
 	direction = aim.normalized() if not aim.is_zero_approx() else Vector2.RIGHT
