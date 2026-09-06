@@ -155,11 +155,13 @@ func _setup_hand_targets() -> void:
 	var endpoint_a := shaft.to_global(top_local)
 	var endpoint_b := shaft.to_global(bottom_local)
 	var shaft_top := endpoint_a if endpoint_a.distance_to(shaft_bottom) > endpoint_b.distance_to(shaft_bottom) else endpoint_b
+	var shaft_direction_local := (stick_rig.to_local(shaft_top) - stick_rig.to_local(shaft_bottom)).normalized()
 	for target_data in [["RightHandIKTarget", 0.94, "UpperArm.R", "Hand.R"], ["LeftHandIKTarget", 0.64, "UpperArm.L", "Hand.L"]]:
 		var target := Marker3D.new()
 		target.name = target_data[0]
 		stick_rig.add_child(target)
 		target.position = stick_rig.to_local(shaft_bottom.lerp(shaft_top, float(target_data[1])))
+		target.quaternion = Quaternion(Vector3.UP, shaft_direction_local)
 		target.set_meta("rest_position", target.position)
 		var ik := SkeletonIK3D.new()
 		ik.name = "%sIK" % String(target_data[0]).trim_suffix("Target")
@@ -180,12 +182,20 @@ func _attach_visible_hand(target: Marker3D, authored_hand_name: String) -> void:
 	authored_hand.visible = false
 	var grip_hand := MeshInstance3D.new()
 	grip_hand.name = "GripHand"
-	var mitt := SphereMesh.new()
-	mitt.radius = 0.095
-	mitt.height = 0.18
-	mitt.radial_segments = 12
-	mitt.rings = 6
-	grip_hand.mesh = mitt
+	var palm := CapsuleMesh.new()
+	palm.radius = 0.085
+	palm.height = 0.20
+	palm.radial_segments = 12
+	palm.rings = 6
+	var finger_band := TorusMesh.new()
+	finger_band.inner_radius = 0.034
+	finger_band.outer_radius = 0.078
+	finger_band.rings = 10
+	finger_band.ring_segments = 8
+	var surface := SurfaceTool.new()
+	surface.append_from(palm, 0, Transform3D.IDENTITY)
+	surface.append_from(finger_band, 0, Transform3D(Basis.IDENTITY, Vector3(0.0, -0.025, 0.0)))
+	grip_hand.mesh = surface.commit()
 	grip_hand.material_override = authored_hand.get_active_material(0)
 	grip_hand.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	target.add_child(grip_hand)

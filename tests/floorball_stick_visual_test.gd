@@ -117,6 +117,9 @@ func run_test() -> void:
 			if visible_hand == null or visible_hand.global_position.distance_to((rig.get_node(hand_data[1]) as Marker3D).global_position) > 0.01:
 				fail("The visible %s mitt must be anchored directly to its moving shaft grip" % hand_data[0])
 				return
+			if not visible_hand.mesh is ArrayMesh or visible_hand.get_child_count() != 0 or (visible_hand.mesh as ArrayMesh).get_surface_count() != 1:
+				fail("The visible %s hand must combine its shaped palm and curved fingers into one mobile-friendly draw surface" % hand_data[0])
+				return
 			var hand_index := skeleton.find_bone(hand_data[0])
 			var hand_position := skeleton.to_global(skeleton.get_bone_global_pose(hand_index).origin)
 			var hand_target := rig.get_node(hand_data[1]) as Marker3D
