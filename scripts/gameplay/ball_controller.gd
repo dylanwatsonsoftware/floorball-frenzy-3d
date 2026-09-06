@@ -785,6 +785,7 @@ func _apply_dash_steal(body_controller: int) -> void:
 	if not DashStealScript.can_steal(body_controller, dashing_controller, bool(_dash_steal_consumed.get(body_controller, false))):
 		return
 	var actor := _actor_for_controller(body_controller)
+	var dispossessed_actor := _actor_for_controller(_control_owner)
 	var team: StringName = actor.call("get_team")
 	ball_velocity = DashStealScript.poke_velocity(actor.velocity)
 	_control_owner = -1
@@ -792,6 +793,9 @@ func _apply_dash_steal(body_controller: int) -> void:
 	record_touch(team)
 	_award_heat(team, 20.0)
 	_show_steal_feedback(team)
+	_play_body_action(actor, &"play_poke_pose")
+	if dispossessed_actor != null and dispossessed_actor != actor:
+		_play_body_action(dispossessed_actor, &"play_contest_recoil")
 	var feedback_color := STEAL_COLOR if team == &"red" else BLUE_STEAL_COLOR
 	var arena := get_parent()
 	if arena.has_method("play_shot_impact"):
@@ -801,6 +805,12 @@ func _apply_dash_steal(body_controller: int) -> void:
 			"duration": 0.22,
 			"color": feedback_color,
 		})
+
+
+func _play_body_action(actor: CharacterBody3D, method: StringName) -> void:
+	var body_rig := actor.get_node_or_null("BodyRig") as Node3D
+	if body_rig != null and body_rig.has_method(method):
+		body_rig.call(method)
 
 
 func _apply_parry(body_controller: int) -> bool:

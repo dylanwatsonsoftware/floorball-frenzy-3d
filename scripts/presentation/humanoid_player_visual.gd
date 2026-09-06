@@ -4,6 +4,7 @@ const MAX_SPEED := 9.0
 const StickSlapScript = preload("res://scripts/simulation/stick_slap.gd")
 const StickSwingPoseScript = preload("res://scripts/presentation/stick_swing_pose.gd")
 const RECEIVE_SECONDS := 0.32
+const CONTEST_SECONDS := 0.28
 
 var _animation_tree: AnimationTree
 var _animation_player: AnimationPlayer
@@ -24,7 +25,11 @@ var _dash_weight := 0.0
 var _receive_elapsed := -1.0
 var _receive_strength := 0.0
 var _receive_pose_weight := 0.0
-var _receive_was_active := false
+var _secondary_stick_pose_active := false
+var _poke_elapsed := -1.0
+var _poke_pose_weight := 0.0
+var _contest_recoil_elapsed := -1.0
+var _contest_recoil_weight := 0.0
 
 
 func _ready() -> void:
@@ -48,6 +53,8 @@ func _process(delta: float) -> void:
 		apply_goalkeeper_pose()
 		return
 	_update_receive_pose(delta, actor)
+	_update_contest_pose(delta)
+	_apply_secondary_stick_pose(actor)
 	var planar_velocity := Vector2(actor.velocity.x, actor.velocity.z)
 	var angular_speed := angle_difference(_previous_actor_rotation, actor.rotation.y) / maxf(delta, 1.0 / 120.0)
 	_previous_actor_rotation = actor.rotation.y
@@ -86,6 +93,18 @@ func play_receive_pose(incoming_speed: float) -> void:
 	set_meta("receive_pose_weight", _receive_pose_weight)
 
 
+func play_poke_pose() -> void:
+	_poke_elapsed = 0.0
+	_poke_pose_weight = 1.0
+	set_meta("poke_pose_weight", _poke_pose_weight)
+
+
+func play_contest_recoil() -> void:
+	_contest_recoil_elapsed = 0.0
+	_contest_recoil_weight = 0.8
+	set_meta("contest_recoil_weight", _contest_recoil_weight)
+
+
 func _update_receive_pose(delta: float, actor: CharacterBody3D) -> void:
 	if _receive_elapsed >= 0.0:
 		_receive_elapsed += delta
@@ -95,14 +114,35 @@ func _update_receive_pose(delta: float, actor: CharacterBody3D) -> void:
 			_receive_elapsed = -1.0
 			_receive_pose_weight = 0.0
 	set_meta("receive_pose_weight", _receive_pose_weight)
+
+
+func _update_contest_pose(delta: float) -> void:
+	if _poke_elapsed >= 0.0:
+		_poke_elapsed += delta
+		_poke_pose_weight = pow(1.0 - clampf(_poke_elapsed / CONTEST_SECONDS, 0.0, 1.0), 2.0)
+		if _poke_elapsed >= CONTEST_SECONDS:
+			_poke_elapsed = -1.0
+			_poke_pose_weight = 0.0
+	if _contest_recoil_elapsed >= 0.0:
+		_contest_recoil_elapsed += delta
+		_contest_recoil_weight = 0.8 * pow(1.0 - clampf(_contest_recoil_elapsed / CONTEST_SECONDS, 0.0, 1.0), 2.0)
+		if _contest_recoil_elapsed >= CONTEST_SECONDS:
+			_contest_recoil_elapsed = -1.0
+			_contest_recoil_weight = 0.0
+	set_meta("poke_pose_weight", _poke_pose_weight)
+	set_meta("contest_recoil_weight", _contest_recoil_weight)
+
+
+func _apply_secondary_stick_pose(actor: CharacterBody3D) -> void:
 	var stick_rig := actor.get_node_or_null("StickRig") as Node3D
 	if stick_rig != null and _swing_pose_elapsed >= StickSlapScript.TOTAL_SECONDS:
-		if _receive_pose_weight > 0.0:
-			StickSwingPoseScript.apply(stick_rig, -20.0 * _receive_pose_weight)
-			_receive_was_active = true
-		elif _receive_was_active:
+		var pose_angle := -20.0 * _receive_pose_weight + 18.0 * _poke_pose_weight
+		if absf(pose_angle) > 0.01:
+			StickSwingPoseScript.apply(stick_rig, pose_angle)
+			_secondary_stick_pose_active = true
+		elif _secondary_stick_pose_active:
 			StickSwingPoseScript.apply(stick_rig, 0.0)
-			_receive_was_active = false
+			_secondary_stick_pose_active = false
 
 
 func _setup_animation_tree() -> void:
@@ -272,19 +312,22 @@ func _apply_torso_swing_pose() -> void:
 	var locomotion_weight := 0.25 if _swing_pose_elapsed < StickSlapScript.TOTAL_SECONDS else 1.0
 	rotation.x = backward_lean + (_locomotion_lean.x + _dash_weight * 0.06) * locomotion_weight
 	rotation.x -= deg_to_rad(5.5 * _receive_pose_weight)
+	rotation.x += deg_to_rad(7.0 * _poke_pose_weight - 6.0 * _contest_recoil_weight)
 	rotation.z = _locomotion_lean.y * locomotion_weight + _turn_pivot * 0.055 * locomotion_weight
 	position.x = float(pose.weight_shift) * 0.075
 	position.y -= float(pose.crouch) * 0.12 + _possession_weight * 0.075
 	position.z = contact_accent * 0.065 + float(pose.follow_through) * 0.018
 	position.z -= 0.045 * _receive_pose_weight
+	position.z += 0.055 * _poke_pose_weight - 0.045 * _contest_recoil_weight
 	var protective_crouch := deg_to_rad(7.0 * _possession_weight)
 	var pivot_hip_turn := _turn_pivot * 0.12 * locomotion_weight
 	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Hips"), Quaternion(Vector3.RIGHT, protective_crouch) * Quaternion(Vector3.UP, hip_twist + pivot_hip_turn))
 	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Spine"), Quaternion(Vector3.UP, spine_twist))
-	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Chest"), Quaternion(Vector3.RIGHT, deg_to_rad(-7.0 * _receive_pose_weight)) * Quaternion(Vector3.UP, chest_twist))
+	var contest_twist := deg_to_rad(12.0 * _poke_pose_weight - 9.0 * _contest_recoil_weight)
+	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Chest"), Quaternion(Vector3.RIGHT, deg_to_rad(-7.0 * _receive_pose_weight)) * Quaternion(Vector3.UP, chest_twist + contest_twist))
 	var shoulder_yaw := deg_to_rad(12.0 * float(pose.chest_turn))
 	var shoulder_drive := deg_to_rad(7.0 * float(pose.chest_turn) + 5.0 * contact_accent)
-	var receive_shoulder := deg_to_rad(9.0 * _receive_pose_weight)
+	var receive_shoulder := deg_to_rad(9.0 * _receive_pose_weight + 11.0 * _poke_pose_weight - 5.0 * _contest_recoil_weight)
 	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Clavicle.L"), Quaternion(Vector3.FORWARD, -shoulder_drive - receive_shoulder) * Quaternion(Vector3.UP, shoulder_yaw))
 	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Clavicle.R"), Quaternion(Vector3.FORWARD, shoulder_drive + receive_shoulder) * Quaternion(Vector3.UP, shoulder_yaw))
 	_skeleton.set_bone_pose_rotation(_skeleton.find_bone("Thigh.L"), Quaternion(Vector3.RIGHT, deg_to_rad(-10.0 * float(pose.plant) - 6.0 * _possession_weight)))

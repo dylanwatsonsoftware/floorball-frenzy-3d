@@ -113,6 +113,7 @@ The animation target is readable, stylised biomechanics rather than literal real
 - [x] Give all five field players on each team deterministic, restrained differences in jersey shade, body/head proportion, and Lamb wool or Pirate hat treatment.
 - [x] Keep charged passes on one continuous compact load-to-contact curve for solo, host, remote-host, and guest-predicted actions instead of snapping back to neutral on release.
 - [x] Add a speed-scaled receive/cushion response on new possession: the stick, chest, and shoulders yield briefly with the incoming ball and recover within 0.32 seconds.
+- [x] Add a short successful-steal stick jab plus a possession-loss torso recoil, both presentation-only and recovered within 0.28 seconds so control remains immediate.
 
 ## Acceptance checks
 
