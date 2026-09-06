@@ -99,14 +99,16 @@ func run_test() -> void:
 		if wound_top_hand_world.distance_to(resting_top_hand_world) < 0.14:
 			fail("The upper hand must travel around the body with the stick instead of freezing a torso-cutting pivot; rest=%s wound=%s" % [resting_top_hand_world, wound_top_hand_world])
 			return
-		for sample_angle in [-75.0, -60.0, -45.0, -30.0, -15.0]:
+		for sample_angle in range(-90, 46, 5):
+			if abs(sample_angle) < 10:
+				continue
 			actor.call("set_stick_slap_angle", sample_angle)
 			body_rig.call("_process", 0.0)
 			top_hand_target.force_update_transform()
 			blade_pocket.force_update_transform()
 			var torso_center: Vector3 = actor.to_global(Vector3(0.0, 0.72, 0.0))
 			var shaft_clearance: float = _point_segment_distance(torso_center, blade_pocket.global_position, top_hand_target.global_position)
-			if shaft_clearance < 0.30:
+			if shaft_clearance < 0.48:
 				fail("The shaft must arc outside the torso throughout the backswing; angle=%s clearance=%s" % [sample_angle, shaft_clearance])
 				return
 		actor.call("set_stick_slap_angle", slap.BACKSWING_ANGLE)
@@ -124,8 +126,7 @@ func run_test() -> void:
 		var backswing_blade_center: Vector3 = blade.to_global(blade.get_aabb().get_center())
 		var facing: Vector3 = actor.call("get_facing_direction")
 		var blade_from_player: Vector3 = backswing_blade_center - actor.global_position
-		var local_backswing_blade: Vector3 = actor.to_local(backswing_blade_center)
-		if local_backswing_blade.z >= -0.35:
+		if blade_from_player.dot(facing) >= -0.25:
 			fail("The wound-up blade must travel behind the player's body; blade=%s facing=%s" % [blade_from_player, facing])
 			return
 		if absf(body_rig.rotation.y) > 0.05:

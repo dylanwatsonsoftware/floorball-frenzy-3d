@@ -119,6 +119,7 @@ The animation target is readable, stylised biomechanics rather than literal real
 - [x] Tighten charged-shot framing to a 25% pullback and 53-degree FOV while retaining the attacking-goal bias, and lengthen the forward drive to 0.22 seconds so it remains readable for roughly 13 frames at 60 FPS.
 - [x] Re-render loaded, contact, follow-through, and recovery close-ups after the timing change; both hands remain attached to their fixed shaft grips throughout the sequence.
 - [x] Replace the frozen upper-hand swing pivot with a shoulder-led hand orbit around the body, preventing the shaft from cutting through the torso while both hands remain attached; validate at 15-degree intervals across the backswing.
+- [x] Expand swing collision validation to the Lamb's visible torso volume at five-degree intervals from full load through follow-through, then add a small load-weighted radial hand arc so the thick shaft mesh clears—not merely its centreline.
 
 ## Acceptance checks
 

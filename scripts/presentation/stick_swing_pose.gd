@@ -2,6 +2,7 @@ class_name StickSwingPose
 extends RefCounted
 
 const UPPER_HAND_BODY_ORBIT_RATIO := 0.55
+const LOADED_HAND_CLEARANCE := 0.12
 
 
 static func apply(stick_rig: Node3D, angle_degrees: float) -> void:
@@ -25,6 +26,9 @@ static func apply(stick_rig: Node3D, angle_degrees: float) -> void:
 	var body_axis := Vector3(0.0, pivot.y, 0.0)
 	var hand_orbit := Basis(Vector3.UP, angle_radians * UPPER_HAND_BODY_ORBIT_RATIO)
 	var moving_pivot := body_axis + hand_orbit * (pivot - body_axis)
+	var radial_direction := (moving_pivot - body_axis).normalized()
+	var load_ratio := clampf(absf(angle_degrees) / 90.0, 0.0, 1.0)
+	moving_pivot += radial_direction * sin(load_ratio * PI * 0.5) * LOADED_HAND_CLEARANCE
 	stick_rig.transform = Transform3D(
 		orbit * rest_transform.basis,
 		moving_pivot + orbit * (rest_transform.origin - pivot)
