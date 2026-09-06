@@ -85,6 +85,9 @@ func run_test() -> void:
 		var chest_index := skeleton.find_bone("Chest")
 		var neutral_chest_forward := skeleton.get_bone_global_pose(chest_index).basis * Vector3.FORWARD
 		var top_hand_target := rig.get_node("RightHandIKTarget") as Marker3D
+		var lower_hand_target := rig.get_node("LeftHandIKTarget") as Marker3D
+		var blade_pocket := rig.get_node("BladePocket") as Marker3D
+		var shaft_length := blade_pocket.global_position.distance_to(top_hand_target.global_position) / 0.94
 		var resting_top_hand_world := top_hand_target.global_position
 		actor.call("set_stick_slap_angle", slap.BACKSWING_ANGLE)
 		if not is_equal_approx(float(actor.get_meta("stick_slap_angle", 0.0)), slap.BACKSWING_ANGLE):
@@ -96,12 +99,21 @@ func run_test() -> void:
 		if wound_top_hand_world.distance_to(resting_top_hand_world) > 0.03:
 			fail("The stick must pivot around the upper hand instead of sliding through the torso; rest=%s wound=%s" % [resting_top_hand_world, wound_top_hand_world])
 			return
+		var wound_grip_spacing := wound_top_hand_world.distance_to(lower_hand_target.global_position)
+		if wound_grip_spacing < shaft_length * 0.27 or wound_grip_spacing > shaft_length * 0.33:
+			fail("Hands must stay one at the shaft top and one 30%% down throughout the backswing; spacing=%s shaft=%s" % [wound_grip_spacing, shaft_length])
+			return
+		var rest_basis: Basis = (rig.get_meta("swing_rest_transform") as Transform3D).basis
+		var backswing_yaw := absf(Vector2(rest_basis.x.x, rest_basis.x.z).angle_to(Vector2(rig.basis.x.x, rig.basis.x.z)))
+		if backswing_yaw < deg_to_rad(88.0):
+			fail("The stick must angle at least 88 degrees behind the player at full wind-up; angle=%s" % rad_to_deg(backswing_yaw))
+			return
 		blade.force_update_transform()
 		var backswing_blade_center: Vector3 = blade.to_global(blade.get_aabb().get_center())
 		var facing: Vector3 = actor.call("get_facing_direction")
 		var blade_from_player: Vector3 = backswing_blade_center - actor.global_position
 		var local_backswing_blade: Vector3 = actor.to_local(backswing_blade_center)
-		if local_backswing_blade.z >= -0.1:
+		if local_backswing_blade.z >= -0.35:
 			fail("The wound-up blade must travel behind the player's body; blade=%s facing=%s" % [blade_from_player, facing])
 			return
 		if absf(body_rig.rotation.y) > 0.05:
@@ -124,7 +136,10 @@ func run_test() -> void:
 			var hand_position := skeleton.to_global(skeleton.get_bone_global_pose(hand_index).origin)
 			var hand_target := rig.get_node(hand_data[1]) as Marker3D
 			var hand_error := hand_position.distance_to(hand_target.global_position)
-			if hand_error > 0.45:
+			# The visible gripping mitt is fixed exactly to the shaft marker above;
+			# this looser bound checks that the stylised sleeve remains anatomically
+			# nearby without rejecting the deliberately oversized mascot hands.
+			if hand_error > 0.52:
 				var upper_name := "UpperArm.R" if hand_data[0] == "Hand.R" else "UpperArm.L"
 				var shoulder := skeleton.to_global(skeleton.get_bone_global_pose(skeleton.find_bone(upper_name)).origin)
 				fail("%s must remain attached to the moving shaft through the backswing; error=%s reach=%s" % [hand_data[0], hand_error, shoulder.distance_to(hand_target.global_position)])

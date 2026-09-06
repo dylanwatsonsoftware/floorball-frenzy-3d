@@ -99,14 +99,15 @@ def lens(name, size, mat, location, rotation=(0, 0, 0)):
 
 
 def boot(name, mat, x):
-    # A rounded shoe last: tapered ankle, broad toe and lifted front.
+    # Compact court shoe: enough toe to read in profile without projecting as
+    # a dark spike beyond the body in the broadcast camera.
     verts = [
-        (-.10, .10, .08), (.10, .10, .08), (-.13, -.24, .06), (.13, -.24, .06),
-        (-.11, .10, -.06), (.11, .10, -.06), (-.15, -.25, -.05), (.15, -.25, -.05),
-        (-.12, -.34, .00), (.12, -.34, .00),
+        (-.10, .08, .08), (.10, .08, .08), (-.13, -.15, .06), (.13, -.15, .06),
+        (-.11, .08, -.06), (.11, .08, -.06), (-.15, -.16, -.05), (.15, -.16, -.05),
+        (-.12, -.22, .00), (.12, -.22, .00),
     ]
     faces = [(0,1,3,2),(4,6,7,5),(0,4,5,1),(2,3,7,6),(0,2,6,4),(1,5,7,3),(2,3,9,8),(6,8,9,7)]
-    return mesh_object(name, verts, faces, mat, (x, -.04, -.98))
+    return mesh_object(name, verts, faces, mat, (x, .015, -.98))
 
 
 def create_shared_rig():

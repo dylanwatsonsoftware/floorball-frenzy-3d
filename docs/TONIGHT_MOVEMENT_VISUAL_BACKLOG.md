@@ -19,7 +19,7 @@ The animation target is readable, stylised biomechanics rather than literal real
 - Transfer weight onto the rear leg during the load, then decisively onto the lead leg through contact.
 - Rotate hips first, chest second, arms third, and the stick last; avoid moving the body as one rigid unit.
 - Keep the blade low and behind the player during the backswing instead of lifting or passing through the torso.
-- Keep the upper hand as the stable hinge while the lower hand slides and drives the shaft.
+- Keep the upper hand as the stable hinge while the lower hand stays fixed about 30% down the shaft and drives through contact.
 - Maintain visible hand contact for every phase, including online-replicated poses.
 - Add a short forward plant/step before contact and preserve momentum after release.
 - Put contact slightly ahead of the lead foot, with the torso leaning into the shot.
@@ -108,6 +108,8 @@ The animation target is readable, stylised biomechanics rather than literal real
 - [x] Replace rigid single-bone sleeves with mobile-friendly upper-arm/forearm blended skinning, then regenerate, save, validate, and visually inspect both character sources and exports.
 - [x] Replace spherical grip placeholders with shaft-aligned capsule palms and curved finger bands, merged into one draw surface per hand for mobile/web.
 - [x] Add clavicle controls to the shared skeleton, parent both arm chains correctly, and drive the shoulders through load, contact, follow-through, and recovery.
+- [x] Lock both hands to stable shaft grips through the swing, deepen the backswing to 90 degrees, and remove the animated shoe silhouettes that appeared as dark spikes behind players.
+- [x] Give all five field players on each team deterministic, restrained differences in jersey shade, body/head proportion, and Lamb wool or Pirate hat treatment.
 
 ## Acceptance checks
 

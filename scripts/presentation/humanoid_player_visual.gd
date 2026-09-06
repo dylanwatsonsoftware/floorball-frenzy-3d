@@ -212,9 +212,9 @@ func set_swing_pose(stick_angle_degrees: float) -> void:
 		var top_hand := stick_rig.get_node_or_null("RightHandIKTarget") as Marker3D
 		var lower_hand := stick_rig.get_node_or_null("LeftHandIKTarget") as Marker3D
 		if top_hand != null and lower_hand != null:
-			var lower_rest: Vector3 = lower_hand.get_meta("rest_position", lower_hand.position)
-			var windup := clampf(-_swing_angle / 82.0, 0.0, 1.0)
-			lower_hand.position = lower_rest.lerp(top_hand.position, windup * 0.30)
+			# Both hands remain clamped to their authored grip points. Sliding the
+			# lower hand inward made the character release the shaft during load.
+			lower_hand.position = lower_hand.get_meta("rest_position", lower_hand.position)
 			stick_rig.force_update_transform()
 			top_hand.force_update_transform()
 			lower_hand.force_update_transform()
@@ -229,9 +229,9 @@ func _apply_torso_swing_pose() -> void:
 	if _skeleton == null:
 		return
 	var pose: Dictionary = StickSlapScript.body_pose_at(_swing_pose_elapsed)
-	var chest_twist := deg_to_rad(50.0 * float(pose.chest_turn))
-	var spine_twist := deg_to_rad(18.0 * float(pose.chest_turn))
-	var hip_twist := deg_to_rad(30.0 * float(pose.hip_turn))
+	var chest_twist := deg_to_rad(64.0 * float(pose.chest_turn))
+	var spine_twist := deg_to_rad(22.0 * float(pose.chest_turn))
+	var hip_twist := deg_to_rad(34.0 * float(pose.hip_turn))
 	var contact_accent := float(pose.contact_accent)
 	var backward_lean := deg_to_rad(-4.0 * maxf(0.0, -float(pose.weight_shift)) + 3.0 * maxf(0.0, float(pose.weight_shift)) + 2.5 * contact_accent)
 	var locomotion_weight := 0.25 if _swing_pose_elapsed < StickSlapScript.TOTAL_SECONDS else 1.0

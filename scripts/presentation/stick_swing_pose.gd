@@ -15,7 +15,7 @@ static func apply(stick_rig: Node3D, angle_degrees: float) -> void:
 		stick_rig.set_meta("swing_pivot", stick_rig.transform * pivot_in_rig)
 	var rest_transform: Transform3D = stick_rig.get_meta("swing_rest_transform")
 	var pivot: Vector3 = stick_rig.get_meta("swing_pivot")
-	var orbit := Basis(Vector3.UP, deg_to_rad(angle_degrees * 0.85))
+	var orbit := Basis(Vector3.UP, deg_to_rad(angle_degrees))
 	stick_rig.transform = Transform3D(
 		orbit * rest_transform.basis,
 		pivot + orbit * (rest_transform.origin - pivot)

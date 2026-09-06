@@ -390,12 +390,21 @@ func _add_humanoid(parent: Node3D, team: StringName, slot: int) -> void:
 	var rig := packed_model.instantiate() as Node3D
 	rig.name = "BodyRig"
 	rig.set_script(load("res://scripts/presentation/humanoid_player_visual.gd"))
-	rig.set_meta("variant_signature", "%s_%d" % ["lamb" if team == &"red" else "pirate", slot])
+	var team_name := "lamb" if team == &"red" else "pirate"
+	rig.set_meta("variant_signature", "%s_%d" % [team_name, slot])
+	rig.set_meta("appearance_variant", "%s_player_%d" % [team_name, slot])
 	rig.set_meta("authored_mesh", true)
 	parent.add_child(rig)
-	var lamb_jerseys := [Color("168a45"), Color("24a653"), Color("0d6f38")]
-	var pirate_jerseys := [Color("171c25"), Color("242a34"), Color("0e1118")]
-	var variant_index := posmod(slot, 3)
+	# The imported shoe lasts are retained in the reusable Blender source, but
+	# hidden in-game: foot-bone rotation currently projects them behind the
+	# mascot as dark spikes in the broadcast camera.
+	for boot_name in ["LeftBoot", "RightBoot"]:
+		var boot := rig.find_child(boot_name, true, false) as MeshInstance3D
+		if boot != null:
+			boot.visible = false
+	var lamb_jerseys := [Color("168a45"), Color("24a653"), Color("0d6f38"), Color("1d9650"), Color("126f3c")]
+	var pirate_jerseys := [Color("171c25"), Color("242a34"), Color("0e1118"), Color("202c3b"), Color("111a29")]
+	var variant_index := posmod(slot, 5)
 	var jersey_color: Color = lamb_jerseys[variant_index] if team == &"red" else pirate_jerseys[variant_index]
 	if StringName(parent.get_meta("role", &"field")) == &"goalkeeper":
 		jersey_color = Color("06462a") if team == &"red" else Color("72b7c8")
@@ -410,7 +419,22 @@ func _add_humanoid(parent: Node3D, team: StringName, slot: int) -> void:
 			part.material_override = _material(accent_color, 0.76)
 	# Small proportion changes distinguish teammates without reverting to
 	# primitive accessories pasted onto the authored body.
-	rig.scale = [Vector3.ONE, Vector3(0.97, 1.03, 0.97), Vector3(1.04, 0.98, 1.04)][variant_index]
+	var body_scales := [
+		Vector3.ONE,
+		Vector3(0.97, 1.035, 0.97),
+		Vector3(1.035, 0.98, 1.035),
+		Vector3(0.985, 1.015, 0.985),
+		Vector3(1.02, 0.995, 1.02),
+	]
+	rig.scale = body_scales[variant_index]
+	var head := rig.find_child("HeadVisual", true, false) as MeshInstance3D
+	if head != null:
+		var head_scale: float = [0.96, 1.02, 1.055, 0.985, 1.035][variant_index]
+		head.scale *= head_scale
+	var signature_part := rig.find_child("LambWool", true, false) as MeshInstance3D if team == &"red" else rig.find_child("PirateTricorne", true, false) as MeshInstance3D
+	if signature_part != null:
+		signature_part.scale *= [1.04, 0.96, 1.0, 1.06, 0.93][variant_index]
+		signature_part.rotation_degrees.z += [-3.0, 2.0, 0.0, 4.0, -1.5][variant_index]
 
 
 func _add_goalkeeper_helmet(parent: Node3D, color: Color) -> void:

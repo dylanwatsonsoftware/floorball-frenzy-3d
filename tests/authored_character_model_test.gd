@@ -31,6 +31,14 @@ func run_test() -> void:
 				fail("%s/%s must blend across upper-arm and forearm bones so the elbow deforms with hand IK" % [actor.name, part_name])
 				return
 		var skeleton := rig.find_child("Skeleton3D", true, false) as Skeleton3D
+		for boot_name in ["LeftBoot", "RightBoot"]:
+			var boot := rig.find_child(boot_name, true, false) as MeshInstance3D
+			if boot == null or maxf(boot.get_aabb().size.x, maxf(boot.get_aabb().size.y, boot.get_aabb().size.z)) > 0.34:
+				fail("%s/%s must use a compact shoe silhouette that cannot protrude behind the body; size=%s" % [actor.name, boot_name, boot.get_aabb().size if boot != null else Vector3.ZERO])
+				return
+			if boot.visible:
+				fail("%s/%s must stay hidden until planted footwear replaces the animated back spikes" % [actor.name, boot_name])
+				return
 		for clavicle_name in [&"Clavicle.L", &"Clavicle.R"]:
 			if skeleton.find_bone(clavicle_name) < 0:
 				fail("%s needs %s control for shoulder-led stick movement" % [actor.name, clavicle_name])
@@ -40,7 +48,20 @@ func run_test() -> void:
 		if not animation_has_bone_rotation(slap_animation, "Clavicle.L") or not animation_has_bone_rotation(slap_animation, "Clavicle.R"):
 			fail("%s slap shot must animate both clavicles instead of hinging arms directly from the chest" % actor.name)
 			return
-	print("Lambs and Pirates use authored 3D character meshes.")
+	var variants := {&"red": {}, &"blue": {}}
+	for actor in scene.get_node("Arena").call("get_field_players"):
+		if StringName(actor.get_meta("role", &"field")) == &"goalkeeper":
+			continue
+		var rig := actor.get_node("BodyRig") as Node3D
+		var signature := String(rig.get_meta("appearance_variant", ""))
+		if signature.is_empty():
+			fail("%s needs a deterministic appearance variant" % actor.name)
+			return
+		variants[actor.call("get_team")][signature] = true
+	if variants[&"red"].size() != 5 or variants[&"blue"].size() != 5:
+		fail("All five field players per team must look individually distinct; variants=%s" % variants)
+		return
+	print("Lambs and Pirates use authored 3D character meshes with distinct teammate variants.")
 	quit(0)
 
 
