@@ -48,20 +48,39 @@ func run_test() -> void:
 	if not ball.call("is_controlled_by_actor", &"red_2"):
 		fail("Turning-shot setup must begin with red_2 possession")
 		return
+	red_two.call("apply_network_rotation", PI)
+	var ball_before_turn := Vector2(ball.global_position.x, ball.global_position.z)
+	var initial_facing: Vector3 = red_two.call("get_facing_direction")
+	var initial_goal_direction := Vector3(16.5 - red_two.global_position.x, 0.0, -red_two.global_position.z).normalized()
 	Input.action_press("shoot")
+	await physics_frame
+	var first_turn_facing: Vector3 = red_two.call("get_facing_direction")
+	var first_turn_alignment := first_turn_facing.dot(initial_goal_direction)
+	if first_turn_alignment <= initial_facing.dot(initial_goal_direction) + 0.02 or first_turn_alignment > 0.85:
+		Input.action_release("shoot")
+		fail("Shot aiming must visibly turn toward goal over several frames instead of snapping; initial=%s first=%s" % [initial_facing, first_turn_facing])
+		return
 	Input.action_press("move_down")
-	for frame in 12:
+	for frame in 18:
 		await physics_frame
 	Input.action_release("move_down")
 	var turned_facing: Vector3 = red_two.call("get_facing_direction")
 	var goal_direction := Vector3(16.5 - red_two.global_position.x, 0.0, -red_two.global_position.z).normalized()
-	if turned_facing.dot(goal_direction) < 0.94:
+	if turned_facing.dot(goal_direction) < 0.90:
 		Input.action_release("shoot")
 		fail("The controlled carrier must automatically turn toward the attacking goal while charging; goal=%s turned=%s" % [goal_direction, turned_facing])
 		return
 	if not red_two.call("is_human_controlled"):
 		Input.action_release("shoot")
 		fail("Turning and running during a charge must retain the selected player")
+		return
+	var ball_after_turn := Vector2(ball.global_position.x, ball.global_position.z)
+	var facing_planar := Vector2(turned_facing.x, turned_facing.z)
+	var right_planar := Vector2(-facing_planar.y, facing_planar.x)
+	var expected_ball := Vector2(red_two.global_position.x, red_two.global_position.z) + facing_planar * 0.9 + right_planar * 0.75
+	if ball_after_turn.distance_to(expected_ball) > 0.35 or ball_after_turn.distance_to(ball_before_turn) < 0.5:
+		Input.action_release("shoot")
+		fail("A possessed ball must turn with its carrier in the forward shooting pocket; ball=%s expected=%s start=%s" % [ball_after_turn, expected_ball, ball_before_turn])
 		return
 	if _visible_arrow_count(players) != 1 or not red_two.get_node("AimArrow").visible:
 		Input.action_release("shoot")

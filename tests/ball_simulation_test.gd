@@ -18,6 +18,10 @@ func _init() -> void:
 	if charged_shot.y <= low_shot.y:
 		fail("Charged shot must have more lift")
 		return
+	var charged_apex: float = script.BALL_RADIUS + charged_shot.y * charged_shot.y / (2.0 * script.GRAVITY)
+	if charged_apex > 1.55:
+		fail("A normal full-charge slap shot should usually stay below the goal frame; apex=%s velocity=%s" % [charged_apex, charged_shot])
+		return
 	var overcharged_shot: Vector3 = script.shot_velocity(Vector2.RIGHT, 2.0)
 	if not overcharged_shot.is_equal_approx(charged_shot):
 		fail("A fully charged shot must stay at full power instead of becoming weak because the button was held too long")

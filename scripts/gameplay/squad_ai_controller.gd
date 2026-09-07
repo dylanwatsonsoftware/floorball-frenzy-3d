@@ -52,7 +52,7 @@ func _physics_process(delta: float) -> void:
 	if not is_human_controlled():
 		var owner_team: StringName = _ball.call("get_control_owner_team") if _ball.has_method("get_control_owner_team") else &""
 		facing_planar = SquadLogicScript.tactical_facing(Vector2(global_position.x, global_position.z), movement, _ball.global_position, owner_team == get_team(), has_ball)
-	if _shot_aim_locked and not is_human_controlled():
+	if _shot_aim_locked:
 		facing_planar = Vector2.ZERO
 	if not is_human_controlled():
 		speed_multiplier *= SquadLogicScript.facing_movement_multiplier(movement, facing_planar)

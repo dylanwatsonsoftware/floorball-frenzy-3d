@@ -326,11 +326,12 @@ func _interaction_participants() -> Array:
 	var participants := []
 	for actor in _field_players:
 		var is_network_human: bool = OnlineMatch.enabled and OnlineMatch.is_authority() and actor.call("get_team") == &"blue" and actor.call("get_actor_id") == get_human_control_actor_id_for_team(&"blue")
+		var is_loading_shot := actor == _slap_actor and _slap_elapsed < 0.0 and (_charge_seconds > 0.0 or _network_blue_charge > 0.0)
 		var participant := {
 			"position": actor.global_position,
 			"velocity": actor.velocity,
 			"facing": actor.call("get_facing_direction"),
-			"slap_phase": _current_slap_phase() if actor == _slap_actor else &"idle",
+			"slap_phase": &"idle" if is_loading_shot else _current_slap_phase() if actor == _slap_actor else &"idle",
 			"actor_id": actor.call("get_actor_id"),
 			"team": actor.call("get_team"),
 			"goalkeeper": actor.has_method("is_goalkeeper") and bool(actor.call("is_goalkeeper")),
@@ -339,7 +340,12 @@ func _interaction_participants() -> Array:
 			"network_pickup_assist": is_network_human,
 		}
 		var blade_pocket := actor.get_node_or_null("StickRig/BladePocket") as Marker3D
-		if blade_pocket != null:
+		if is_loading_shot:
+			var facing := Vector2(float(participant.facing.x), float(participant.facing.z)).normalized()
+			var right := Vector2(-facing.y, facing.x)
+			var neutral_target := Vector2(actor.global_position.x, actor.global_position.z) + facing * BallInteractionScript.BLADE_FORWARD_OFFSET + right * BallInteractionScript.BLADE_RIGHT_OFFSET
+			participant.blade_target = Vector3(neutral_target.x, global_position.y, neutral_target.y)
+		elif blade_pocket != null:
 			blade_pocket.force_update_transform()
 			participant.blade_target = blade_pocket.global_position
 		if is_network_human:
@@ -626,6 +632,8 @@ func _update_network_blue_actions(delta: float) -> void:
 	OnlineMatch.remote_pass = false
 	_network_blue_was_passing = OnlineMatch.remote_pass_held
 	if OnlineMatch.remote_shoot:
+		if _network_blue_charge <= 0.0:
+			_slap_actor = actor
 		_network_blue_charge = minf(MAX_CHARGE_SECONDS * 2.0, _network_blue_charge + delta)
 		_turn_actor_toward_attacking_goal(actor, delta)
 		actor.call("set_shot_aim_locked", true)
@@ -642,7 +650,7 @@ func _update_network_blue_actions(delta: float) -> void:
 
 func _turn_actor_toward_attacking_goal(actor: CharacterBody3D, delta: float) -> void:
 	var direction := SquadLogicScript.attacking_goal_direction(actor.call("get_team"), actor.global_position)
-	var next_rotation := PlayerMotorScript.step_facing_rotation(actor.rotation.y, direction, delta, 120.0)
+	var next_rotation := PlayerMotorScript.step_facing_rotation(actor.rotation.y, direction, delta, 8.0)
 	if actor.has_method("apply_network_rotation"):
 		actor.call("apply_network_rotation", next_rotation)
 	else:

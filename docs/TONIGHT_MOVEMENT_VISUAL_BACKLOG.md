@@ -124,6 +124,8 @@ The animation target is readable, stylised biomechanics rather than literal real
 - [x] Enlarge and reshape the single-surface grip mitts so their palms and finger bands visibly wrap the shaft at gameplay scale rather than reading as detached white spheres.
 - [x] Replace host and guest possession-follow springs with direct planar attachment to the authored blade pocket, so the ball responds immediately to movement and turning while remaining grounded during the raised backswing.
 - [x] Keep the possessed ball planted through backswing and forward-swing presentation, then guarantee contact for the possession that began the slap instead of dragging the ball along the animated blade path before impact.
+- [x] Replace the instant shoot-to-goal snap with a short rate-limited aim turn for local and remote players, keep movement input from fighting that turn, and carry the possessed ball around in the neutral forward stick pocket while loading.
+- [x] Lower the normal full-charge launch apex so most well-aimed shots stay below the goal frame while preserving stronger lift than a tap shot.
 
 ## Acceptance checks
 
