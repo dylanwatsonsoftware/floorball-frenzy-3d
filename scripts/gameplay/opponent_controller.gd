@@ -120,12 +120,20 @@ func _physics_process(delta: float) -> void:
 	global_position = boundary.position
 	velocity = boundary.velocity
 	_resolve_player_contact()
+	_apply_goal_area_restriction(self)
+	_apply_goal_area_restriction(_player)
 	if _opening_grace_remaining > 0.0 and not is_dashing():
 		global_position = frame_start_position
 		velocity = Vector3.ZERO
 
 	if is_human_controlled() and OnlineMatch.is_authority():
 		OnlineMatch.call("mark_remote_command_simulated")
+
+
+func _apply_goal_area_restriction(actor: CharacterBody3D) -> void:
+	var restricted := RinkCollisionScript.constrain_field_player(actor.global_position, actor.velocity)
+	actor.global_position = restricted.position
+	actor.velocity = restricted.velocity
 
 
 

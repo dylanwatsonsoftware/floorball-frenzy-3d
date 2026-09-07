@@ -126,6 +126,7 @@ The animation target is readable, stylised biomechanics rather than literal real
 - [x] Keep the possessed ball planted through backswing and forward-swing presentation, then guarantee contact for the possession that began the slap instead of dragging the ball along the animated blade path before impact.
 - [x] Replace the instant shoot-to-goal snap with a short rate-limited aim turn for local and remote players, keep movement input from fighting that turn, and carry the possessed ball around in the neutral forward stick pocket while loading.
 - [x] Lower the normal full-charge launch apex so most well-aimed shots stay below the goal frame while preserving stronger lift than a tap shot.
+- [x] Keep field-player bodies out of both goalkeeper areas and physical goal cages while allowing their sticks and the ball into the marked area; re-check goal-frame collision after possession movement so the rear and side nets cannot be bypassed by carrying the ball.
 
 ## Acceptance checks
 

@@ -42,6 +42,22 @@ func _init() -> void:
 		fail("Players must slide along rounded corners instead of entering the boards")
 		return
 
+	if not rink.has_method("constrain_field_player"):
+		fail("Field players need explicit goalkeeper-area and goal-cage boundaries")
+		return
+	var house_entry: Dictionary = rink.constrain_field_player(Vector3(15.8, 0.75, 0.0), Vector3(4.0, 0.0, 0.0))
+	if house_entry.position.x > rink.GOALKEEPER_AREA_FRONT_X - rink.PLAYER_BODY_RADIUS + 0.001 or house_entry.velocity.x > 0.001:
+		fail("A field player's body must not enter the goalkeeper area; got %s" % house_entry)
+		return
+	var rear_cage_entry: Dictionary = rink.constrain_field_player(Vector3(17.0, 0.75, 0.0), Vector3(-4.0, 0.0, 0.0))
+	if rear_cage_entry.position.x < rink.GOAL_BACK_X + rink.PLAYER_BODY_RADIUS - 0.001 or rear_cage_entry.velocity.x < -0.001:
+		fail("A field player must not enter the goal cage through its rear net; got %s" % rear_cage_entry)
+		return
+	var behind_goal_lane: Dictionary = rink.constrain_field_player(Vector3(17.5, 0.75, 2.0), Vector3(0.0, 0.0, -2.0))
+	if not behind_goal_lane.position.is_equal_approx(Vector3(17.5, 0.75, 2.0)):
+		fail("Players must still be able to run behind and around the outside of a goal; got %s" % behind_goal_lane)
+		return
+
 	print("Rounded rink collision is valid.")
 	quit(0)
 

@@ -122,9 +122,13 @@ func _physics_process(delta: float) -> void:
 		return
 	var previous_control_owner := _control_owner
 	var interaction_state := BallInteractionScript.step(next_state.position, next_state.velocity, _interaction_participants(), delta, _control_owner)
-	position = interaction_state.position
-	ball_velocity = interaction_state.velocity
-	_control_owner = interaction_state.controller
+	var controlled_collision := BallSimulationScript.resolve_controlled_motion(next_state.position, interaction_state.position, interaction_state.velocity)
+	position = controlled_collision.position
+	ball_velocity = controlled_collision.velocity
+	if bool(controlled_collision.collided) and int(interaction_state.controller) >= 0:
+		_pickup_lock_actor_id = _field_players[int(interaction_state.controller)].call("get_actor_id")
+		_pickup_lock_seconds = PASSER_PICKUP_LOCK_SECONDS
+	_control_owner = -1 if bool(controlled_collision.collided) else interaction_state.controller
 	_update_human_control_from_possession(previous_control_owner, next_state.velocity.length())
 	_update_ai_pass(delta)
 	_update_dash_steal_latches()

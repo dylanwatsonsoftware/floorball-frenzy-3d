@@ -85,6 +85,10 @@ static func is_perfect_charge(charge: float) -> bool:
 	return absf(charge - 1.0) <= PERFECT_CHARGE_WINDOW
 
 
+static func resolve_controlled_motion(previous_position: Vector3, next_position: Vector3, velocity: Vector3) -> Dictionary:
+	return GoalCollisionScript.resolve(previous_position, next_position, velocity)
+
+
 static func step(position: Vector3, velocity: Vector3, delta: float) -> Dictionary:
 	var next_velocity := velocity
 	next_velocity.y -= GRAVITY * delta

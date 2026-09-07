@@ -72,6 +72,9 @@ func _physics_process(delta: float) -> void:
 	var boundary := RinkCollisionScript.constrain_body(global_position, velocity, RINK_HALF_LENGTH, RINK_HALF_WIDTH, 1.8)
 	global_position = boundary.position
 	velocity = boundary.velocity
+	var restricted := RinkCollisionScript.constrain_field_player(global_position, velocity)
+	global_position = restricted.position
+	velocity = restricted.velocity
 	if is_human_controlled() and _mobile_controls != null and _mobile_controls.has_method("set_dash_cooldown_ratio"):
 		_mobile_controls.call("set_dash_cooldown_ratio", get_dash_cooldown_ratio())
 	if is_human_controlled() and OnlineMatch.is_authority() and get_team() == &"blue":

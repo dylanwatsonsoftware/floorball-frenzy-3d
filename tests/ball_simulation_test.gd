@@ -91,6 +91,13 @@ func _init() -> void:
 	if StringName(net_hit_same_frame.get("goal", "")) != &"red":
 		fail("A shot crossing the line and reaching the back net in one physics frame must still register as a goal; got %s" % net_hit_same_frame)
 		return
+	if not script.has_method("resolve_controlled_motion"):
+		fail("Possession movement needs a second goal-cage collision pass")
+		return
+	var carried_through_back: Dictionary = script.resolve_controlled_motion(Vector3(17.55, 0.22, 0.0), Vector3(17.05, 0.22, 0.0), Vector3(-4.0, 0.0, 0.0))
+	if not carried_through_back.collided or carried_through_back.position.x < 17.31 + script.BALL_RADIUS - 0.001:
+		fail("A ball carried from behind the goal must stop at the rear net; got %s" % carried_through_back)
+		return
 
 	print("Ball simulation is valid.")
 	quit(0)
