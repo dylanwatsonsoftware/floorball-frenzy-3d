@@ -124,6 +124,10 @@ func run_test() -> void:
 			return
 		blade.force_update_transform()
 		var backswing_blade_center: Vector3 = blade.to_global(blade.get_aabb().get_center())
+		var loaded_blade_local: Vector3 = actor.to_local(backswing_blade_center)
+		if loaded_blade_local.y < blade_center.y + 0.16:
+			fail("The blade must lift visibly off the floor while travelling backward; rest=%s loaded=%s" % [blade_center, loaded_blade_local])
+			return
 		var facing: Vector3 = actor.call("get_facing_direction")
 		var blade_from_player: Vector3 = backswing_blade_center - actor.global_position
 		if blade_from_player.dot(facing) >= -0.25:
@@ -145,17 +149,20 @@ func run_test() -> void:
 			if not visible_hand.mesh is ArrayMesh or visible_hand.get_child_count() != 0 or (visible_hand.mesh as ArrayMesh).get_surface_count() != 1:
 				fail("The visible %s hand must combine its shaped palm and curved fingers into one mobile-friendly draw surface" % hand_data[0])
 				return
+			var visible_hand_size := visible_hand.get_aabb().size
+			if minf(visible_hand_size.x, visible_hand_size.z) < 0.20:
+				fail("The visible %s hand must wrap far enough around the shaft for contact to read at gameplay scale; size=%s" % [hand_data[0], visible_hand_size])
+				return
 			var hand_index := skeleton.find_bone(hand_data[0])
 			var hand_position := skeleton.to_global(skeleton.get_bone_global_pose(hand_index).origin)
 			var hand_target := rig.get_node(hand_data[1]) as Marker3D
 			var hand_error := hand_position.distance_to(hand_target.global_position)
-			# The visible gripping mitt is fixed exactly to the shaft marker above;
-			# this looser bound checks that the stylised sleeve remains anatomically
-			# nearby without rejecting the deliberately oversized mascot hands.
+			# Bone origins sit at the wrist rather than at the visible terminal mesh.
+			# This guards reach while the marker-mounted grip mesh above guards contact.
 			if hand_error > 0.52:
 				var upper_name := "UpperArm.R" if hand_data[0] == "Hand.R" else "UpperArm.L"
 				var shoulder := skeleton.to_global(skeleton.get_bone_global_pose(skeleton.find_bone(upper_name)).origin)
-				fail("%s must remain attached to the moving shaft through the backswing; error=%s reach=%s" % [hand_data[0], hand_error, shoulder.distance_to(hand_target.global_position)])
+				fail("The visible arm end for %s must meet its shaft grip rather than floating nearby; error=%s reach=%s" % [hand_data[0], hand_error, shoulder.distance_to(hand_target.global_position)])
 				return
 		actor.call("set_stick_slap_angle", 0.0)
 		body_rig.call("_process", 0.0)

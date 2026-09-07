@@ -3,6 +3,7 @@ extends RefCounted
 
 const UPPER_HAND_BODY_ORBIT_RATIO := 0.55
 const LOADED_HAND_CLEARANCE := 0.12
+const MAX_BACKSWING_LIFT_DEGREES := 18.0
 
 
 static func apply(stick_rig: Node3D, angle_degrees: float) -> void:
@@ -16,6 +17,9 @@ static func apply(stick_rig: Node3D, angle_degrees: float) -> void:
 			pivot_in_rig = stick_rig.to_local(grip.to_global(grip.get_aabb().get_center()))
 		stick_rig.set_meta("swing_rest_transform", stick_rig.transform)
 		stick_rig.set_meta("swing_pivot", stick_rig.transform * pivot_in_rig)
+		var blade_pocket := stick_rig.get_node_or_null("BladePocket") as Marker3D
+		if blade_pocket != null:
+			stick_rig.set_meta("swing_blade_rest", stick_rig.transform * blade_pocket.position)
 	var rest_transform: Transform3D = stick_rig.get_meta("swing_rest_transform")
 	var pivot: Vector3 = stick_rig.get_meta("swing_pivot")
 	var angle_radians := deg_to_rad(angle_degrees)
@@ -29,7 +33,16 @@ static func apply(stick_rig: Node3D, angle_degrees: float) -> void:
 	var radial_direction := (moving_pivot - body_axis).normalized()
 	var load_ratio := clampf(absf(angle_degrees) / 90.0, 0.0, 1.0)
 	moving_pivot += radial_direction * sin(load_ratio * PI * 0.5) * LOADED_HAND_CLEARANCE
+	var lift := Basis.IDENTITY
+	if stick_rig.has_meta("swing_blade_rest"):
+		var rest_blade: Vector3 = stick_rig.get_meta("swing_blade_rest")
+		var yawed_blade_vector := orbit * (rest_blade - pivot)
+		var planar_blade_vector := Vector3(yawed_blade_vector.x, 0.0, yawed_blade_vector.z)
+		if not planar_blade_vector.is_zero_approx():
+			var lift_axis := planar_blade_vector.normalized().cross(Vector3.UP)
+			var lift_angle := deg_to_rad(MAX_BACKSWING_LIFT_DEGREES) * smoothstep(0.0, 1.0, load_ratio)
+			lift = Basis(lift_axis, lift_angle)
 	stick_rig.transform = Transform3D(
-		orbit * rest_transform.basis,
-		moving_pivot + orbit * (rest_transform.origin - pivot)
+		lift * orbit * rest_transform.basis,
+		moving_pivot + lift * orbit * (rest_transform.origin - pivot)
 	)

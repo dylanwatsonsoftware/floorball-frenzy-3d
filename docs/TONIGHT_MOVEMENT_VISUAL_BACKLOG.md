@@ -120,6 +120,8 @@ The animation target is readable, stylised biomechanics rather than literal real
 - [x] Re-render loaded, contact, follow-through, and recovery close-ups after the timing change; both hands remain attached to their fixed shaft grips throughout the sequence.
 - [x] Replace the frozen upper-hand swing pivot with a shoulder-led hand orbit around the body, preventing the shaft from cutting through the torso while both hands remain attached; validate at 15-degree intervals across the backswing.
 - [x] Expand swing collision validation to the Lamb's visible torso volume at five-degree intervals from full load through follow-through, then add a small load-weighted radial hand arc so the thick shaft mesh clears—not merely its centreline.
+- [x] Add a vertical swing plane: lift the blade 18 degrees as it travels backward, return it to the floor at contact, and retain a smaller rising follow-through instead of rotating flat around the court.
+- [x] Enlarge and reshape the single-surface grip mitts so their palms and finger bands visibly wrap the shaft at gameplay scale rather than reading as detached white spheres.
 
 ## Acceptance checks
 

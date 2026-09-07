@@ -258,13 +258,13 @@ func _attach_visible_hand(target: Marker3D, authored_hand_name: String) -> void:
 	var grip_hand := MeshInstance3D.new()
 	grip_hand.name = "GripHand"
 	var palm := CapsuleMesh.new()
-	palm.radius = 0.085
-	palm.height = 0.20
+	palm.radius = 0.105
+	palm.height = 0.22
 	palm.radial_segments = 12
 	palm.rings = 6
 	var finger_band := TorusMesh.new()
-	finger_band.inner_radius = 0.034
-	finger_band.outer_radius = 0.078
+	finger_band.inner_radius = 0.040
+	finger_band.outer_radius = 0.098
 	finger_band.rings = 10
 	finger_band.ring_segments = 8
 	var surface := SurfaceTool.new()
