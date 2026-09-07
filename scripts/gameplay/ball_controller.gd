@@ -48,6 +48,7 @@ var _shot_trail: MeshInstance3D
 var _slap_elapsed := -1.0
 var _slap_actor: CharacterBody3D
 var _pending_slap_charge := 0.0
+var _pending_slap_started_possessed := false
 var _pending_slap_direction := Vector2.RIGHT
 var _pending_one_touch := false
 var _pending_bolt := false
@@ -392,6 +393,7 @@ func _release_charged_slap(direction: Vector2, charge: float) -> void:
 
 func _configure_slap(direction: Vector2, charge: float, start_elapsed: float, is_pass: bool = false) -> void:
 	_slap_elapsed = start_elapsed
+	_pending_slap_started_possessed = get_control_owner_team() == _slap_actor.call("get_team")
 	_pending_slap_direction = direction.normalized() if not direction.is_zero_approx() else Vector2.RIGHT
 	_pending_slap_charge = clampf(charge, 0.0, 2.0)
 	_pending_pass = is_pass
@@ -439,7 +441,7 @@ func _advance_slap(delta: float) -> void:
 		var step_direction := Vector3(_pending_slap_direction.x, 0.0, _pending_slap_direction.y)
 		if not step_direction.is_zero_approx():
 			_slap_actor.global_position += step_direction.normalized() * step_distance
-	if StickSlapScript.crossed_contact(previous_elapsed, _slap_elapsed) and (_ball_in_slap_actor_blade() or _pending_lag_compensated_contact):
+	if StickSlapScript.crossed_contact(previous_elapsed, _slap_elapsed) and (_pending_slap_started_possessed or _ball_in_slap_actor_blade() or _pending_lag_compensated_contact):
 		var slap_team: StringName = _slap_actor.call("get_team")
 		if _pending_pass:
 			_launch_pass(_pending_slap_direction, _slap_actor.velocity, slap_team, _pending_soft_pass, _pending_slap_charge)
@@ -455,6 +457,7 @@ func _cancel_slap() -> void:
 	_hide_aim_arrow()
 	_slap_elapsed = -1.0
 	_pending_slap_charge = 0.0
+	_pending_slap_started_possessed = false
 	_pending_one_touch = false
 	_pending_bolt = false
 	_pending_pass = false
@@ -476,6 +479,8 @@ func _current_slap_phase() -> StringName:
 
 
 func _ball_in_slap_actor_blade() -> bool:
+	if get_control_owner_actor_id() == _slap_actor.call("get_actor_id"):
+		return true
 	var participant := {
 		"position": _slap_actor.global_position,
 		"velocity": _slap_actor.velocity,

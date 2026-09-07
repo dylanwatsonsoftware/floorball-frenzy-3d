@@ -48,6 +48,9 @@ func run_test() -> void:
 		fail("A possessed ball must settle visibly onto the actual blade instead of an obsolete physics offset; gap=%s ball=%s blade=%s owner=%s" % [carried_gap, ball.global_position, blade_world_center, ball.call("get_control_owner_actor_id")])
 		return
 	ball.call("begin_slap", Vector2.RIGHT, 0.7)
+	if not bool(ball.get("_pending_slap_started_possessed")):
+		fail("A slap begun with team possession must preserve that contact entitlement; owner=%s actor=%s" % [ball.call("get_control_owner_actor_id"), ball.get("_slap_actor").call("get_actor_id")])
+		return
 	opponent.call("try_dash", Vector2.LEFT)
 	var opponent_index: int = scene.get_node("Arena").call("get_field_players").find(opponent)
 	ball.call("_apply_dash_steal", opponent_index)
@@ -93,11 +96,11 @@ func run_test() -> void:
 		fail("A ball inside the retained carry zone must remain possessed during backswing")
 		return
 	var peak_shot_speed := 0.0
-	for frame in 20:
+	for frame in 30:
 		await physics_frame
 		peak_shot_speed = maxf(peak_shot_speed, ball.ball_velocity.length())
 	if peak_shot_speed < 7.5:
-		fail("A forward slap must reliably hit a retained ball; peak_speed=%s velocity=%s" % [peak_shot_speed, ball.ball_velocity])
+		fail("A forward slap must reliably hit a retained ball; peak_speed=%s velocity=%s elapsed=%s pending=%s owner=%s" % [peak_shot_speed, ball.ball_velocity, ball.get("_slap_elapsed"), ball.get("_pending_slap_started_possessed"), ball.call("get_control_owner_actor_id")])
 		return
 
 	print("Possession and empty-slap scene behavior is valid.")

@@ -235,15 +235,14 @@ func run_test() -> void:
 		return
 	remote_actor.velocity = Vector3.ZERO
 	client_ball.global_position = remote_blade_pocket.global_position + Vector3(1.0, 0.0, 0.0)
-	var pre_follow_position: Vector3 = client_ball.global_position
 	client_controller.call("_predict_replicas", 1.0 / 60.0)
-	if client_ball.global_position.distance_to(pre_follow_position) > 0.21:
-		fail("A possessed replica must approach its owner's blade without a one-frame teleport")
+	if Vector2(client_ball.global_position.x, client_ball.global_position.z).distance_to(Vector2(remote_blade_pocket.global_position.x, remote_blade_pocket.global_position.z)) > 0.01:
+		fail("A possessed replica must attach directly to its locally animated blade instead of trailing behind it")
 		return
 	for follow_frame in 29:
 		client_controller.call("_predict_replicas", 1.0 / 60.0)
 	remote_blade_pocket.force_update_transform()
-	if client_ball.global_position.distance_to(remote_blade_pocket.global_position) > 0.05:
+	if Vector2(client_ball.global_position.x, client_ball.global_position.z).distance_to(Vector2(remote_blade_pocket.global_position.x, remote_blade_pocket.global_position.z)) > 0.05:
 		fail("A possessed guest replica ball must settle onto its authoritative owner's blade")
 		return
 	var previous_possessed_ball_position: Vector3 = client_ball.global_position
@@ -252,7 +251,7 @@ func run_test() -> void:
 	movement_buffer.call("push", Time.get_ticks_msec() - 110, remote_actor.global_position, Vector3(4.0, 0.0, 0.0), remote_actor.rotation.y)
 	client_controller.call("_predict_replicas", 1.0 / 60.0)
 	remote_blade_pocket.force_update_transform()
-	if client_ball.global_position.distance_to(remote_blade_pocket.global_position) > 0.05 or client_ball.global_position.x <= previous_possessed_ball_position.x:
+	if Vector2(client_ball.global_position.x, client_ball.global_position.z).distance_to(Vector2(remote_blade_pocket.global_position.x, remote_blade_pocket.global_position.z)) > 0.05 or client_ball.global_position.x <= previous_possessed_ball_position.x:
 		fail("A possessed replica ball must follow its owner's predicted blade between snapshots")
 		return
 	var local_possession_snapshot: Dictionary = possessed_snapshot.duplicate(true)
@@ -302,7 +301,7 @@ func run_test() -> void:
 	for local_movement_follow_frame in 20:
 		client_controller.call("_predict_replicas", 1.0 / 60.0)
 	local_blade_pocket.force_update_transform()
-	if client_ball.global_position.distance_to(local_blade_pocket.global_position) > 0.05:
+	if Vector2(client_ball.global_position.x, client_ball.global_position.z).distance_to(Vector2(local_blade_pocket.global_position.x, local_blade_pocket.global_position.z)) > 0.05:
 		fail("The guest-owned ball must settle onto the locally predicted blade without snapping")
 		return
 	client_controller.call("_begin_predicted_ball_action", local_actor, &"pass", 0.38, false)

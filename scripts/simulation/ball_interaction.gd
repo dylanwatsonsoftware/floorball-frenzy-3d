@@ -114,13 +114,18 @@ static func step(ball_position: Vector3, ball_velocity: Vector3, participants: A
 	if controller >= 0:
 		var owner: Dictionary = participants[controller]
 		var owner_facing := Vector2(owner.facing.x, owner.facing.z).normalized()
-		if owner.get("slap_phase", &"idle") == &"backswing":
+		if owner.get("slap_phase", &"idle") in [&"backswing", &"forward"]:
 			next_velocity.x = owner.velocity.x
 			next_velocity.z = owner.velocity.z
 			return _result(next_position, next_velocity, controller, body_controller)
 		var pocket := blade_pocket(owner)
 		var ball_planar := Vector2(next_position.x, next_position.z)
-		ball_planar = ball_planar.lerp(pocket.target, clampf(delta * POSITION_ASSIST_RATE, 0.0, 1.0))
+		if controller == previous_controller:
+			# Possession is already explicit, so the authored blade—not a delayed
+			# spring—drives the ball. This keeps turns looking like direct pushing.
+			ball_planar = pocket.target
+		else:
+			ball_planar = ball_planar.lerp(pocket.target, clampf(delta * POSITION_ASSIST_RATE, 0.0, 1.0))
 		next_position.x = ball_planar.x
 		next_position.z = ball_planar.y
 		var target_velocity := Vector2(owner.velocity.x, owner.velocity.z) + owner_facing * DRIBBLE_LEAD_SPEED

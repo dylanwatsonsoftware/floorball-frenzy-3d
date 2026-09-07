@@ -75,6 +75,11 @@ func _init() -> void:
 	if retained.controller != 0:
 		fail("A controlled ball must remain attached through an ordinary sharp direction change")
 		return
+	var turned_pocket: Dictionary = interaction.blade_pocket(turned_player)
+	var retained_planar := Vector2(retained.position.x, retained.position.z)
+	if retained_planar.distance_to(turned_pocket.target) > 0.01:
+		fail("An owned ball must move directly with the blade when its carrier turns instead of trailing on a string; ball=%s blade=%s" % [retained_planar, turned_pocket.target])
+		return
 	var running_player := player.duplicate()
 	running_player.velocity = Vector3(12.0, 0.0, 0.0)
 	var running_control: Dictionary = interaction.step(

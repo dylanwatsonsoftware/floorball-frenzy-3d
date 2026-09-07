@@ -90,8 +90,12 @@ func _init() -> void:
 		fail("Moderate ball errors should correct gently; got %s" % moderate_ball_error)
 		return
 	var possessed_follow_step: Vector3 = controller.follow_possessed_ball(Vector3.ZERO, Vector3(1.0, 0.0, 0.0), 1.0 / 60.0)
-	if possessed_follow_step.x <= 0.0 or possessed_follow_step.x > 0.21:
-		fail("A newly possessed guest ball must approach the blade without teleporting there; got %s" % possessed_follow_step)
+	if not possessed_follow_step.is_equal_approx(Vector3(1.0, 0.0, 0.0)):
+		fail("An explicitly possessed guest ball must stay directly on its locally animated blade without network-follow lag; got %s" % possessed_follow_step)
+		return
+	var grounded_follow: Vector3 = controller.follow_possessed_ball(Vector3(0.0, 0.22, 0.0), Vector3(1.0, 0.65, 0.0), 1.0 / 60.0)
+	if not is_equal_approx(grounded_follow.y, 0.22):
+		fail("A guest's possessed ball must stay grounded when the blade lifts during a backswing; got %s" % grounded_follow)
 		return
 	var possessed_follow_position := Vector3.ZERO
 	for frame in 30:

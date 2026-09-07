@@ -122,6 +122,8 @@ The animation target is readable, stylised biomechanics rather than literal real
 - [x] Expand swing collision validation to the Lamb's visible torso volume at five-degree intervals from full load through follow-through, then add a small load-weighted radial hand arc so the thick shaft mesh clears—not merely its centreline.
 - [x] Add a vertical swing plane: lift the blade 18 degrees as it travels backward, return it to the floor at contact, and retain a smaller rising follow-through instead of rotating flat around the court.
 - [x] Enlarge and reshape the single-surface grip mitts so their palms and finger bands visibly wrap the shaft at gameplay scale rather than reading as detached white spheres.
+- [x] Replace host and guest possession-follow springs with direct planar attachment to the authored blade pocket, so the ball responds immediately to movement and turning while remaining grounded during the raised backswing.
+- [x] Keep the possessed ball planted through backswing and forward-swing presentation, then guarantee contact for the possession that began the slap instead of dragging the ball along the animated blade path before impact.
 
 ## Acceptance checks
 
